@@ -1,0 +1,31 @@
+experiment:
+  name: network_delay_single_gpu
+  seed: 42
+  duration_sec: 20
+service:
+  base_url: http://127.0.0.1:8080
+limits:
+  max_inflight: 1
+  max_requests: 4
+  request_timeout_sec: 60
+workload:
+  arrival: fixed
+  base_qps: 0.2
+  input_tokens: 32
+  output_tokens: 4
+  max_model_len: 8192
+  tokenizer: /workspace/llumnix-ray/model
+monitoring:
+  interval_sec: 1
+slo:
+  ttft_ms: 2000
+  tpot_ms: 150
+events:
+  - at_sec: 0
+    type: network_proxy
+    action: set
+    request_delay_ms: 30
+    response_delay_ms: 30
+    jitter_ms: 5
+    failure_probability: 0
+    duration_sec: 8

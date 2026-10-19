@@ -1,0 +1,29 @@
+experiment:
+  name: feasibility_baseline
+  seed: 4201
+  duration_sec: 20
+service:
+  base_url: http://127.0.0.1:8080
+  request_endpoint: /generate_benchmark
+  health_endpoint: /health
+  ready_endpoint: /is_ready
+limits:
+  max_inflight: 1
+  max_requests: 1
+  request_timeout_sec: 60
+workload:
+  arrival: fixed
+  base_qps: 0.1
+  input_tokens: 8
+  output_tokens: 3
+  prompt: Reply with hello in one short sentence.
+  max_model_len: 8192
+  tokenizer: /workspace/llumnix-ray/model
+  dataset_type: sharegpt
+  profile_mix: null
+monitoring:
+  interval_sec: 1
+slo:
+  ttft_ms: 5000
+  tpot_ms: 1000
+events: []

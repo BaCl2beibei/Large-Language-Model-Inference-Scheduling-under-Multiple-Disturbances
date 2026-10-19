@@ -1,0 +1,36 @@
+experiment:
+  name: kv_pressure_single_gpu
+  seed: 42
+  duration_sec: 40
+service:
+  base_url: http://127.0.0.1:8080
+limits:
+  max_inflight: 3
+  max_requests: 9
+  request_timeout_sec: 60
+workload:
+  arrival: fixed
+  base_qps: 0.3
+  input_tokens: 128
+  output_tokens: 32
+  max_model_len: 8192
+  tokenizer: /workspace/llumnix-ray/model
+  profile_mix:
+    - name: Short
+      input_tokens: 128
+      output_tokens: 64
+      weight: 5
+    - name: Medium
+      input_tokens: 512
+      output_tokens: 128
+      weight: 3
+    - name: Long
+      input_tokens: 1024
+      output_tokens: 256
+      weight: 1
+monitoring:
+  interval_sec: 1
+slo:
+  ttft_ms: 2000
+  tpot_ms: 150
+events: []

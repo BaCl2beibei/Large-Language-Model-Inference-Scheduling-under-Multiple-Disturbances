@@ -1,0 +1,34 @@
+experiment:
+  name: cpu_load_single_gpu
+  seed: 42
+  duration_sec: 12
+service:
+  base_url: http://127.0.0.1:8080
+  request_endpoint: /generate_benchmark
+  health_endpoint: /health
+  ready_endpoint: /is_ready
+limits:
+  max_inflight: 1
+  max_requests: 4
+  request_timeout_sec: 60
+workload:
+  arrival: fixed
+  base_qps: 0.25
+  input_tokens: 32
+  output_tokens: 4
+  max_model_len: 8192
+  tokenizer: /workspace/llumnix-ray/model
+  dataset_type: sharegpt
+  profile_mix: null
+monitoring:
+  interval_sec: 1
+slo:
+  ttft_ms: 2000
+  tpot_ms: 150
+events:
+- at_sec: 0
+  type: cpu_compute
+  action: start
+  workers: 1
+  duty_cycle: 0.25
+  duration_sec: 5

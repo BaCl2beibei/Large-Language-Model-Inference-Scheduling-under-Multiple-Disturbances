@@ -1,0 +1,45 @@
+experiment:
+  name: mixed_single_gpu_v1
+  seed: 42
+  duration_sec: 24
+service:
+  base_url: http://127.0.0.1:8080
+  request_endpoint: /generate_benchmark
+  health_endpoint: /health
+  ready_endpoint: /is_ready
+limits:
+  max_inflight: 2
+  max_requests: 8
+  request_timeout_sec: 60
+workload:
+  arrival: poisson
+  base_qps: 0.2
+  input_tokens: 64
+  output_tokens: 8
+  max_model_len: 8192
+  tokenizer: /workspace/llumnix-ray/model
+  dataset_type: sharegpt
+  profile_mix: null
+monitoring:
+  interval_sec: 1
+slo:
+  ttft_ms: 2000
+  tpot_ms: 150
+events:
+- at_sec: 2
+  type: cpu_compute
+  action: start
+  workers: 1
+  duty_cycle: 0.2
+  duration_sec: 5
+- at_sec: 8
+  type: network_proxy
+  action: set
+  request_delay_ms: 25
+  response_delay_ms: 25
+  jitter_ms: 5
+  duration_sec: 6
+- at_sec: 15
+  type: workload
+  action: set_qps
+  value: 0.35

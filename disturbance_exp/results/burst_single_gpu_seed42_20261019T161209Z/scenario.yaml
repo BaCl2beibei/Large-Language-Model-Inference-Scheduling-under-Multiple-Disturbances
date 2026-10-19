@@ -1,0 +1,28 @@
+experiment:
+  name: burst_single_gpu
+  seed: 42
+  duration_sec: 30
+service:
+  base_url: http://127.0.0.1:8080
+  request_endpoint: /generate_benchmark
+  health_endpoint: /health
+  ready_endpoint: /is_ready
+limits:
+  max_inflight: 4
+  max_requests: 24
+  request_timeout_sec: 60
+workload:
+  arrival: burst
+  base_qps: 2.0
+  input_tokens: 32
+  output_tokens: 8
+  max_model_len: 8192
+  tokenizer: /workspace/llumnix-ray/model
+  dataset_type: sharegpt
+  profile_mix: null
+monitoring:
+  interval_sec: 1
+slo:
+  ttft_ms: 2000
+  tpot_ms: 150
+events: []
