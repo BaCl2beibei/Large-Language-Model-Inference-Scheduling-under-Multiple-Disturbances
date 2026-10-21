@@ -1,0 +1,203 @@
+{
+  "experiment_id": "migration_crossover_quick",
+  "created_at_utc": "2026-10-20T12:36:48.212978+00:00",
+  "environment": {
+    "captured_at_utc": "2026-10-20T12:36:42.666646+00:00",
+    "python": "3.10.12 (main, Jul 26 2023, 13:20:36) [Clang 16.0.3 ]",
+    "packages": {
+      "torch": "2.4.0",
+      "vllm": "0.6.3.post1",
+      "ray": "2.47.1",
+      "aiohttp": "3.14.5",
+      "matplotlib": "3.10.9",
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "transformers": "4.46.3",
+      "tokenizers": "0.20.3"
+    },
+    "torch": {
+      "version": "2.4.0+cu121",
+      "cuda": "12.1",
+      "cuda_available": true,
+      "device_count": 4
+    },
+    "gpus": [
+      {
+        "index": 0,
+        "uuid": "GPU-02df511e-f4af-9773-43de-a96fefa95e2d",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      },
+      {
+        "index": 1,
+        "uuid": "GPU-4935a3fa-02ef-f938-9c60-7caa6066906d",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      },
+      {
+        "index": 2,
+        "uuid": "GPU-3079b9d7-adf5-8d6f-8e4c-317a293f6434",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      },
+      {
+        "index": 3,
+        "uuid": "GPU-03d4ef83-d5d0-acca-a303-17432267bdac",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      }
+    ],
+    "gpu_count": 4,
+    "cpu_count_logical": 56,
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+    "memory_total_bytes": 67407138816,
+    "memory_available_bytes": 61542612992,
+    "workspace_disk": {
+      "total": 85899345920,
+      "used": 16800911360,
+      "free": 69098434560
+    },
+    "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+    "model_files": [
+      {
+        "name": ".gitattributes",
+        "size_bytes": 1519
+      },
+      {
+        "name": "LICENSE",
+        "size_bytes": 11344
+      },
+      {
+        "name": "README.md",
+        "size_bytes": 4026
+      },
+      {
+        "name": "config.json",
+        "size_bytes": 661
+      },
+      {
+        "name": "generation_config.json",
+        "size_bytes": 138
+      },
+      {
+        "name": "merges.txt",
+        "size_bytes": 1671839
+      },
+      {
+        "name": "model.safetensors",
+        "size_bytes": 988097824
+      },
+      {
+        "name": "tokenizer.json",
+        "size_bytes": 7028015
+      },
+      {
+        "name": "tokenizer_config.json",
+        "size_bytes": 1289
+      },
+      {
+        "name": "vocab.json",
+        "size_bytes": 2776833
+      }
+    ],
+    "git_commit": "09e0a10c37aaa823dcdbee98678a552565a3e255",
+    "git_status": "M llumnix/global_scheduler/migration_policy.py\n M tests/unit_test/global_scheduler/test_migration_scheduler.py\n?? benchmark/results/\n?? benchmark/run_baseline_4gpu.py\n?? benchmark/run_migration_crossover.py\n?? datasets/\n?? model/",
+    "workspace_is_volume": false
+  },
+  "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+  "policy": "balanced",
+  "gpu_memory_utilization": 0.65,
+  "runtime": {
+    "initial_instances": 4,
+    "tensor_parallel_size": 1,
+    "max_model_len": 2048,
+    "max_num_seqs_per_instance": 16,
+    "gpu_memory_utilization": 0.65,
+    "dtype": "half",
+    "dispatch_policy": "load",
+    "dispatch_load_metric": "remaining_steps",
+    "routine_migration_policy": "balanced",
+    "routine_migration_frequency": 1,
+    "migration_backend": "rayrpc",
+    "pre_stop_migration": false,
+    "routine_migration_enabled": {
+      "off": false,
+      "on": true
+    }
+  },
+  "seed": 101,
+  "qps_levels": [
+    {
+      "label": "qps_0",
+      "qps": 0.0
+    },
+    {
+      "label": "qps_1",
+      "qps": 1.0
+    },
+    {
+      "label": "qps_2",
+      "qps": 2.0
+    },
+    {
+      "label": "qps_3",
+      "qps": 3.0
+    },
+    {
+      "label": "qps_4",
+      "qps": 4.0
+    },
+    {
+      "label": "qps_5",
+      "qps": 5.0
+    }
+  ],
+  "arrival_model": "poisson",
+  "profile_mix": [
+    {
+      "name": "short",
+      "input_tokens": 64,
+      "output_tokens": 64,
+      "weight": 0.25
+    },
+    {
+      "name": "medium",
+      "input_tokens": 128,
+      "output_tokens": 96,
+      "weight": 0.5
+    },
+    {
+      "name": "long",
+      "input_tokens": 256,
+      "output_tokens": 128,
+      "weight": 0.25
+    }
+  ],
+  "warmup_sec": 5.0,
+  "measure_sec": 20.0,
+  "drain_sec": 180.0,
+  "request_timeout_sec": 180.0,
+  "slo": {
+    "ttft_ms": 2000.0,
+    "tpot_ms": 150.0
+  },
+  "trace_sha256": {
+    "qps_0_seed101": "9aab3d49315764c479c2fc715487d9e5503f88b61389b46fdbe772d62f6bf328",
+    "qps_1_seed101": "db41bdb713c6224ea6fec43170a5b60351b165b500d98e60c74c49b2e331c63c",
+    "qps_2_seed101": "e767a2f21deed4e3055b553bcf9c9f3a6c3d121d41d7a5ce8ba38ab2aabb675c",
+    "qps_3_seed101": "e94e0530d6597f1f7d4e80163cff0cd3a142dbbb1fff1429408841110a11598f",
+    "qps_4_seed101": "09fad15be9397d6ca8333e8ef49ecbdfe1efe79762e2948ebb16052969eac07e",
+    "qps_5_seed101": "0ea4da0013ca32762c3104901d38c73052ba3c317a3ff0cb16f50f688286c307"
+  },
+  "configs": {
+    "off": "configs/llumnix_off.yml",
+    "on": "configs/llumnix_on.yml"
+  },
+  "output_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/migration_crossover_20261020_123639",
+  "completed_formal_runs": 12,
+  "effective_config_verified": true
+}

@@ -143,8 +143,10 @@ def init_llumnix_components(entrypoints_args: EntrypointsArgs,
 
     request_output_queue_type: QueueType = QueueType(entrypoints_args.request_output_queue_type)
     node_id = ray.get_runtime_context().get_node_id()
+    # Initial placement-group creation is serial; allow slower multi-GPU hosts
+    # to return the instance handles before the per-instance readiness checks below.
     instance_ids, instances = ray.get(
-        scaler.init_instances.remote(request_output_queue_type, instance_args, engine_args, node_id), timeout=10.0,
+        scaler.init_instances.remote(request_output_queue_type, instance_args, engine_args, node_id), timeout=60.0,
     )
 
     available_instance_ids = []

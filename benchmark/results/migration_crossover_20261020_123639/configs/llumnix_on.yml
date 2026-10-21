@@ -1,0 +1,58 @@
+# 转发给高级模型的 prompt：请仅根据本文件配置和下列源码事实，说明 balanced 与
+# MIGRATE_OUT_THRESHOLD: 20000.0 的关系。回答只陈述可核实事实，不推断性能收益。
+#
+# 本次 ON 配置事实：
+# - routine migration 开启；pre-stop migration 关闭；初始实例数为 4。
+# - PAIR_MIGRATION_POLICY 为 balanced；PAIR_MIGRATION_FREQUENCY 为 1。
+# - MIGRATE_OUT_THRESHOLD 为 20000.0。
+# - DISPATCH_POLICY 为 load（按实例负载选择请求接收实例）；DISPATCH_LOAD_METRIC 与
+#   MIGRATION_LOAD_METRIC 均为 remaining_steps，分别配置派发和迁移使用的负载指标。
+# - ENABLE_DEFRAG 为 true；迁移后端为 rayrpc；REQUEST_MIGRATION_POLICY 为 SR；
+#   MAX_MIGRATION_CONCURRENCY 为 1；自动扩缩容关闭。
+# - 本配置中的 dispatch policy 与 pair migration policy 是不同配置项：前者为 load，后者为 balanced。
+# - REQUEST_MIGRATION_POLICY=SR 在常规请求选择分支中选择正在运行请求里 request_len 最短者。
+# - rayrpc 是配置的迁移通信后端；最大迁移并发数为 1。
+#
+# 实现事实：
+# - ENABLE_DEFRAG=true 时，RemainingStepsLoad 的值为
+#   (num_available_gpu_blocks - num_blocks_first_waiting_request) /
+#   (num_running_requests + 1[存在等待请求])；分母为 0 时值为正无穷。
+# - RemainingStepsLoad.__lt__ 按反向语义比较：a < b 等价于 a.remaining_steps >= b.remaining_steps。
+# - LoadFilter 这一层的 source 候选条件因此是 remaining_steps <= 20000.0，或该实例有
+#   killed requests；destination 候选条件是没有 killed requests 且 remaining_steps >= 20000.0。
+#   候选实例还要通过迁移调度器中的其他过滤条件。
+# - Balanced 将 RemainingStepsLoad 映射为 pressure=1/remaining_steps；因此阈值映射为
+#   pressure=1/20000=0.00005。它按 source pressure 降序、destination pressure 升序配对；
+#   迁移后 destination 的 pressure 必须不高于该阈值（对应正的 remaining_steps >= 20000.0）。
+# - Balanced 只保留迁移后 source 与 destination 的 pressure 差值严格大于 0、且小于迁移前差值的配对。
+# - 所以该阈值既参与 source/destination 候选筛选，也限制迁入后 destination 的预测负载；
+#   balanced 负责配对并要求负载差距缩小。routine migration 开启本身不保证每轮都会发生迁移。
+# - 此指标实现中由 GPU block 数和请求数计算，没有转换成毫秒或 token 数。
+#
+# 对应源码：llumnix/load_computation.py:89-120；
+# llumnix/global_scheduler/migration_filter.py:82-98；
+# llumnix/global_scheduler/migration_policy.py:57-134。
+
+SERVER:
+  HOST: 127.0.0.1
+  PORT: 8080
+  REQUEST_OUTPUT_QUEUE_TYPE: zmq
+  RAY_CLUSTER_PORT: 6379
+  LAUNCH_RAY_CLUSTER: true
+MANAGER:
+  INITIAL_INSTANCES: 4
+  DISPATCH_POLICY: load
+  ENABLE_ROUTINE_MIGRATION: true
+  ENABLE_PRE_STOP_MIGRATION: false
+  PAIR_MIGRATION_FREQUENCY: 1
+  PAIR_MIGRATION_POLICY: balanced
+  MIGRATE_OUT_THRESHOLD: 20000.0
+  ENABLE_SCALING: false
+  POLLING_INTERVAL: 0.05
+  DISPATCH_LOAD_METRIC: remaining_steps
+INSTANCE:
+  MIGRATION_LOAD_METRIC: remaining_steps
+  ENABLE_DEFRAG: true
+  MIGRATION_BACKEND: rayrpc
+  REQUEST_MIGRATION_POLICY: SR
+  MAX_MIGRATION_CONCURRENCY: 1

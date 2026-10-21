@@ -52,6 +52,14 @@ class MigrationPolicy(ABC):
 
 
 class Balanced(MigrationPolicy):
+    @staticmethod
+    def _metric_value(metric) -> float:
+        """Get the numeric value used by a load metric for distance checks."""
+        for attr in ("demand_factor", "remaining_steps", "decode_load", "miss_waiting_tokens"):
+            if hasattr(metric, attr):
+                return float(getattr(metric, attr))
+        return float(metric)
+
     def pair_migration(self,
                        src_instance_infos: List[InstanceInfo],
                        dst_instance_infos: List[InstanceInfo],
@@ -60,14 +68,23 @@ class Balanced(MigrationPolicy):
         sorted_dst_instance_infos = self.sort_instance_infos(dst_instance_infos, descending=False)
         migrate_instance_pairs = []
         for i in range(min(len(sorted_src_instance_infos), len(sorted_dst_instance_infos))):
-            load_diff_before_mig = sorted_src_instance_infos[i].migration_load_metric - sorted_dst_instance_infos[i].migration_load_metric
+            src_load = sorted_src_instance_infos[i].migration_load_metric
+            dst_load = sorted_dst_instance_infos[i].migration_load_metric
+            load_diff_before_mig = abs(self._metric_value(src_load) - self._metric_value(dst_load))
             left_load_after_mig = sorted_src_instance_infos[i].migration_load_metric_after_migrate_out
             right_load_after_mig = sorted_dst_instance_infos[i].migration_load_metric_after_migrate_in
             # Add some constrains to reduce unnecessary migrations
-            if right_load_after_mig > self.migrate_out_load_threshold:
+            threshold = type(right_load_after_mig)(self.migrate_out_load_threshold)
+            if right_load_after_mig > threshold:
                 continue
-            load_diff_after_mig = left_load_after_mig - right_load_after_mig
-            if 0 < load_diff_after_mig < load_diff_before_mig:
+            load_diff_after_mig = abs(self._metric_value(left_load_after_mig)
+                                      - self._metric_value(right_load_after_mig))
+            # Load metric ordering captures whether a larger value means a
+            # busier instance (RemainingStepsLoad orders in the reverse direction).
+            # Keep the original source/destination order after migration so a
+            # transfer does not overshoot and reverse the load imbalance.
+            if left_load_after_mig > right_load_after_mig \
+                    and 0 < load_diff_after_mig < load_diff_before_mig:
                 migrate_instance_pairs.append((sorted_src_instance_infos[i].instance_id,
                                                sorted_dst_instance_infos[i].instance_id))
         return migrate_instance_pairs
