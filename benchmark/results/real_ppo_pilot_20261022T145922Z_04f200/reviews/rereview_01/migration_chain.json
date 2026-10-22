@@ -1,0 +1,105 @@
+{
+  "scope": "CPU original coordinator body; transfer/actors mocked",
+  "rejection": {
+    "lease_id": "ad470c006454443dbd31c94f9c1b5de1-cd2034f2e6814864a217d522113efe3e",
+    "decision_id": "reject",
+    "src_id": "0",
+    "dst_id": "1",
+    "expected_candidate_id": "stale-candidate",
+    "snapshot_version": "ad470c006454443dbd31c94f9c1b5de1:1",
+    "receipt_status": "rejected",
+    "rejection_reason": "SR_candidate_changed",
+    "migration_id": null,
+    "terminal_status": "rejected",
+    "accepted_ns": null,
+    "terminal_ns": 100000000000,
+    "run_id": "run",
+    "episode_id": "episode",
+    "controller_version": "review"
+  },
+  "acceptance": {
+    "lease_id": "ad470c006454443dbd31c94f9c1b5de1-cd2034f2e6814864a217d522113efe3e",
+    "decision_id": "success",
+    "src_id": "0",
+    "dst_id": "1",
+    "expected_candidate_id": "request-0",
+    "snapshot_version": "ad470c006454443dbd31c94f9c1b5de1:1",
+    "receipt_status": "accepted",
+    "rejection_reason": null,
+    "migration_id": "real-8c34efd9be83cf74ecb66653719da881bd863d77f82e80a6a4a5fdcf295017f9",
+    "terminal_status": null,
+    "accepted_ns": 100000000000,
+    "terminal_ns": null,
+    "run_id": "run",
+    "episode_id": "episode",
+    "controller_version": "review",
+    "source_epoch": "e0",
+    "destination_epoch": "e1"
+  },
+  "terminal": {
+    "lease_id": "ad470c006454443dbd31c94f9c1b5de1-cd2034f2e6814864a217d522113efe3e",
+    "decision_id": "success",
+    "src_id": "0",
+    "dst_id": "1",
+    "expected_candidate_id": "request-0",
+    "snapshot_version": "ad470c006454443dbd31c94f9c1b5de1:1",
+    "receipt_status": "accepted",
+    "rejection_reason": null,
+    "migration_id": "real-8c34efd9be83cf74ecb66653719da881bd863d77f82e80a6a4a5fdcf295017f9",
+    "terminal_status": "succeeded",
+    "accepted_ns": 100000000000,
+    "terminal_ns": 100000000000,
+    "run_id": "run",
+    "episode_id": "episode",
+    "controller_version": "review",
+    "source_epoch": "e0",
+    "destination_epoch": "e1",
+    "actual_request_id": "request-0",
+    "copied_blocks": 20,
+    "migration_start_ns": 100000000000,
+    "migration_end_ns": 100000000000,
+    "terminal_received_ns": 100000000000
+  },
+  "events": [
+    {
+      "event": "migration_attempt_started",
+      "migration_id": "real-8c34efd9be83cf74ecb66653719da881bd863d77f82e80a6a4a5fdcf295017f9",
+      "request_id": "request-0",
+      "source_instance_id": "0",
+      "target_instance_id": "1",
+      "initial_status": "running",
+      "migration_type": "ordinary"
+    },
+    {
+      "event": "migration_target_commit_started",
+      "migration_id": "real-8c34efd9be83cf74ecb66653719da881bd863d77f82e80a6a4a5fdcf295017f9",
+      "request_id": "request-0",
+      "source_instance_id": "0",
+      "target_instance_id": "1"
+    },
+    {
+      "event": "migration_request_resumed",
+      "migration_id": "real-8c34efd9be83cf74ecb66653719da881bd863d77f82e80a6a4a5fdcf295017f9",
+      "request_id": "request-0",
+      "instance_id": "1",
+      "resume_reason": "destination_commit_acknowledged"
+    },
+    {
+      "event": "free_src"
+    },
+    {
+      "event": "unpause"
+    },
+    {
+      "event": "migration_attempt_completed",
+      "migration_id": "real-8c34efd9be83cf74ecb66653719da881bd863d77f82e80a6a4a5fdcf295017f9",
+      "request_id": "request-0",
+      "source_instance_id": "0",
+      "target_instance_id": "1",
+      "status": "finished",
+      "success": true,
+      "total_blocks": 20,
+      "migration_total_ms": 0.014908
+    }
+  ]
+}

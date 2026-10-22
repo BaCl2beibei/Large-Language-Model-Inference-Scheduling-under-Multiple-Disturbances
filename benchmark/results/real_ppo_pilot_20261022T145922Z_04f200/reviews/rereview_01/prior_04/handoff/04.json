@@ -1,0 +1,432 @@
+{
+  "stage": "04_bridge_review",
+  "status": "failed",
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "created_at_utc": "2026-10-22T16:42:10.632943+00:00",
+  "scope": "P1/P2 independent CPU review only",
+  "reviewer_model_note": "Executed current session; no model-switch assertion and no subagents.",
+  "reason": "7 reproducible protocol defects; return to Sol for implementation repair, then repeat independent review. Smoke not permitted.",
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "P1/high",
+      "blocking": true,
+      "title": "同进程 driver worker / Llumlet 的刷盘回执导致确定性的 checkpoint 回退",
+      "locations": [
+        "rl_scheduler/real_runner.py:24",
+        "rl_scheduler/real_runner.py:155",
+        "llumnix/llumlet/llumlet.py:293",
+        "llumnix/backends/vllm/executor.py:97",
+        "llumnix/backends/vllm/executor.py:325",
+        "rl_scheduler/real_metrics.py:237"
+      ],
+      "trigger": "非 SPMD 的 TP=1 路径：driver_worker 是 Llumlet 进程内对象，二者调用同一进程的 causal_events.flush。先 flush worker，再 flush local；返回字典却先遍历 local，再遍历 workers。当前显式 smoke 配置 TP=1，未设置 SPMD；当前进程该开关未设置，安装版本默认 False。",
+      "consequence": "同一 source 的 through_ns 从较新的 local 回退到旧 worker，台账记录 sticky checkpoint_regression。即使请求全完成、投递为零，cleanup audit 仍 incomplete，首条 telemetry smoke 就无法正常验收。此为源码与 CPU 复现结论，不冒称已运行真机。",
+      "reproduction": "test_R1_same_process_worker_local_flush_must_not_regress：local through=12、worker through=11、source 相同、sequence=0，实际 incomplete / checkpoint_regression:same-process。",
+      "minimum_fix": "按 producer identity 合并同一轮多角色 ack，保留最新有效水位并分别验证各角色的 pending/durable 状态；不要关闭一般性的回退检测。新增真实 TP=1 同进程布局和独立 worker 布局的 CPU 测试。"
+    },
+    {
+      "id": "R2",
+      "severity": "P1/high",
+      "blocking": true,
+      "title": "提交结果未知后，环境继续用新 decision_id 提交动作而未先查询旧动作",
+      "locations": [
+        "rl_scheduler/real_env.py:142",
+        "rl_scheduler/real_env.py:146",
+        "rl_scheduler/real_env.py:173",
+        "rl_scheduler/real_bridge.py:326"
+      ],
+      "trigger": "submit_migration 超时/连接丢失返回 receipt_status=unknown；后续 snapshot 仍有合法动作，例如请求未抵达 Manager，或已经执行完成且稍后冷却结束。",
+      "consequence": "RealEnv.step 不检查 unresolved receipt；只在 finish 查询。反例产生 submit(run:ep:0) → submit(run:ep:1)，中间没有 query。Manager 已知的占槽仍能防并发，但不能替代客户端对未确认投递的决策追踪，违反先查询、未知即停的协议。",
+      "reproduction": "test_R2_unknown_submit_must_query_before_new_decision；使用实际 RealEnv.step 和明确不确定回执，连续两次 step 即失败。",
+      "minimum_fix": "在 bridge/env 持久保存 unresolved decision fence；任何新非 Stay 动作前按原 decision_id 查询，未确定时停止采样并进入有界清理。保留原 action/logp，不能把 unknown 改写成拒绝或 Stay。"
+    },
+    {
+      "id": "R3",
+      "severity": "P2/medium",
+      "blocking": true,
+      "title": "控制权获取的 await 窗口未阻挡普通控制器",
+      "locations": [
+        "rl_scheduler/real_bridge.py:94",
+        "rl_scheduler/real_bridge.py:129",
+        "rl_scheduler/real_bridge.py:135",
+        "llumnix/manager.py:292"
+      ],
+      "trigger": "acquire_controller 在 native_idle 检查后等待 state_provider；普通 Manager._migrate 不持 arbiter 锁，此时 lease/slot 仍为空，可使用已有 instance_info 发起 native migration。状态 RPC 若已采样但回包尚未到达，仍会返回旧的 idle 状态。",
+      "consequence": "原生迁移已经进入而租约仍授予，且该次 native 动作发生时 ordinary_blocked=False，不会记录 intervention。并非声称空载 smoke 必然触发；这是接管协议的竞态缺口。",
+      "reproduction": "test_R3_controller_acquisition_must_fence_native_during_await：通过两个 asyncio.Event 控制先采样、再 native 入场、再返回状态的顺序，租约仍成功返回。",
+      "minimum_fix": "第一次 await 前设置 acquisition fence，并让普通调度器遵守；异常时正确回收 fence，授予前重新确认 native task/fault 状态。failover/pre-stop 仍保留，但必须记录 intervention 并使回合失效。"
+    },
+    {
+      "id": "R4",
+      "severity": "P1/high",
+      "blocking": true,
+      "title": "迁移后首输出尚未到达时，取消确认只检查旧实例，可能虚报已取消",
+      "locations": [
+        "llumnix/entrypoints/vllm/api_server.py:69",
+        "llumnix/entrypoints/vllm/client.py:206",
+        "llumnix/entrypoints/client.py:127",
+        "llumnix/entrypoints/vllm/real_metrics_stream.py:80",
+        "llumnix/entrypoints/vllm/real_metrics_stream.py:122"
+      ],
+      "trigger": "请求已在目标提交，但 API 尚未收到目标第一条输出；request_instances 仍指向旧源。abort 源实例对不存在的请求是无异常 no-op。源暂停/Manager 延迟 dispatch 也需要同类取消 fencing。",
+      "consequence": "_real_metrics_abort_confirmed 只等待旧实例 abort RPC，然后清掉 client stream 并返回 True。stream 因 cancel 标志退出可被标记 cancelled，路由据此输出 cancelled_confirmed；目标请求实际仍可能运行。后续队列等待可能发现或等到它自然完成，但这不能追认先前虚假的取消证明。",
+      "reproduction": "test_R4_abort_ack_must_cover_migrated_owner_before_output：执行真实 API callback 函数体，source abort 无操作，目标仍有 r，返回 confirmed=True 并清除客户端状态。RPC/目标状态为最小 CPU 模型，未执行真实迁移取消。",
+      "minimum_fix": "由可权威追踪 dispatch/迁移状态的控制面执行取消 fence；确认源、目标、暂停/预分配及未完成 dispatch 均不能再产生该请求，并等待投递/流结束，再报告 confirmed。不能仅凭客户端最近输出位置或无异常 abort 返回值确认；未知保留 unknown。"
+    },
+    {
+      "id": "R5",
+      "severity": "P1/high",
+      "blocking": true,
+      "title": "reset 忽略 API 侧 pending delivery / 活跃流",
+      "locations": [
+        "rl_scheduler/real_runner.py:59",
+        "rl_scheduler/real_runner.py:69",
+        "llumnix/entrypoints/vllm/real_control_api.py:20",
+        "rl_scheduler/real_env.py:72"
+      ],
+      "trigger": "四实例快照的 running/waiting/pending_delivery 均零，但 API flush 返回 pending_delivery=1（队列、request_stream 或旧 HTTP handler 尚未清空）。",
+      "consequence": "prepare 仅检查 status/durable，照常建立新 producer inventory 并开始新回合；“引擎空闲但仍有投递”的污染路径没有被 reset 阻止。",
+      "reproduction": "test_R5_reset_must_reject_pending_API_delivery：使用实际 LiveEpisodeIO.prepare，API ack pending=1，预期拒绝，实际未抛错。",
+      "minimum_fix": "reset 的集群空闲契约涵盖 API/Manager/worker 全部 pending 状态；非零或缺失均阻断 begin，且等待/清理使用同一有界截止。结合角色 ack 校验修复，不能只修改测试中的快照。"
+    },
+    {
+      "id": "R6",
+      "severity": "P1/high",
+      "blocking": true,
+      "title": "真实执行计划未检查独立审查 gate 和 live 阶段依赖",
+      "locations": [
+        "benchmark/run_real_ppo.py:55",
+        "benchmark/run_real_ppo.py:68",
+        "benchmark/run_real_ppo.py:116"
+      ],
+      "trigger": "调用现有非 dry-run telemetry/bridge 命令；02/03 offline gate passed，但 reviews/bridge_review.json 缺失或 failed。",
+      "consequence": "plan 仍返回 GPU_will_start=True，随后 main 能调用 service.start。代码未读取审查结果；active/overhead 也未校验前序 live gate。人工按 05 prompt 检查可以避免本次误执行，但不满足编排器自己核验依赖及 hash 的合同。",
+      "reproduction": "test_R6_live_plan_requires_review_gate：真实 plan、现有源码/config/trace/gate，仅用只读 budget stub 避免改共享时钟；缺失 passed review 仍生成 live intent。没有调用 service.start。",
+      "minimum_fix": "live intent 生成前校验 hash 绑定的 step-04 审查结论；按冻结顺序验证相应 live 结果和依赖。缺失、failed、incomplete、相关 hash 变化都拒绝；dry-run 明确列出阻塞项。审查失败文件不得被自动覆盖成 passed。"
+    },
+    {
+      "id": "R7",
+      "severity": "P1/high",
+      "blocking": true,
+      "title": "失败的 worker flush 回执被 flatten_acks 静默丢弃",
+      "locations": [
+        "rl_scheduler/real_runner.py:24",
+        "rl_scheduler/real_runner.py:66",
+        "llumnix/backends/vllm/worker.py:59"
+      ],
+      "trigger": "MigrationWorker.real_control_flush 返回真实代码中的 {status: incomplete, reason: pending_cuda_telemetry}，其中没有 source/durable；workers 列表本身非空。",
+      "consequence": "flatten_acks 递归到字符串后不产出记录，prepare 仅验证剩余成功 ack，并从它们反推 expected_sources。失败 producer/角色的存在被隐去，初次 inventory 可以错误通过。即使 local/worker 同进程，local fsync 也不能代替尚未结束的 worker CUDA telemetry queue barrier。",
+      "reproduction": "test_R7_failed_worker_flush_must_not_disappear_from_inventory：一个 worker incomplete，其余 ack passed，真实 prepare 未拒绝。",
+      "minimum_fix": "先验证完整响应树的每个必需角色/worker 的状态和结构，再展平成功的 producer ack；任一失败/未知/缺字段须显式保留并阻断。期望 inventory 应独立于本次成功回执建立；覆盖 pending_cuda_telemetry、writer_closed、tracing_disabled 等失败形状。"
+    }
+  ],
+  "checks": [
+    {
+      "name": "02_03_current_prerequisites_and_hashes",
+      "status": "passed",
+      "evidence": "reviews/prerequisites.json"
+    },
+    {
+      "name": "independent_request_and_migration_chain",
+      "status": "passed",
+      "evidence": "reviews/counterexamples.log"
+    },
+    {
+      "name": "16_targeted_CPU_regressions",
+      "status": "passed",
+      "evidence": "reviews/targeted_regressions.log"
+    },
+    {
+      "name": "four_frozen_CLI_dry_runs_readonly_budget",
+      "status": "passed",
+      "evidence": "reviews/smoke_cli.json"
+    },
+    {
+      "name": "protocol_counterexamples_R1_R7",
+      "status": "failed",
+      "evidence": [
+        "reviews/counterexamples.log",
+        "reviews/failed_worker_flush.log"
+      ]
+    },
+    {
+      "name": "business_code_and_budget_preserved",
+      "status": "passed"
+    }
+  ],
+  "source_hashes": {
+    "benchmark/run_real_ppo.py": "007c6892e1b9ed035774e2f9fd5158ac43ef6415e99dde33d92b21b087f99b27",
+    "llumnix/backends/output_forwarder.py": "84d1378acdf8b84c9e4c59467cffb6332ebfaa65ee9e73dc5f28d2c75565b2f6",
+    "llumnix/backends/vllm/executor.py": "55869f3f1ed722d9dea4ffd5e9f27776208211afd308006df6565ee11145515e",
+    "llumnix/backends/vllm/llm_engine.py": "46eda37fddc6d5b138ea4feb5bbd0be9d7d05e12c1e6e24af0dddd1f9719a2e0",
+    "llumnix/backends/vllm/scheduler.py": "a695a298b1cff1c9a833284f60dc89755d8200078da2f324d362a9e6ec45d9b6",
+    "llumnix/backends/vllm/worker.py": "27849f5db78f2cee9ee84b798bf845ca1305a7fa42973bfb39cd3dd155e1909f",
+    "llumnix/config/default.py": "09c3427361aa36ab551438a0a0754f826d8acda18a97d99e014f982e04a5ecaa",
+    "llumnix/constants.py": "02232df647bc91381c571b72a98dfc11963bddfa51f2310381d8b4d2f97a498b",
+    "llumnix/entrypoints/client.py": "6224c013836ad66fbd32af1d5459684bbceb62be87d929928fcd371d8e51100f",
+    "llumnix/entrypoints/vllm/api_server.py": "81a37b742ace3e41b16231113b4c499207a2fce96c29ee962909cc159457f00c",
+    "llumnix/entrypoints/vllm/client.py": "b9bbe1a6888283dcb2c8063ea2a02246736163c44b95b5fa7d8959710c5ec16d",
+    "llumnix/entrypoints/vllm/real_control_api.py": "78683850cb66c0ab90165adc565b450ec1f3bb484ed6f3cc9ab5e35847ab860a",
+    "llumnix/entrypoints/vllm/real_metrics_stream.py": "f9615b5b604a590687c01fb885b2d935f13709e41fc8b8c0a7a1ca9979d81a6e",
+    "llumnix/global_scheduler/global_scheduler.py": "11a25e83c1c4e4189c5d32b286d260c3cbbf0184235f4b9bdd18dab7cd15f532",
+    "llumnix/global_scheduler/migration_filter.py": "9680f2b86a5f0c59fbb02abfb33e56362d22652ea1c9cfd0c41ab120e3d5fbe4",
+    "llumnix/global_scheduler/migration_policy.py": "9da715cf0469b0e90da93b9f9c7121986df2e1ac92c24c9562cc506004be46b4",
+    "llumnix/global_scheduler/migration_scheduler.py": "9a11e0ce661f8763fca86c1acd2f4d38f6193e3287ee8bd0de9d251be147cbd3",
+    "llumnix/llumlet/llumlet.py": "db3bbe8f04cd0ebaeae546a7b29d66bfd6bf3340177083c3ff94d73de3dde8a3",
+    "llumnix/llumlet/local_migration_scheduler.py": "49ffa3569c9c66af44d583f38d9d35748f6eb047fd75cf36388e4f68000c0806",
+    "llumnix/llumlet/migration_coordinator.py": "f8ab8923fcaadca0ba4fa57fd506f371dc7178bca23c34dc7318fae914daf3e0",
+    "llumnix/llumlet/request.py": "46c6574d8afddd1489c079c042728e4d360c800a065e107fd8d22cac0bb744f2",
+    "llumnix/manager.py": "99fa2d6f1276a63b79899cf16edf201f93386820b17e7e9e79070945911184f5",
+    "llumnix/metrics/causal_events.py": "e41bc01f8cb34bcf6eb207df2704c0ffb8ef9b7cc8e65f66f292b7878baf2323",
+    "llumnix/queue/zmq_client.py": "9fb76fb246fc8179d0a3a74173ca4eeb2c7adde76748fb7d939c8fe748422eb2",
+    "llumnix/queue/zmq_server.py": "39955928c6c8bba539fd0c628cdc2f8c335687d1b5877f87e631a133f27d1fc2",
+    "llumnix/real_control.py": "b91edac24e5514ee63633ae518b435f5c495df8a70bc1a5b55245588702e5fe0",
+    "llumnix/utils.py": "f78599d2ae596703fa8bb1133352c64d6bb8943bdcbcca3bd23966a41c1fead7",
+    "rl_scheduler/real_bridge.py": "3d5036ddaa9c41432fc7c1155757a073e95915dba0e3db21ceb8245f75c2f116",
+    "rl_scheduler/real_budget.py": "20ad5fda2bc3d25560477c30ceb135577a479a12ddafa7dd4ba14552f561be98",
+    "rl_scheduler/real_client.py": "3510fb0d9a8e147131eed4822dfbee032ccc2225a1f7636b1c5de4c353efedd7",
+    "rl_scheduler/real_env.py": "283b408f1bfbca5cb0d5cbabb6315a9e59f5d912a0f32f4e832fe649f6e4c37f",
+    "rl_scheduler/real_metrics.py": "500742813f6d52f874a7afe6c1f86420b9a6aa55968cec1f39a010e8ef04b5ab",
+    "rl_scheduler/real_observation.py": "feb2f7dbe16321a2b80e81539c97aba6d110179918b84d595a6939d0d86f31cf",
+    "rl_scheduler/real_runner.py": "a16bc6ca6fea5ba100b3862622c5b68082ac7451fdce3a4d6f19d2e5e2481526",
+    "rl_scheduler/real_service.py": "9670106a3e2c919b25a3bd3f54b24d468c1879f0d22874d69021ae8a5309c2f1",
+    "rl_scheduler/tests/test_real_bridge.py": "34ec071922a7063b5ea076e2e609c25a7a56580d4861a4a588556d9c2865f87d",
+    "rl_scheduler/tests/test_real_env.py": "d8265442ae1d342d844a4da443bce17b7557827008884cdf7cd0a2667b1e4235",
+    "rl_scheduler/tests/test_real_metrics.py": "99c1baf3a5d393d177153be03ea6425b8a8fa3d26e43baaa9d6bb4aad609cee4",
+    "rl_scheduler/tests/test_real_runner.py": "c9a297129334dc7f6fd158a2d9fb260e0ee1ba560b4462234cba85ce31e8ac2d"
+  },
+  "source_hash": "dbd582e80dc7cb47c7fef12e63b3763d927057a52514e13f6c62b30eeb48d877",
+  "config_hashes": {
+    "budget.json": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983",
+    "commands/05_smoke.json": "f457620bfde84def4de991cdc189d2d9d9ba82a2e02742b8c4a95b39e360d181",
+    "experiment_spec.yaml": "095688b60ce963dab253178c8e247c8d85586d019945dfc0d13050efe3718fa0",
+    "rl_scheduler/configs/real_llumnix.yaml": "58c3594e375bb0a097be64e7e08f9a8cc30a5712dd9fd976b31e47410152d60c",
+    "rl_scheduler/configs/real_pilot.yaml": "928bcc7a1af112a979f6ca536d9b5732e30d781026fc1e992ad2be2df231fd5b",
+    "services/real_ppo_fcda2e237b.conf": "a3ca789f3ab73bc912d4826ef1a27133e9ad8328507e744ad441b1f9d0efaa7c",
+    "services/real_ppo_fcda2e237b.sh": "a2b03e6560c7ee6f2aa240e970eb8dd194c8b5ee05d37f2b12f73cae3eb17672",
+    "services/real_ppo_guard_fcda2e237b.conf": "4e438a41de7629312fee957271299413564ca50bc3b2d23a09058c229a366850",
+    "services/real_ppo_guard_fcda2e237b.sh": "aa1cd524f91c8d7cf25c7aa53463b98a0c972b8f05278d46efdeeccc030ad798",
+    "smoke_spec.yaml": "7e1f0a1c6dff8f636c4ca7b22ab87e00ea93228fcd37949219aff69d120a2925",
+    "traces/smoke05/active.json": "517d2d5a639f85a2f25f98b079e5a07b676eaa33a747e824164e45baed578a42",
+    "traces/smoke05/manifest.json": "8e5125e46c0333144e388dac0b329ceecc4e4f824c2543bd00383f1f129f7068",
+    "traces/smoke05/overhead.json": "664b45e43685b1f0fae6739f1398a167bbecdfba25d47119447e227fa7ae4066",
+    "traces/smoke05/shadow.json": "dc34643fc1ae4664043fbebb67e0ffaf22ae0d718c3079e8743af8fd8da3a586",
+    "traces/smoke05/telemetry.json": "ee24eaaf5f50f4484533c75cb7919523bcd258e61a2aa5455db5d5aca629e581"
+  },
+  "config_hash": "ccd61e07d2de7251842399cd39781e5e97d030fbb65664a389e0944f3882da7c",
+  "evidence_hashes": {
+    "reviews/prerequisites.json": "60226b258cc24067ed7bc6399aaf9eb153b19221960f3e589f4053b8cfa13c39",
+    "reviews/commands.json": "0b6a8f54fbbbe7e5ae92731eec8341f6dc9c72329e554215ff37705c29620c8e",
+    "reviews/counterexamples_initial.log": "c87c9461a80ed0031e389b3b0c0cab6d78753dd29bbf904a6c5da7969b223b2a",
+    "reviews/counterexamples.log": "1e98ef6a91970d0546869508ebcad953cef7f1a9dade2f9057ebf6ecbf9956da",
+    "reviews/failed_worker_flush.log": "ac355381244a49ab151412e1f0e7ee95c231a35e7833c8265ba1b9919e15cd75",
+    "reviews/targeted_regressions.log": "61fd06f5d13ccc063cdf39dcf950379e79e4d0b493907bb7a6fa4c2bf42b90a1",
+    "reviews/smoke_cli.json": "a1f1265f4f0b087baa8cdb8d093d31c5b257c1e9691fb930cb3d61aefe58571c",
+    "reviews/smoke_cli.log": "488b543d7a50e2b4b9ec9478cc61a6e1e436abed173f6a4778b16a5d94260b2d",
+    "reviews/migration_chain.json": "0083d8b02647235581bfc8675198c081c81555dcdb96eb62340dcadc756431ba",
+    "reviews/gpu_process_inventory.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/diff_check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/test_bridge_review.py": "7d2ca214d52b2f294bccda3c1a55f8911d08f044455d2fec6eb3e132b2b5a2ff",
+    "reviews/verify_smoke_cli.py": "21013155b920b8b67057b96b3b53b6bc5e4c7c8903f6bdd813e07bffb7aeb62c",
+    "reviews/finalize_review.py": "ecbd36a6ced9ad6b8ecce56ddbea991ac50b2f7c8b670c4ba298593eeff85818",
+    "reviews/git_status_before.bin": "2dd88bf5b2eaea63acc6ff789acc5ac3ee0e7fe8fbdf68a6ba5d8a30e5f9438d",
+    "reviews/final_validation.json": "02537359a4edb380096201ba0a4c5ac876e2e648ee726685c1f6899ac6653c7c"
+  },
+  "hash_algorithm": "SHA256 bytes; aggregate SHA256(sorted compact JSON(path -> file SHA256))",
+  "dependency_hashes": {
+    ".venv/lib/python3.10/site-packages/vllm/envs.py": "e3ebba5da50a158fccff2545f548039436c0cd37f615255edc3db50820ba5f21"
+  },
+  "instruction_hashes": {
+    "rl_scheduler/docs/real_ppo_model_prompts/04_astra_review_bridge.md": "cc883fbee4784ce60f9a253010a9837661ed5fea84f0601816fab40cd7d6e408",
+    "rl_scheduler/docs/real_cluster_ppo_execution_plan.md": "b344e6a36cd63072e0c99a6bd9012bd4442bef1071a10a74e634ad899616b145"
+  },
+  "actual_commands_and_exit_codes": [
+    {
+      "argv": [
+        ".venv/bin/python",
+        "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py"
+      ],
+      "exit_code": 1,
+      "elapsed_sec": 3.385723284969572,
+      "log": "reviews/counterexamples_initial.log",
+      "type": "independent CPU regression expectations; failures are findings"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py"
+      ],
+      "exit_code": 1,
+      "elapsed_sec": 0.21561495697824284,
+      "log": "reviews/counterexamples.log",
+      "CPU_only": true
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "unittest",
+        "rl_scheduler.tests.test_real_metrics.AccountingTests.test_deadline_before_at_after_and_single_token",
+        "rl_scheduler.tests.test_real_metrics.AccountingTests.test_late_receipt_never_backfills_historical_observation",
+        "rl_scheduler.tests.test_real_metrics.AccountingTests.test_regression_is_not_new_tokens_and_blocks_completeness",
+        "rl_scheduler.tests.test_real_metrics.AccountingTests.test_sequence_gap_late_missing_tail_and_flush_required",
+        "rl_scheduler.tests.test_real_metrics.AccountingTests.test_sampled_counts_never_become_client_tokens",
+        "rl_scheduler.tests.test_real_metrics.AccountingTests.test_unconfirmed_cancellation_blocks_cleanup",
+        "rl_scheduler.tests.test_real_metrics.ClientHTTPTests",
+        "rl_scheduler.tests.test_real_bridge.ArbiterTests.test_atomic_global_slot_under_race",
+        "rl_scheduler.tests.test_real_bridge.ArbiterTests.test_idempotent_duplicate_and_changed_payload",
+        "rl_scheduler.tests.test_real_env.ObservationTests",
+        "rl_scheduler.tests.test_real_env.EnvironmentTests.test_cleanup_timeout_and_controller_exit_are_invalid",
+        "rl_scheduler.tests.test_real_env.BudgetAndServiceTests.test_persistent_budget_phase_caps_restart_and_wall_jump",
+        "rl_scheduler.tests.test_real_env.BudgetAndServiceTests.test_owned_cleanup_preserves_unregistered_process",
+        "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_budget_watchdog_expires_and_stops_only_run_service",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.3666606959886849,
+      "log": "reviews/targeted_regressions.log",
+      "CPU_only": true
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/verify_smoke_cli.py"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.18127810501027852,
+      "log": "reviews/smoke_cli.log",
+      "CPU_only": true
+    },
+    {
+      "argv": [
+        "nvidia-smi",
+        "--query-compute-apps=pid,process_name,used_memory",
+        "--format=csv,noheader"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.09221191401593387,
+      "log": "reviews/gpu_process_inventory.log",
+      "CPU_only": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.07956622500205413,
+      "log": "reviews/diff_check.log",
+      "CPU_only": true
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py",
+        "BridgeReview.test_R7_failed_worker_flush_must_not_disappear_from_inventory"
+      ],
+      "exit_code": 1,
+      "elapsed_sec": 0.11917444702703506,
+      "log": "reviews/failed_worker_flush.log",
+      "CPU_only": true
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/finalize_review.py"
+      ],
+      "exit_code": 0,
+      "type": "artifact generation; all preservation assertions passed before writing verdict"
+    }
+  ],
+  "tests": {
+    "independent_cases_executed": 9,
+    "independent_passed": 2,
+    "independent_failed": 7,
+    "targeted_regressions_passed": 16,
+    "CLI_dry_runs_passed": 4,
+    "execution_note": "First 8 independent cases in counterexamples.log; added R7 tested separately. Initial 7-case log retained. No production edits or threshold relaxation."
+  },
+  "accounting": {
+    "GPU_services_started": [],
+    "GPU_experiment_wall_sec_this_step": 0,
+    "GPU_hours_this_step": 0,
+    "real_migration_successes_this_step": 0,
+    "PPO_updates": 0,
+    "experiment_clock_started": false,
+    "measured_CPU_wall_sec_since_prerequisite_artifact": 633.7940882350085,
+    "CPU_measurement_limitation": "Earlier reading/source inspection time not instrumented; this is not total turn duration.",
+    "subprocess_verification_wall_sec": 4.440229628991801
+  },
+  "remaining_budget": {
+    "total_experiment_wall_time_sec": 28800.0,
+    "P0_P3_sec": 7200.0,
+    "P4_sec": 7200.0,
+    "P5_sec": 14400.0
+  },
+  "next_step_executable": {
+    "Sol_CPU_fix": true,
+    "05_GPU_smoke": false,
+    "automatic_next_stage": false
+  },
+  "business_implementation_modified": false,
+  "prior_gates_modified": false,
+  "active_pointer_modified": false,
+  "unresolved": [
+    "R1–R7 require Sol fixes and scoped revalidation; prior offline gates are historical and do not override this failed review.",
+    "No real Ray/GPU transport, cancellation, migration success count, CPU latency or paired overhead acceptance was performed.",
+    "60-second cleanup and persistent budget/watchdog passed targeted CPU tests; real GPU process teardown still requires a later authorized smoke after review passes.",
+    "The instance workspace is not a persistent volume per P0; no external backup/upload performed."
+  ],
+  "artifacts": [
+    "reviews/bridge_review.md",
+    "reviews/bridge_review.json",
+    "handoff/04.md",
+    "handoff/04.json",
+    "reviews/prerequisites.json",
+    "reviews/commands.json",
+    "reviews/counterexamples_initial.log",
+    "reviews/counterexamples.log",
+    "reviews/failed_worker_flush.log",
+    "reviews/targeted_regressions.log",
+    "reviews/smoke_cli.json",
+    "reviews/smoke_cli.log",
+    "reviews/migration_chain.json",
+    "reviews/gpu_process_inventory.log",
+    "reviews/diff_check.log",
+    "reviews/test_bridge_review.py",
+    "reviews/verify_smoke_cli.py",
+    "reviews/finalize_review.py",
+    "reviews/git_status_before.bin",
+    "reviews/final_validation.json"
+  ],
+  "step": "04",
+  "review_path": "reviews/bridge_review.json",
+  "review_sha256": "382336a376ac7e27df6f1254d7216ac427188098603742fc18934330434eb9dc",
+  "review_markdown_sha256": "c7a317be794b9cd177d8be1daf210e91a6dba6d9b1a1cefc5225632bdfffaacf",
+  "changed_files": [
+    "handoff/04.json",
+    "handoff/04.md",
+    "reviews/bridge_review.json",
+    "reviews/bridge_review.md",
+    "reviews/commands.json",
+    "reviews/counterexamples.log",
+    "reviews/counterexamples_initial.log",
+    "reviews/diff_check.log",
+    "reviews/failed_worker_flush.log",
+    "reviews/final_validation.json",
+    "reviews/finalize_review.py",
+    "reviews/git_status_before.bin",
+    "reviews/gpu_process_inventory.log",
+    "reviews/migration_chain.json",
+    "reviews/prerequisites.json",
+    "reviews/smoke_cli.json",
+    "reviews/smoke_cli.log",
+    "reviews/targeted_regressions.log",
+    "reviews/test_bridge_review.py",
+    "reviews/verify_smoke_cli.py"
+  ],
+  "stop": "Requested review complete; return to Sol for CPU fixes. No automatic next step."
+}

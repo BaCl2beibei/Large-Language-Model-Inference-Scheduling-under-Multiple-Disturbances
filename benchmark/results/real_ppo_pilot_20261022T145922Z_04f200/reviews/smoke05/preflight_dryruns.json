@@ -1,0 +1,113 @@
+{
+  "started_at_utc": "2026-10-22T17:26:40Z",
+  "commands_file_sha256": "8c10d4ec380be437a4bdd1b9447ffb4f47ab4a5901aa792194d2b68ba3c95ee8",
+  "dry_runs": [
+    {
+      "label": "telemetry",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_telemetry_6101",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.15884096099762246,
+      "ready_for_live": true,
+      "blocked_reasons": [],
+      "stdout_log": "reviews/smoke05/dryrun_telemetry.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_telemetry.stderr.log"
+    },
+    {
+      "label": "shadow",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_shadow_6102",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.16334972600452602,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "stdout_log": "reviews/smoke05/dryrun_shadow.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_shadow.stderr.log"
+    },
+    {
+      "label": "active",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "active",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_active_6103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.14214162301504984,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "stdout_log": "reviews/smoke05/dryrun_active.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_active.stderr.log"
+    },
+    {
+      "label": "overhead",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "overhead",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_overhead_6104",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.17066218401305377,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "stdout_log": "reviews/smoke05/dryrun_overhead.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_overhead.stderr.log"
+    }
+  ],
+  "finished_at_utc": "2026-10-22T17:26:41Z"
+}

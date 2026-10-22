@@ -1,0 +1,39 @@
+{
+  "stage": "P1_offline",
+  "status": "passed",
+  "scope": "P1 CPU regression after additive P2 API installation and optional explicit smoke routing; no live acceptance",
+  "source_hashes": {
+    "rl_scheduler/real_metrics.py": "500742813f6d52f874a7afe6c1f86420b9a6aa55968cec1f39a010e8ef04b5ab",
+    "rl_scheduler/real_client.py": "3510fb0d9a8e147131eed4822dfbee032ccc2225a1f7636b1c5de4c353efedd7",
+    "rl_scheduler/tests/test_real_metrics.py": "99c1baf3a5d393d177153be03ea6425b8a8fa3d26e43baaa9d6bb4aad609cee4",
+    "llumnix/entrypoints/vllm/real_metrics_stream.py": "f9615b5b604a590687c01fb885b2d935f13709e41fc8b8c0a7a1ca9979d81a6e",
+    "llumnix/entrypoints/vllm/api_server.py": "81a37b742ace3e41b16231113b4c499207a2fce96c29ee962909cc159457f00c",
+    "llumnix/metrics/causal_events.py": "e41bc01f8cb34bcf6eb207df2704c0ffb8ef9b7cc8e65f66f292b7878baf2323"
+  },
+  "source_hash": "78a52e48aa899c8a0cb60057f49c714b04ae1539e423ecb40f9a28c39bb7732a",
+  "config_hashes": {
+    "experiment_spec.yaml": "095688b60ce963dab253178c8e247c8d85586d019945dfc0d13050efe3718fa0",
+    "budget.json": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983"
+  },
+  "config_hash": "095688b60ce963dab253178c8e247c8d85586d019945dfc0d13050efe3718fa0",
+  "checks": [
+    {
+      "name": "28_P1_CPU_regressions",
+      "status": "passed",
+      "evidence": "p2_evidence/p1_revalidation.log"
+    }
+  ],
+  "evidence_hashes": {
+    "p2_evidence/p1_revalidation.log": "0aaaee642caa12a057eefa5623abf70794521d78a95519999ba7178f4a26a01d",
+    "p2_evidence/prerequisite_review.json": "4fbc55acf0b0b8f7e3fb27fa5cc4b4e426699b8eaf44b0bc4d4d76dd47d41f72"
+  },
+  "supersedes_source_bindings_of": "gates/p1_offline.json",
+  "historical_gate_preserved": true,
+  "reason": "P2 changed registered API source; reran actual P1 CPU tests rather than treating old hashes as current.",
+  "remaining_budget": {
+    "P0_P3_sec": 7200,
+    "P4_sec": 7200,
+    "P5_sec": 14400,
+    "total_experiment_wall_time_sec": 28800
+  }
+}

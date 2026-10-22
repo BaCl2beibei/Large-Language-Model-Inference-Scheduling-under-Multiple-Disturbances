@@ -1,0 +1,164 @@
+{
+  "created_at_utc": "2026-10-22T17:52:42.280093+00:00",
+  "status": "incomplete",
+  "scope": "05 command/hash/order dry-run only; no GPU or Ray startup",
+  "results": [
+    {
+      "label": "telemetry",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_telemetry_6101",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.1540751970023848,
+      "ready_for_live": true,
+      "blocked_reasons": [],
+      "estimated_max_sec": 1380,
+      "remaining_budget": {
+        "total_experiment_wall_time_sec": 27252.30199352652,
+        "P0_P3_sec": 5652.301993526518,
+        "P4_sec": 7200.0,
+        "P5_sec": 14400.0
+      },
+      "stdout_log": "reviews/portfix_02/05_dryrun_telemetry.stdout.log",
+      "stdout_sha256": "b7b37d8147beceb812e1904e83b0e6d3857873238b51a70e91c05ff2afbac587",
+      "stderr_log": "reviews/portfix_02/05_dryrun_telemetry.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "GPU_will_start": false
+    },
+    {
+      "label": "shadow",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_shadow_6102",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.15372414002195,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "estimated_max_sec": 1380,
+      "remaining_budget": {
+        "total_experiment_wall_time_sec": 27252.147643104545,
+        "P0_P3_sec": 5652.147643104545,
+        "P4_sec": 7200.0,
+        "P5_sec": 14400.0
+      },
+      "stdout_log": "reviews/portfix_02/05_dryrun_shadow.stdout.log",
+      "stdout_sha256": "2f62cf90e8213210c6ddd17d9494b1f70c84ea6d36664589a1a447eaf1a8db3d",
+      "stderr_log": "reviews/portfix_02/05_dryrun_shadow.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "GPU_will_start": false
+    },
+    {
+      "label": "active",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "active",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_active_6103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.167675668024458,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "estimated_max_sec": 1560,
+      "remaining_budget": {
+        "total_experiment_wall_time_sec": 27251.981048017507,
+        "P0_P3_sec": 5651.981048017507,
+        "P4_sec": 7200.0,
+        "P5_sec": 14400.0
+      },
+      "stdout_log": "reviews/portfix_02/05_dryrun_active.stdout.log",
+      "stdout_sha256": "0eca2425994150ccc3a2cfb0250c34ac0e816e5a3e9a6b2e7bca0e07ad795f00",
+      "stderr_log": "reviews/portfix_02/05_dryrun_active.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "GPU_will_start": false
+    },
+    {
+      "label": "overhead",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "overhead",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_overhead_6104",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.1473709309939295,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "estimated_max_sec": 1740,
+      "remaining_budget": {
+        "total_experiment_wall_time_sec": 27251.831786539522,
+        "P0_P3_sec": 5651.831786539522,
+        "P4_sec": 7200.0,
+        "P5_sec": 14400.0
+      },
+      "stdout_log": "reviews/portfix_02/05_dryrun_overhead.stdout.log",
+      "stdout_sha256": "a3c7d535f807491841712b0ca2c5b97a708b8f3cb969af7ed2a657bdc135a0ea",
+      "stderr_log": "reviews/portfix_02/05_dryrun_overhead.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "GPU_will_start": false
+    }
+  ],
+  "planned_total_max_sec": 6060,
+  "remaining_budget": {
+    "total_experiment_wall_time_sec": 27251.79373717308,
+    "P0_P3_sec": 5651.79373717308,
+    "P4_sec": 7200.0,
+    "P5_sec": 14400.0
+  },
+  "full_sequence_max_fits_current_budget": false,
+  "GPU_started": false,
+  "live_authorized_by_this_preflight": false,
+  "reason": "the frozen 6060-second maximum exceeds current persistent P0_P3 budget"
+}

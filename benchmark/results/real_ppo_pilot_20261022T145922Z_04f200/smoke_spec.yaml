@@ -1,10 +1,10 @@
 schema_version: smoke-spec-v1
-status: prepared_not_run
+status: retry_prepared_not_run
 scope: P1 telemetry and P2 engineering smoke only
 protocol_does_not_replace_P3_or_final_evaluation: true
 source_hash: f65c97a9d53abf3df6f1242b0970dfc077363c609030db2aab8b979826e9183e
 config_path: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml
-config_sha256: 928bcc7a1af112a979f6ca536d9b5732e30d781026fc1e992ad2be2df231fd5b
+config_sha256: 6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882
 trace_manifest: traces/smoke05/manifest.json
 trace_manifest_sha256: 8e5125e46c0333144e388dac0b329ceecc4e4f824c2543bd00383f1f129f7068
 seeds:
@@ -125,3 +125,9 @@ not_verified:
 - actual GPU transfer/cancellation
 - actual CPU latency/monitor overhead
 - budget watchdog under a real GPU failure
+ray_port_binding:
+  pilot_service_ray_port: 20000
+  llumnix_server_ray_cluster_port: 20000
+  matched: true
+  outside_default_worker_range_10002_19999: true
+previous_attempt: handoff/05.json (telemetry failed before requests; preserved)

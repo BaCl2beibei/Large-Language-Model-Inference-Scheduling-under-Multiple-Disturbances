@@ -1,0 +1,206 @@
+{
+  "calibration_status": "service_and_migration_calibrated",
+  "fitting_method": "nonnegative least squares (active-set enumeration)",
+  "training_config": "rl_scheduler/configs/train.yaml",
+  "calibration_yaml": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/mig_ppo_calibration.yaml",
+  "calibration_seeds": [
+    101,
+    202,
+    303
+  ],
+  "holdout_seed": 404,
+  "holdout_excluded_from_fit": true,
+  "environment_integration": {
+    "num_instances": 4,
+    "max_num_seqs_per_instance": 128,
+    "total_kv_blocks": 22084,
+    "block_size_tokens": 16,
+    "max_model_len": 2112,
+    "max_num_batched_tokens": 2112,
+    "target_qps_levels": [
+      9,
+      12,
+      15,
+      18,
+      21
+    ]
+  },
+  "service_coefficients": {
+    "prefill_ms_per_token": 0.035418046708422586,
+    "prefill_intercept_ms": 73.53208751888847,
+    "decode_ms_per_request": 0.7385893927211129,
+    "decode_ms_per_context_token": 0.0,
+    "decode_intercept_ms": 56.09519005053125
+  },
+  "service_samples": {
+    "calibration_prefill": 7311,
+    "calibration_decode": 41370,
+    "holdout_prefill": 2528,
+    "holdout_decode": 13836
+  },
+  "service_metrics_ms": {
+    "prefill": {
+      "calibration": {
+        "n": 7311,
+        "mae": 55.24827019268849,
+        "rmse": 122.05740779556847,
+        "mean_error_pred_minus_obs": 8.902436683849704e-16,
+        "r2": 0.03029242628148865,
+        "observed_mean": 121.06406541007851,
+        "predicted_mean": 121.06406541007779
+      },
+      "holdout_seed404": {
+        "n": 2528,
+        "mae": 55.09802998081536,
+        "rmse": 249.81824596620896,
+        "mean_error_pred_minus_obs": -0.7356740260183902,
+        "r2": -0.00306760661653116,
+        "observed_mean": 121.34204434046815,
+        "predicted_mean": 120.60637031444863
+      }
+    },
+    "decode": {
+      "calibration": {
+        "n": 41370,
+        "mae": 42.36080418077497,
+        "rmse": 149.42339332258717,
+        "mean_error_pred_minus_obs": -7.558649540613753e-14,
+        "r2": 0.03190312668063955,
+        "observed_mean": 95.43233256338115,
+        "predicted_mean": 95.43233256337417
+      },
+      "holdout_seed404": {
+        "n": 13836,
+        "mae": 39.13386612790461,
+        "rmse": 135.16040794110413,
+        "mean_error_pred_minus_obs": 5.0008445249280955,
+        "r2": 0.032455568126452006,
+        "observed_mean": 90.88395400761166,
+        "predicted_mean": 95.88479853254127
+      }
+    },
+    "all": {
+      "calibration": {
+        "n": 48681,
+        "mae": 44.29626696940163,
+        "rmse": 145.642023119538,
+        "mean_error_pred_minus_obs": -9.670539032955895e-14,
+        "r2": 0.0354254381481689,
+        "observed_mean": 99.2817522310587,
+        "predicted_mean": 99.28175223105443
+      },
+      "holdout_seed404": {
+        "n": 16364,
+        "mae": 41.600097258444386,
+        "rmse": 158.39018466253748,
+        "mean_error_pred_minus_obs": 4.114635841428173,
+        "r2": 0.023730907750249552,
+        "observed_mean": 95.5892859778794,
+        "predicted_mean": 99.70392181931045
+      }
+    }
+  },
+  "migration_model": {
+    "default_alpha_ms": 50.0,
+    "default_beta_ms_per_block": 0.1,
+    "min_pair_samples": 8,
+    "global_model": [
+      595.4620380026928,
+      3.9159924139507627,
+      685.7839515672595,
+      74
+    ],
+    "pair_models": {
+      "f64578dcd6e44b3b960ba8a3694c2529|ed7dce3df32f4e568da679b7960a20fa": [
+        839.016040166219,
+        0.0,
+        934.0101596199023,
+        9
+      ],
+      "ed7dce3df32f4e568da679b7960a20fa|e1799c7dbb9543d39c63cddb336f715a": [
+        278.7887015451941,
+        4.2586492741804705,
+        173.30489432362032,
+        9
+      ],
+      "d8103520ef4244a297c5db101431cf82|ed7dce3df32f4e568da679b7960a20fa": [
+        199.14754656848456,
+        16.38936195767816,
+        352.8775240123338,
+        10
+      ],
+      "d8103520ef4244a297c5db101431cf82|e1799c7dbb9543d39c63cddb336f715a": [
+        1091.5915099057281,
+        0.0,
+        1344.9517850485179,
+        11
+      ],
+      "d8103520ef4244a297c5db101431cf82|f64578dcd6e44b3b960ba8a3694c2529": [
+        357.2728566309716,
+        7.971190396242896,
+        207.52603410582614,
+        10
+      ],
+      "f64578dcd6e44b3b960ba8a3694c2529|e1799c7dbb9543d39c63cddb336f715a": [
+        764.809727668762,
+        0.0,
+        366.7280061854571,
+        8
+      ]
+    }
+  },
+  "migration_metrics_ms": {
+    "calibration": {
+      "n": 74,
+      "mae": 347.8099286537941,
+      "rmse": 631.9083820157747,
+      "mean_error_pred_minus_obs": 42.398887855187496,
+      "r2": 0.153007022665418,
+      "observed_mean": 697.8599477458645,
+      "predicted_mean": 740.2588356010519
+    },
+    "holdout_seed404": {
+      "n": 31,
+      "mae": 385.35884533789294,
+      "rmse": 537.6010583131243,
+      "mean_error_pred_minus_obs": 72.8807655802788,
+      "r2": 0.07871174132078507,
+      "observed_mean": 633.3842431345294,
+      "predicted_mean": 706.2650087148085
+    },
+    "calibration_statuses": {
+      "MigrationStatus.FINISHED": 58,
+      "MigrationStatus.ABORTED_DST": 6,
+      "MigrationStatus.ABORTED_SRC": 10
+    },
+    "holdout_statuses": {
+      "MigrationStatus.FINISHED": 26,
+      "MigrationStatus.ABORTED_DST": 5
+    },
+    "holdout_prediction_sources": {
+      "global": 12,
+      "pair": 19
+    },
+    "calibration_blocks_range": [
+      0.0,
+      66.0
+    ],
+    "holdout_blocks_range": [
+      0.0,
+      66.0
+    ]
+  },
+  "dataset_version_note": {
+    "reused_completed_runs": 17,
+    "supplemental_runs": [
+      "qps_21_seed202",
+      "qps_21_seed303",
+      "qps_21_seed404"
+    ],
+    "note": "The 17 preserved runs were collected before the scheduler migration-out slot reservation guard was added. The three supplemental runs were collected after that guard was added. Workload, model, serving configuration, and latency instrumentation were kept the same; the scheduler code version differs for these supplemental runs."
+  },
+  "service_identifiability": {
+    "calibration_decode_batch_context_correlation": 0.9892785099105228,
+    "note": "The decode context-token coefficient reached the nonnegative lower bound of zero. Batch size and total context tokens are highly collinear, so this fit cannot reliably separate their independent effects; zero is not evidence that context length has no service cost."
+  }
+}

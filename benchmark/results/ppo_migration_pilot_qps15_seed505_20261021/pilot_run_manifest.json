@@ -1,0 +1,25 @@
+{
+  "experiment_id": "mig_ppo_migration_off_on_pilot_qps15_seed505",
+  "trace_sha256": "09a0dc7c657eab19985e65847a773d6fdc9a85416a2eb8b189432c638e284cc6",
+  "request_count_per_mode": 942,
+  "commands": [
+    {
+      "command": "./.venv/bin/python benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/run_pilot.py --mode off",
+      "exit_code": 0,
+      "mode": "Migration OFF"
+    },
+    {
+      "command": "./.venv/bin/python benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/run_pilot.py --mode on",
+      "exit_code": 0,
+      "mode": "Migration ON"
+    }
+  ],
+  "startup_gate": {
+    "ready_instances": 4,
+    "workers_per_gpu": 1,
+    "eager_mode": true,
+    "ray_workers": "4/4",
+    "configs_differ_only_in": "ENABLE_ROUTINE_MIGRATION"
+  },
+  "scope": "one paired trace at QPS 15, seed 505; not a multi-seed admission run"
+}

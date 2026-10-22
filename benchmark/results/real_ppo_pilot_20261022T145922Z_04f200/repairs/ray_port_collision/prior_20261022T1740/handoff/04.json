@@ -1,0 +1,460 @@
+{
+  "stage": "04_bridge_review",
+  "status": "passed",
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "created_at_utc": "2026-10-22T17:21:37.280845+00:00",
+  "scope": "P1/P2 independent repair rereview, CPU only",
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": "R1",
+      "status": "closed",
+      "locations": [
+        "rl_scheduler/real_runner.py:24",
+        "rl_scheduler/real_runner.py:55"
+      ],
+      "reason": "每个角色先验证，随后按 source 合并同轮可比较水位；跨轮 checkpoint 回退检测保留。"
+    },
+    {
+      "id": "R2",
+      "status": "closed",
+      "locations": [
+        "rl_scheduler/real_env.py:121",
+        "rl_scheduler/real_bridge.py:335",
+        "rl_scheduler/real_bridge.py:356"
+      ],
+      "reason": "Env 与 bridge 跟踪未决 ID；新非 Stay 提交前查询原 ID，仍未知则拒绝新提交；保留原 action/logp。"
+    },
+    {
+      "id": "R3",
+      "status": "closed",
+      "locations": [
+        "rl_scheduler/real_bridge.py:96",
+        "rl_scheduler/real_bridge.py:130"
+      ],
+      "reason": "第一次 await 前设置 acquiring fence；返回后复查 native idle 和 intervention，异常回收 acquiring。"
+    },
+    {
+      "id": "R4",
+      "status": "closed",
+      "locations": [
+        "llumnix/real_control.py:14",
+        "llumnix/real_control.py:235",
+        "llumnix/entrypoints/vllm/api_server.py:69",
+        "llumnix/entrypoints/vllm/real_metrics_stream.py:82"
+      ],
+      "reason": "Manager/四实例设置取消 tombstone，核查 dispatch、迁移、运行/等待/暂停/预分配队列、epoch 与投递；API 清空队列后关闭流；未证明的取消保持 unknown。"
+    },
+    {
+      "id": "R5",
+      "status": "closed",
+      "locations": [
+        "rl_scheduler/real_runner.py:55",
+        "rl_scheduler/real_runner.py:99",
+        "rl_scheduler/real_env.py:72"
+      ],
+      "reason": "reset 显式要求 API/Manager/四实例 local/worker 的 durable、passed、pending_delivery=0；prepare 有界。"
+    },
+    {
+      "id": "R6",
+      "status": "closed",
+      "locations": [
+        "benchmark/run_real_ppo.py:66",
+        "benchmark/run_real_ppo.py:99",
+        "benchmark/run_real_ppo.py:147",
+        "benchmark/run_real_ppo.py:219"
+      ],
+      "reason": "live plan 在预算写入和服务启动前验证当前独立审查及冻结顺序的前序 live gate；清理本任务服务之后才发布结果 gate。"
+    },
+    {
+      "id": "R7",
+      "status": "closed",
+      "locations": [
+        "rl_scheduler/real_runner.py:24",
+        "rl_scheduler/real_runner.py:55"
+      ],
+      "reason": "固定拓扑的必需角色先校验，失败 worker 即使缺少 source/durable 也被阻断，不能被 local fsync 替代。"
+    }
+  ],
+  "checks": [
+    {
+      "name": "02_03_and_repair_prerequisites_hashes",
+      "status": "passed"
+    },
+    {
+      "name": "R1_R7_independent_regressions",
+      "status": "passed"
+    },
+    {
+      "name": "30_targeted_CPU_tests",
+      "status": "passed"
+    },
+    {
+      "name": "independent_request_and_original_migration_chain",
+      "status": "passed"
+    },
+    {
+      "name": "four_frozen_CLI_dry_runs_block_failed_review",
+      "status": "passed"
+    },
+    {
+      "name": "business_config_pointer_clock_and_prior_state_preserved",
+      "status": "passed"
+    },
+    {
+      "name": "published_review_telemetry_allowed_later_stages_blocked",
+      "status": "passed"
+    }
+  ],
+  "source_hashes": {
+    "benchmark/run_real_ppo.py": "39771520aedf9f36b5b5c03f74e1cd213cf9c7700bc5e87f28930ae893c9c688",
+    "llumnix/backends/output_forwarder.py": "84d1378acdf8b84c9e4c59467cffb6332ebfaa65ee9e73dc5f28d2c75565b2f6",
+    "llumnix/backends/vllm/executor.py": "55869f3f1ed722d9dea4ffd5e9f27776208211afd308006df6565ee11145515e",
+    "llumnix/backends/vllm/llm_engine.py": "4839b1daa4c77f181b84a29325a0f0c79f9bdeb441ae792a85b8ca730e8633a7",
+    "llumnix/backends/vllm/scheduler.py": "a695a298b1cff1c9a833284f60dc89755d8200078da2f324d362a9e6ec45d9b6",
+    "llumnix/backends/vllm/worker.py": "27849f5db78f2cee9ee84b798bf845ca1305a7fa42973bfb39cd3dd155e1909f",
+    "llumnix/config/default.py": "09c3427361aa36ab551438a0a0754f826d8acda18a97d99e014f982e04a5ecaa",
+    "llumnix/constants.py": "02232df647bc91381c571b72a98dfc11963bddfa51f2310381d8b4d2f97a498b",
+    "llumnix/entrypoints/client.py": "6224c013836ad66fbd32af1d5459684bbceb62be87d929928fcd371d8e51100f",
+    "llumnix/entrypoints/vllm/api_server.py": "eb3138ece2f387978c885ed05ed990cd7b0e859c05ef44f49662367e5f7d22f1",
+    "llumnix/entrypoints/vllm/client.py": "a93d1000d924465c4ea72a4644a961bb2f472fc14719644322721f7c82e8254a",
+    "llumnix/entrypoints/vllm/real_control_api.py": "78683850cb66c0ab90165adc565b450ec1f3bb484ed6f3cc9ab5e35847ab860a",
+    "llumnix/entrypoints/vllm/real_metrics_stream.py": "122082e9c7906aa55fd5671c713e6648ea53c52699c48d06687de026a61558e9",
+    "llumnix/global_scheduler/global_scheduler.py": "11a25e83c1c4e4189c5d32b286d260c3cbbf0184235f4b9bdd18dab7cd15f532",
+    "llumnix/global_scheduler/migration_filter.py": "9680f2b86a5f0c59fbb02abfb33e56362d22652ea1c9cfd0c41ab120e3d5fbe4",
+    "llumnix/global_scheduler/migration_policy.py": "9da715cf0469b0e90da93b9f9c7121986df2e1ac92c24c9562cc506004be46b4",
+    "llumnix/global_scheduler/migration_scheduler.py": "9a11e0ce661f8763fca86c1acd2f4d38f6193e3287ee8bd0de9d251be147cbd3",
+    "llumnix/llumlet/llumlet.py": "13769482b47b97c229b4101dd83a372879b70814d00a1dcd588d82889626f3e0",
+    "llumnix/llumlet/local_migration_scheduler.py": "49ffa3569c9c66af44d583f38d9d35748f6eb047fd75cf36388e4f68000c0806",
+    "llumnix/llumlet/migration_coordinator.py": "e174802a07c3b4c01ec1283e140d53d679b031a25bebdbd8482308f48d875457",
+    "llumnix/llumlet/request.py": "46c6574d8afddd1489c079c042728e4d360c800a065e107fd8d22cac0bb744f2",
+    "llumnix/manager.py": "13e32ffc5f9de1a9b8c13997a74f1b8c28d28e825565ea57505393d56c16a6fb",
+    "llumnix/metrics/causal_events.py": "e41bc01f8cb34bcf6eb207df2704c0ffb8ef9b7cc8e65f66f292b7878baf2323",
+    "llumnix/queue/zmq_client.py": "9fb76fb246fc8179d0a3a74173ca4eeb2c7adde76748fb7d939c8fe748422eb2",
+    "llumnix/queue/zmq_server.py": "39955928c6c8bba539fd0c628cdc2f8c335687d1b5877f87e631a133f27d1fc2",
+    "llumnix/real_control.py": "c3545cbd9f11e7d5087fb9c3cb588376238273030ed7418581ee8aa5e14a3601",
+    "llumnix/utils.py": "f78599d2ae596703fa8bb1133352c64d6bb8943bdcbcca3bd23966a41c1fead7",
+    "rl_scheduler/real_bridge.py": "876fae9c3bd9bc645eee0e12b52ff69e731d42dafe20fe145b8407dc50848362",
+    "rl_scheduler/real_budget.py": "20ad5fda2bc3d25560477c30ceb135577a479a12ddafa7dd4ba14552f561be98",
+    "rl_scheduler/real_client.py": "3510fb0d9a8e147131eed4822dfbee032ccc2225a1f7636b1c5de4c353efedd7",
+    "rl_scheduler/real_env.py": "4fb71a73d4ddc29b8b6f335bbc0e6a6fa06d44ea0ab925c91d27fd482a07ea38",
+    "rl_scheduler/real_metrics.py": "500742813f6d52f874a7afe6c1f86420b9a6aa55968cec1f39a010e8ef04b5ab",
+    "rl_scheduler/real_observation.py": "feb2f7dbe16321a2b80e81539c97aba6d110179918b84d595a6939d0d86f31cf",
+    "rl_scheduler/real_runner.py": "de34d0a71f41b9235cbb8405f18c2481bfef4c849549c53ca3e7c16623d50632",
+    "rl_scheduler/real_service.py": "9670106a3e2c919b25a3bd3f54b24d468c1879f0d22874d69021ae8a5309c2f1",
+    "rl_scheduler/tests/test_real_bridge.py": "34ec071922a7063b5ea076e2e609c25a7a56580d4861a4a588556d9c2865f87d",
+    "rl_scheduler/tests/test_real_env.py": "d8265442ae1d342d844a4da443bce17b7557827008884cdf7cd0a2667b1e4235",
+    "rl_scheduler/tests/test_real_metrics.py": "99c1baf3a5d393d177153be03ea6425b8a8fa3d26e43baaa9d6bb4aad609cee4",
+    "rl_scheduler/tests/test_real_repairs.py": "1832c5e96ab7c66480b0707a82b3d46bfab36f913ebd4acee5b95e02db000147",
+    "rl_scheduler/tests/test_real_runner.py": "c9a297129334dc7f6fd158a2d9fb260e0ee1ba560b4462234cba85ce31e8ac2d"
+  },
+  "source_hash": "7439262de396a9f5d5678f686b5c92d9fd291c9a7fd60baa66dd32b751844065",
+  "config_hashes": {
+    "budget.json": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983",
+    "experiment_spec.yaml": "095688b60ce963dab253178c8e247c8d85586d019945dfc0d13050efe3718fa0",
+    "rl_scheduler/configs/real_llumnix.yaml": "58c3594e375bb0a097be64e7e08f9a8cc30a5712dd9fd976b31e47410152d60c",
+    "rl_scheduler/configs/real_pilot.yaml": "928bcc7a1af112a979f6ca536d9b5732e30d781026fc1e992ad2be2df231fd5b",
+    "services/real_ppo_fcda2e237b.conf": "a3ca789f3ab73bc912d4826ef1a27133e9ad8328507e744ad441b1f9d0efaa7c",
+    "services/real_ppo_fcda2e237b.sh": "a2b03e6560c7ee6f2aa240e970eb8dd194c8b5ee05d37f2b12f73cae3eb17672",
+    "services/real_ppo_guard_fcda2e237b.conf": "4e438a41de7629312fee957271299413564ca50bc3b2d23a09058c229a366850",
+    "services/real_ppo_guard_fcda2e237b.sh": "aa1cd524f91c8d7cf25c7aa53463b98a0c972b8f05278d46efdeeccc030ad798",
+    "smoke_spec.yaml": "7e1f0a1c6dff8f636c4ca7b22ab87e00ea93228fcd37949219aff69d120a2925",
+    "traces/smoke05/active.json": "517d2d5a639f85a2f25f98b079e5a07b676eaa33a747e824164e45baed578a42",
+    "traces/smoke05/manifest.json": "8e5125e46c0333144e388dac0b329ceecc4e4f824c2543bd00383f1f129f7068",
+    "traces/smoke05/overhead.json": "664b45e43685b1f0fae6739f1398a167bbecdfba25d47119447e227fa7ae4066",
+    "traces/smoke05/shadow.json": "dc34643fc1ae4664043fbebb67e0ffaf22ae0d718c3079e8743af8fd8da3a586",
+    "traces/smoke05/telemetry.json": "ee24eaaf5f50f4484533c75cb7919523bcd258e61a2aa5455db5d5aca629e581",
+    "commands/05_smoke.json": "8c10d4ec380be437a4bdd1b9447ffb4f47ab4a5901aa792194d2b68ba3c95ee8"
+  },
+  "config_hash": "28e28f55aed6b2ddb57ea52d0c98e62d7bcd43945a2c919d87656d854723e612",
+  "evidence_hashes": {
+    "reviews/rereview_01/git_status_before.bin": "0a0f57738164869a49ea4c7de4a12e12fd3bec86bea228e31fc1792eec75a520",
+    "reviews/rereview_01/preserved_hashes.json": "facca082c95bfcb4961cc2d4dfdd5378f97cc2214c74dfb419ac68b0d110585f",
+    "reviews/rereview_01/run_review_tests.py": "d510a507ab25aacda2fbb991dd8bb2fb544b69048fb1e0e44a94095e98d927cc",
+    "reviews/rereview_01/original_9.log": "e5132bb917004dfdc691d45422e84c237a2c736635d4c4927eccd844c3f2715e",
+    "reviews/rereview_01/migration_chain.json": "932ccc1025239689fd27a929efb281cd976e05a481d89707191f481869938e78",
+    "reviews/rereview_01/repair_regressions.log": "45d73f54b44af0a2a989cde0fdb300034f9a5546a55c384914dbb784cd387c98",
+    "reviews/rereview_01/dryrun_telemetry.log": "5d153b209c0432bcd61629b371d101da899bee06445644d6d83e5600cd629c73",
+    "reviews/rereview_01/dryrun_shadow.log": "7a7821297588973a37ab7a4d982dc167c57e14ffce2a022884aca7b35d2f4072",
+    "reviews/rereview_01/dryrun_active.log": "b03be4001dad5627ef23d64dc075a3ca2148703952293c372b63136e2ffb709e",
+    "reviews/rereview_01/dryrun_overhead.log": "1290063a421f1c88b05db911ace2c179488e95d5af13fbe52b405e7376c6e0c3",
+    "reviews/rereview_01/commands.json": "210bb65ab6c83ae202451f78af14bb105544a62cadf10518a6b920c6a3ae77e0",
+    "reviews/rereview_01/integration.log": "258a76bc6cf1e13b71f76f899cd6092c712a48662e8c8c99620cc33b68c8664b",
+    "reviews/rereview_01/finalize_review.py": "5a3cf6023f318af2abe8f69d8d280bdaf04584c35493bdb8d856d100523cfdb3",
+    "reviews/rereview_01/prerequisites.json": "e1681ebc70413928de9fa34adcd230bd67c0b45c985dd49249c4d61858131e45",
+    "reviews/rereview_01/git_status_after.bin": "0a0f57738164869a49ea4c7de4a12e12fd3bec86bea228e31fc1792eec75a520",
+    "reviews/rereview_01/preservation.json": "36e335bee438e00b3b5150f0bdcfefc03f62f001fd442c17779d23072f7b9f8e",
+    "reviews/rereview_01/prior_04/reviews/bridge_review.md": "c7a317be794b9cd177d8be1daf210e91a6dba6d9b1a1cefc5225632bdfffaacf",
+    "reviews/rereview_01/prior_04/reviews/bridge_review.json": "382336a376ac7e27df6f1254d7216ac427188098603742fc18934330434eb9dc",
+    "reviews/rereview_01/prior_04/handoff/04.md": "81b91c0309a4587913e091a380a33a80f9e6e84f248f731301f9c8fa2f4f0a94",
+    "reviews/rereview_01/prior_04/handoff/04.json": "5696b54df70cf6d2effb8499c0269cc72fb7a3fcfd8eb3047a55c2165b9dd8f0",
+    "reviews/test_bridge_review.py": "7d2ca214d52b2f294bccda3c1a55f8911d08f044455d2fec6eb3e132b2b5a2ff",
+    "reviews/bridge_review.md": "4c299857bfa96464cccfe4df6a9c3234fe413d3487e8988c809263d69f3f9a84",
+    "handoff/repair_01.json": "0f3773740d5724a05b21394dd40e374058ac88aa2cd44fab9e7b94d41ae68ca1",
+    "gates/p1_offline_revalidated_repair_01.json": "77dd72c690e0edf24c77621496322335c4a7e2b9ee100d77288b29fcb9b67875",
+    "gates/p2_offline_revalidated_repair_01.json": "ba0826380105f01a0b035a9d3279926068ec25932cfbbad308795fd7235e5161",
+    "reviews/bridge_review.json": "6da8e984f34bf860b3ab140ae1bfabc973b30a030ab6829883f203bde552dbc5",
+    "reviews/rereview_01/post_review_validation.json": "88f5380d6a16fda4b89d802b6eb9f66807f826a69e4a76404c307d2c4028022c",
+    "reviews/rereview_01/post_review_dryrun_telemetry.log": "c915afe59748fc552bbf8ece1dde84d5fa31b1a18b72d10840374bfe32ab435e",
+    "reviews/rereview_01/post_review_dryrun_shadow.log": "8f36b9c44bfbee68f969b586d215ff57d382ebdc947c05d7f3dc4d541ab9f187",
+    "reviews/rereview_01/post_review_dryrun_active.log": "bbb514726215a68039039879ffaab597805b001bcee53c33087c5a2bf2c5f1a2",
+    "reviews/rereview_01/post_review_dryrun_overhead.log": "302147d087f930ec92dc045e4469c73e6aa823eaa89abe1e8a8a9f7f7df1b6b0"
+  },
+  "hash_algorithm": "SHA256 bytes; aggregate SHA256(sorted compact JSON(path -> file SHA256))",
+  "actual_commands_and_exit_codes": [
+    {
+      "command": "original review suite via run_review_tests.py (migration_chain output redirected)",
+      "exit_code": 0,
+      "tests": 9,
+      "elapsed_sec": 0.13412526895990595,
+      "log": "reviews/rereview_01/original_9.log"
+    },
+    {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "-m",
+        "unittest",
+        "rl_scheduler.tests.test_real_repairs",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.7772338680224493,
+      "log": "reviews/rereview_01/repair_regressions.log"
+    },
+    {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_telemetry_6101",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.19039238896220922,
+      "log": "reviews/rereview_01/dryrun_telemetry.log"
+    },
+    {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_shadow_6102",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.18319098796928301,
+      "log": "reviews/rereview_01/dryrun_shadow.log"
+    },
+    {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "active",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_active_6103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.14759527903515846,
+      "log": "reviews/rereview_01/dryrun_active.log"
+    },
+    {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "overhead",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_overhead_6104",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.13218626100569963,
+      "log": "reviews/rereview_01/dryrun_overhead.log"
+    },
+    {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "-m",
+        "unittest",
+        "rl_scheduler.tests.test_real_runner",
+        "rl_scheduler.tests.test_real_env.EnvironmentTests.test_cleanup_timeout_and_controller_exit_are_invalid",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.7460654620081186,
+      "log": "reviews/rereview_01/integration.log"
+    },
+    {
+      "label": "telemetry",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_telemetry_6101",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.20107755600474775,
+      "ready_for_live": true,
+      "blocked_reasons": [],
+      "log": "reviews/rereview_01/post_review_dryrun_telemetry.log"
+    },
+    {
+      "label": "shadow",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_shadow_6102",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.18588613398605958,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "log": "reviews/rereview_01/post_review_dryrun_shadow.log"
+    },
+    {
+      "label": "active",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "active",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_active_6103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.18041377898771316,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "log": "reviews/rereview_01/post_review_dryrun_active.log"
+    },
+    {
+      "label": "overhead",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "overhead",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_overhead_6104",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.16166642197640613,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "log": "reviews/rereview_01/post_review_dryrun_overhead.log"
+    }
+  ],
+  "remaining_budget": {
+    "total_experiment_wall_time_sec": 28800.0,
+    "P0_P3_sec": 7200.0,
+    "P4_sec": 7200.0,
+    "P5_sec": 14400.0
+  },
+  "next_step": {
+    "step": "05",
+    "executable": true,
+    "scope": "frozen sequential smoke only; no GPU execution in this review",
+    "live_acceptance": false
+  },
+  "limitations": [
+    "CPU actors/KV/engine mocks do not establish real GPU migration correctness or performance",
+    "Unknown/cancellation timeout conservatively invalidates episode; no threshold relaxation",
+    "active pointer metadata retained under 04 write scope; current review/handoff verdict supersedes prior failed review"
+  ],
+  "dependency_hashes": {
+    ".venv/lib/python3.10/site-packages/vllm/envs.py": "e3ebba5da50a158fccff2545f548039436c0cd37f615255edc3db50820ba5f21",
+    ".venv/lib/python3.10/site-packages/vllm/config.py": "1a3dbbacad8fc3e583c5ad4cefc4cc19ef2436b516ae7d838d613f188a1fe432",
+    ".venv/lib/python3.10/site-packages/vllm/engine/async_llm_engine.py": "8ca9427b3f21cf56f3eeabc4155456afd1ba648fa4e729dd9c886cb555c086f7"
+  },
+  "instruction_hashes": {
+    "rl_scheduler/docs/real_ppo_model_prompts/04_astra_review_bridge.md": "cc883fbee4784ce60f9a253010a9837661ed5fea84f0601816fab40cd7d6e408",
+    "rl_scheduler/docs/real_cluster_ppo_execution_plan.md": "b344e6a36cd63072e0c99a6bd9012bd4442bef1071a10a74e634ad899616b145"
+  },
+  "review_sha256": "6da8e984f34bf860b3ab140ae1bfabc973b30a030ab6829883f203bde552dbc5",
+  "review_path": "reviews/bridge_review.json",
+  "changed_files": [
+    "reviews/bridge_review.md",
+    "reviews/bridge_review.json",
+    "reviews/rereview_01/*",
+    "handoff/04.md",
+    "handoff/04.json"
+  ]
+}

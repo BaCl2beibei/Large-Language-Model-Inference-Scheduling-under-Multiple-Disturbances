@@ -1,0 +1,213 @@
+diff --git a/llumnix/entrypoints/vllm/api_server.py b/llumnix/entrypoints/vllm/api_server.py
+index 200399d..accb3a3 100644
+--- a/llumnix/entrypoints/vllm/api_server.py
++++ b/llumnix/entrypoints/vllm/api_server.py
+@@ -37,11 +37,16 @@ from llumnix.config import get_llumnix_config
+ from llumnix.entrypoints.utils import is_gpu_available, LlumnixTraceInfo
+ from llumnix.constants import SERVER_TIMEOUT_KEEP_ALIVE, LLUMNIX_TRACE_HEADER, LLUMNIX_TRACE_REQUEST
+ from llumnix.request_output import LlumnixRequestOuput
++from llumnix.metrics.causal_events import emit as emit_causal_event
++from llumnix.metrics.causal_events import emit_clock_sync as emit_causal_clock_sync
++from llumnix.metrics.causal_events import flush as flush_causal_events
++from llumnix.entrypoints.vllm.real_metrics_stream import install_real_metrics_routes
+ 
+ # Code file with __main__ should set the logger name to inherit the llumnix logger configuration.
+ logger = init_logger("llumnix.entrypoints.vllm.api_server")
+ 
+ llumnix_client: LlumnixClientVLLM = None
++LLUMNIX_TRACE_EVENTS_HEADER = "X-Llumnix-Trace-Events"
+ active_benchmark_requests: dict[str, dict[str, asyncio.Event]] = {}
+ finished_benchmark_requests: set[str] = set()
+ cancelled_benchmark_ids: set[str] = set()
+@@ -50,6 +55,7 @@ cancelled_benchmark_ids: set[str] = set()
+ # pylint: disable=unused-argument
+ @asynccontextmanager
+ async def lifespan(fastapi_app: FastAPI):
++    emit_causal_clock_sync()
+     try:
+         yield
+     finally:
+@@ -59,6 +65,21 @@ async def lifespan(fastapi_app: FastAPI):
+ app = FastAPI(lifespan=lifespan)
+ 
+ 
++async def _real_metrics_abort_confirmed(request_id: str) -> bool:
++    # The legacy client.abort swallows RPC errors, so its return is not an ack.
++    instance_ids, instances = llumnix_client._get_instance_for_abort(request_id)
++    if not instance_ids or len(instance_ids) != len(instances):
++        return False
++    for instance in instances:
++        await asyncio_wait_for_ray_remote_call_with_timeout(instance.abort, request_id, timeout=50.0)
++    llumnix_client._clear_client_request_states(request_id)
++    return True
++
++
++install_real_metrics_routes(app, lambda: llumnix_client, SamplingParams,
++                            emit_causal_event, flush_causal_events, _real_metrics_abort_confirmed)
++
++
+ # pylint: disable=unused-argument
+ @app.exception_handler(Exception)
+ async def global_exception_handler(request: Request, exc: Exception):
+@@ -173,13 +194,30 @@ async def generate_benchmark(request: Request) -> Response:
+     request_id = str(request_dict.pop("request_id", "") or random_uuid())
+     if request_id in cancelled_benchmark_ids:
+         cancelled_benchmark_ids.discard(request_id)
++        emit_causal_event("request_rejected_after_abort", request_id=request_id,
++                          terminal_status="cancelled_before_dispatch")
+         return Response(status_code=499)
+     sampling_params = SamplingParams(**request_dict)
+     request_state = {"ready": asyncio.Event(), "done": asyncio.Event(),
+-                     "task": asyncio.current_task()}
++                     "task": asyncio.current_task(), "output_tokens": 0,
++                     "input_tokens": None,
++                     "output_budget": int(getattr(sampling_params, "max_tokens", 0) or 0),
++                     "trace_events_only": request.headers.get(
++                         LLUMNIX_TRACE_EVENTS_HEADER, "False").lower() in ("true", "1"),
++                     "updates": 0, "terminal_status": "active"}
+     active_benchmark_requests[request_id] = request_state
+ 
+     start = time.perf_counter()
++    emit_causal_event(
++        "request_server_received",
++        request_id=request_id,
++        output_budget=int(getattr(sampling_params, "max_tokens", 0) or 0),
++        prompt_characters=len(prompt) if isinstance(prompt, str) else None,
++        requested_n=int(getattr(sampling_params, "n", 1) or 1),
++        ignore_eos=bool(getattr(sampling_params, "ignore_eos", False)),
++        trace_enabled=request.headers.get(LLUMNIX_TRACE_HEADER, "False").lower() in ("true", "1"),
++        trace_events_only=request_state["trace_events_only"],
++    )
+ 
+     # collect and return request latencys
+     request_trace_param = {
+@@ -197,22 +235,62 @@ async def generate_benchmark(request: Request) -> Response:
+         async for llumnix_request_output in results_generator.generator():
+             llumnix_request_output: LlumnixRequestOuput = llumnix_request_output
+             request_output = llumnix_request_output.get_engine_output()
++            output_token_count = max((len(output.token_ids) for output in request_output.outputs), default=0)
++            input_token_count = len(request_output.prompt_token_ids or [])
++            new_token_count = max(0, output_token_count - int(request_state.get("output_tokens", 0)))
++            request_state["output_tokens"] = output_token_count
++            request_state["input_tokens"] = input_token_count
++            request_state["updates"] += 1
++            request_state["instance_id"] = getattr(llumnix_request_output, "instance_id", None)
++            emit_causal_event(
++                "request_output_at_api",
++                request_id=request_id,
++                instance_id=request_state["instance_id"],
++                input_tokens=input_token_count,
++                output_tokens=output_token_count,
++                new_output_tokens=new_token_count,
++                output_update_index=int(request_state["updates"]),
++                finished=bool(request_output.finished),
++                finish_reason=getattr(request_output.outputs[0], "finish_reason", None)
++                if request_output.outputs else None,
++                stop_reason=getattr(request_output.outputs[0], "stop_reason", None)
++                if request_output.outputs else None,
++                output_budget=request_state["output_budget"],
++            )
++            request_processing_context = llumnix_request_output.request_processing_context
++            if request_processing_context.enable_trace and (
++                    not request_state["trace_events_only"] or request_state["updates"] == 1
++                    or request_output.finished):
++                emit_causal_event(
++                    "request_internal_timeline",
++                    request_id=request_id,
++                    instance_id=request_state["instance_id"],
++                    output_tokens=output_token_count,
++                    output_update_index=int(request_state["updates"]),
++                    clock_id="CLOCK_MONOTONIC",
++                    timestamp_unit="seconds",
++                    timestamps=vars(request_processing_context.trace_timeline),
++                )
+             if await request.is_disconnected():
+                 # Abort the request if the client disconnects.
+                 await llumnix_client.abort(request_id)
++                request_state["terminal_status"] = "client_disconnected"
+                 return Response(status_code=499)
+             now = time.perf_counter()
+             per_token_latency.append([now, (now - start)*1000])
+             start = now
+             final_output = request_output
+-            request_processing_context = llumnix_request_output.request_processing_context
+             if request_processing_context.enable_trace:
+                 request_processing_context.add_trace_timeline('api_server_generate_timestamp_end', now)
+-                per_token_latency_breakdown_list.append(request_processing_context.trace_timeline.to_latency_breakdown_dict())
++                if not request_state["trace_events_only"] or request_output.finished:
++                    per_token_latency_breakdown_list.append(
++                        request_processing_context.trace_timeline.to_latency_breakdown_dict()
++                    )
+         # Explicit benchmark aborts can close the Llumnix stream without
+         # producing a final RequestOutput. This is an expected cancelled
+         # request, not a server error that should tear down the shared client.
+         if final_output is None:
++            request_state["terminal_status"] = "aborted_without_final_output"
+             return Response(status_code=499)
+ 
+         if llumnix_client.log_requests:
+@@ -229,6 +307,20 @@ async def generate_benchmark(request: Request) -> Response:
+                 "request_id={}, expected_resp_len={}, num_output_tokens={}, num_input_tokens={}".format(
+                     request_id, expected_resp_len, num_output_tokens, num_input_tokens)
+             )
++        finish_reason = getattr(final_output.outputs[0], "finish_reason", None)
++        stop_reason = getattr(final_output.outputs[0], "stop_reason", None)
++        request_state["terminal_status"] = "server_completed"
++        emit_causal_event(
++            "request_server_completed",
++            request_id=request_id,
++            instance_id=request_state.get("instance_id"),
++            input_tokens=num_input_tokens,
++            output_tokens=num_output_tokens,
++            output_budget=int(expected_resp_len),
++            finish_reason=finish_reason,
++            stop_reason=stop_reason,
++            response_updates=int(request_state["updates"]),
++        )
+         ret = {
+             'request_id': request_id,
+             'generated_text': generation,
+@@ -241,8 +333,29 @@ async def generate_benchmark(request: Request) -> Response:
+     except asyncio.CancelledError:
+         # /abort_benchmark cancels the HTTP handler after the backend abort
+         # RPC is acknowledged, so the shared server remains healthy.
++        request_state["terminal_status"] = "cancelled_by_benchmark_abort"
+         return Response(status_code=499)
++    except Exception as exc:
++        request_state["terminal_status"] = "server_error"
++        emit_causal_event(
++            "request_server_error",
++            request_id=request_id,
++            error_type=type(exc).__name__,
++            error_message=str(exc)[:300],
++            output_tokens=int(request_state.get("output_tokens", 0)),
++        )
++        raise
+     finally:
++        emit_causal_event(
++            "request_server_terminal",
++            request_id=request_id,
++            instance_id=request_state.get("instance_id"),
++            terminal_status=request_state.get("terminal_status", "unknown"),
++            input_tokens=request_state.get("input_tokens"),
++            output_tokens=int(request_state.get("output_tokens", 0)),
++            output_budget=request_state.get("output_budget"),
++            response_updates=int(request_state.get("updates", 0)),
++        )
+         request_state["ready"].set()
+         request_state["done"].set()
+         active_benchmark_requests.pop(request_id, None)
+@@ -261,6 +374,13 @@ async def abort_benchmark(request: Request) -> Response:
+     results = []
+     for request_id in request_ids:
+         state = active_benchmark_requests.get(request_id)
++        emit_causal_event(
++            "request_abort_requested",
++            request_id=request_id,
++            abort_source="benchmark_drain_barrier",
++            server_state="active" if state is not None else "not_active_at_abort_lookup",
++            output_tokens=int(state.get("output_tokens", 0)) if state is not None else None,
++        )
+         if state is None:
+             if request_id in finished_benchmark_requests:
+                 results.append({"request_id": request_id, "status": "already_finished"})

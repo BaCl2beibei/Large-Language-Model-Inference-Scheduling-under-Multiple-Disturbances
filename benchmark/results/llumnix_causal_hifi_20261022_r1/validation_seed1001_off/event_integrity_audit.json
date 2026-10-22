@@ -1,0 +1,153 @@
+{
+  "data_dir": "benchmark/results/llumnix_causal_hifi_20261022_r1/validation_seed1001_off",
+  "source_stream_count": 5,
+  "source_streams": [
+    "causal_events/events_5d430c52a833_379261.jsonl.gz",
+    "causal_events/events_5d430c52a833_382526.jsonl.gz",
+    "causal_events/events_5d430c52a833_382587.jsonl.gz",
+    "causal_events/events_5d430c52a833_382588.jsonl.gz",
+    "causal_events/events_5d430c52a833_382709.jsonl.gz"
+  ],
+  "total_events": 2645651,
+  "event_type_counts": {
+    "batch_scheduled": 38654,
+    "clock_sync": 5,
+    "engine_iteration_completed": 38654,
+    "engine_request_output": 1768768,
+    "executor_iteration_started": 38654,
+    "gpu_event_capture_initialized": 4,
+    "gpu_execution_completed": 38654,
+    "kv_request_blocks_changed": 122786,
+    "llm_engine_step_completed": 38654,
+    "request_abort_requested": 7372,
+    "request_engine_admitted": 7742,
+    "request_internal_timeline": 2902,
+    "request_output_at_api": 515117,
+    "request_server_completed": 2516,
+    "request_server_received": 7742,
+    "request_server_terminal": 7742,
+    "scheduler_idle": 9685
+  },
+  "json_parse_errors": [],
+  "processes": {
+    "5d430c52a833:379261": {
+      "host": "5d430c52a833",
+      "pid": "379261",
+      "source_files": [
+        {
+          "path": "causal_events/events_5d430c52a833_379261.jsonl.gz",
+          "events": 543392,
+          "bytes": 18112684
+        }
+      ],
+      "events": 543392,
+      "sequence_missing": 0,
+      "sequence_duplicates": 0,
+      "sequence_invalid": 0,
+      "monotonic_inversions": 0,
+      "worst_monotonic_inversion_ms": 0.0,
+      "last_monotonic_ns": 351242559999108,
+      "sequence_min": 1,
+      "sequence_max": 543392
+    },
+    "5d430c52a833:382526": {
+      "host": "5d430c52a833",
+      "pid": "382526",
+      "source_files": [
+        {
+          "path": "causal_events/events_5d430c52a833_382526.jsonl.gz",
+          "events": 338291,
+          "bytes": 30404060
+        }
+      ],
+      "events": 338291,
+      "sequence_missing": 0,
+      "sequence_duplicates": 0,
+      "sequence_invalid": 0,
+      "monotonic_inversions": 475,
+      "worst_monotonic_inversion_ms": 27.246899,
+      "last_monotonic_ns": 351248407228264,
+      "sequence_min": 1,
+      "sequence_max": 338291
+    },
+    "5d430c52a833:382587": {
+      "host": "5d430c52a833",
+      "pid": "382587",
+      "source_files": [
+        {
+          "path": "causal_events/events_5d430c52a833_382587.jsonl.gz",
+          "events": 593383,
+          "bytes": 53831705
+        }
+      ],
+      "events": 593383,
+      "sequence_missing": 0,
+      "sequence_duplicates": 0,
+      "sequence_invalid": 0,
+      "monotonic_inversions": 1044,
+      "worst_monotonic_inversion_ms": 506.234977,
+      "last_monotonic_ns": 351246172665101,
+      "sequence_min": 1,
+      "sequence_max": 593383
+    },
+    "5d430c52a833:382588": {
+      "host": "5d430c52a833",
+      "pid": "382588",
+      "source_files": [
+        {
+          "path": "causal_events/events_5d430c52a833_382588.jsonl.gz",
+          "events": 586250,
+          "bytes": 53839933
+        }
+      ],
+      "events": 586250,
+      "sequence_missing": 0,
+      "sequence_duplicates": 0,
+      "sequence_invalid": 0,
+      "monotonic_inversions": 927,
+      "worst_monotonic_inversion_ms": 33.857667,
+      "last_monotonic_ns": 351247268060898,
+      "sequence_min": 1,
+      "sequence_max": 586250
+    },
+    "5d430c52a833:382709": {
+      "host": "5d430c52a833",
+      "pid": "382709",
+      "source_files": [
+        {
+          "path": "causal_events/events_5d430c52a833_382709.jsonl.gz",
+          "events": 584335,
+          "bytes": 54152139
+        }
+      ],
+      "events": 584335,
+      "sequence_missing": 0,
+      "sequence_duplicates": 0,
+      "sequence_invalid": 0,
+      "monotonic_inversions": 928,
+      "worst_monotonic_inversion_ms": 35.722563,
+      "last_monotonic_ns": 351245950940730,
+      "sequence_min": 1,
+      "sequence_max": 584335
+    }
+  },
+  "request_lifecycle": {
+    "server_received_requests": 7742,
+    "server_terminal_requests": 7742,
+    "received_without_terminal": [],
+    "terminal_without_received": []
+  },
+  "batch_joins": {
+    "scheduled_batches": 38654,
+    "completed_batches": 38654,
+    "failed_executor_batches": 0,
+    "scheduled_without_executor_completion": [],
+    "executor_completion_without_schedule": []
+  },
+  "interpretation": {
+    "process_sequence": "event_sequence values are checked as a set per PID, independent of thread write order",
+    "monotonic_order": "inversions are reported because concurrent emit calls can enqueue out of timestamp order",
+    "batch_join": "batch_scheduled is joined to engine_iteration_completed by batch_id",
+    "source_streams": "only unsplit root streams are audited; filtered run shards cannot prove process sequence completeness"
+  }
+}

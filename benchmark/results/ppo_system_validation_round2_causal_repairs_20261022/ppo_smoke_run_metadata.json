@@ -1,0 +1,20 @@
+{
+  "purpose": "bounded CPU PPO smoke only; not formal training",
+  "command": "/venv/main/bin/python -m rl_scheduler.train_ppo --config benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded_config.yaml --output-dir benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded --timesteps 8 --seed 322 --calibration benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_calibration.yaml",
+  "exit_code": 0,
+  "device": "cpu",
+  "seed": 322,
+  "global_step": 8,
+  "training_episodes": 1,
+  "ppo_updates": 1,
+  "evaluations": 1,
+  "metrics_path": "benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded/training_metrics.jsonl",
+  "checkpoints": [
+    "benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded/mig_ppo_best.pt",
+    "benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded/mig_ppo_final.pt"
+  ],
+  "attempt_notes": [
+    "The first bounded attempt used --timesteps 8 while rollout_steps remained 512; it was interrupted with exit 130 before producing metrics or checkpoints.",
+    "The second attempt set rollout_steps to 8, but the calibration override restored max_decisions to 4000; it was interrupted with exit 130 before producing metrics or checkpoints. Both attempts are documented under their respective INCOMPLETE.md files."
+  ]
+}

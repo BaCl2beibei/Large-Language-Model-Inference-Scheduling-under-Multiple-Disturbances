@@ -1,0 +1,125 @@
+[
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_metrics",
+      "rl_scheduler.tests.test_real_bridge",
+      "rl_scheduler.tests.test_real_env",
+      "rl_scheduler.tests.test_real_runner",
+      "rl_scheduler.tests.test_real_repairs",
+      "-v"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "repairs/bridge_r1_r7/tests_final.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-c",
+      "import importlib.util,unittest\nfrom pathlib import Path\nfrom unittest.mock import patch\np=Path(\"/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py\")\nspec=importlib.util.spec_from_file_location(\"independent_review\",p);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)\noriginal=Path.write_text\ndef write(path,*args,**kwargs):\n if path.resolve()==p.parent/\"migration_chain.json\":path=p.parents[1]/\"repairs/bridge_r1_r7/review_migration_chain_after.json\"\n return original(path,*args,**kwargs)\nwith patch.object(Path,\"write_text\",write):\n result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(m.BridgeReview))\nraise SystemExit(not result.wasSuccessful())\n"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "repairs/bridge_r1_r7/independent_counterexamples_final.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-c",
+      "import pathlib,sys; [compile(pathlib.Path(p).read_text(),p,\"exec\") for p in sys.argv[1:]]; print(\"Compiled\",len(sys.argv)-1,\"source files without bytecode writes\")",
+      "benchmark/run_real_ppo.py",
+      "llumnix/backends/output_forwarder.py",
+      "llumnix/backends/vllm/executor.py",
+      "llumnix/backends/vllm/llm_engine.py",
+      "llumnix/backends/vllm/scheduler.py",
+      "llumnix/backends/vllm/worker.py",
+      "llumnix/config/default.py",
+      "llumnix/constants.py",
+      "llumnix/entrypoints/client.py",
+      "llumnix/entrypoints/vllm/api_server.py",
+      "llumnix/entrypoints/vllm/client.py",
+      "llumnix/entrypoints/vllm/real_control_api.py",
+      "llumnix/entrypoints/vllm/real_metrics_stream.py",
+      "llumnix/global_scheduler/global_scheduler.py",
+      "llumnix/global_scheduler/migration_filter.py",
+      "llumnix/global_scheduler/migration_policy.py",
+      "llumnix/global_scheduler/migration_scheduler.py",
+      "llumnix/llumlet/llumlet.py",
+      "llumnix/llumlet/local_migration_scheduler.py",
+      "llumnix/llumlet/migration_coordinator.py",
+      "llumnix/llumlet/request.py",
+      "llumnix/manager.py",
+      "llumnix/metrics/causal_events.py",
+      "llumnix/queue/zmq_client.py",
+      "llumnix/queue/zmq_server.py",
+      "llumnix/real_control.py",
+      "llumnix/utils.py",
+      "rl_scheduler/real_bridge.py",
+      "rl_scheduler/real_budget.py",
+      "rl_scheduler/real_client.py",
+      "rl_scheduler/real_env.py",
+      "rl_scheduler/real_metrics.py",
+      "rl_scheduler/real_observation.py",
+      "rl_scheduler/real_runner.py",
+      "rl_scheduler/real_service.py",
+      "rl_scheduler/tests/test_real_bridge.py",
+      "rl_scheduler/tests/test_real_env.py",
+      "rl_scheduler/tests/test_real_metrics.py",
+      "rl_scheduler/tests/test_real_repairs.py",
+      "rl_scheduler/tests/test_real_runner.py"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "repairs/bridge_r1_r7/compile.log"
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "repairs/bridge_r1_r7/diff_check.log"
+  },
+  {
+    "argv": [
+      "nvidia-smi",
+      "--query-compute-apps=pid,process_name,used_memory",
+      "--format=csv,noheader"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "repairs/bridge_r1_r7/gpu_process_inventory.log"
+  },
+  {
+    "argv": [
+      "supervisorctl",
+      "status"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 3,
+    "log": "repairs/bridge_r1_r7/supervisor_inventory.log"
+  }
+]

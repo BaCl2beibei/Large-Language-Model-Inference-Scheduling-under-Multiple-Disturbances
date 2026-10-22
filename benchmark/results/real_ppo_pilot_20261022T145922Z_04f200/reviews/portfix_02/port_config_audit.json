@@ -1,0 +1,62 @@
+{
+  "created_at_utc": "2026-10-22T17:49:46.374693+00:00",
+  "status": "passed",
+  "ray_port": 20000,
+  "worker_port_range_observed": "10002-19999",
+  "pilot_config_sha256": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+  "llumnix_config_sha256": "428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3",
+  "checks": {
+    "pilot_and_llumnix_ray_ports_match": true,
+    "both_ray_ports_are_20000": true,
+    "port_outside_observed_worker_range": true,
+    "prior_failure_log_proves_collision_cause": true,
+    "port_20000_not_listening": true,
+    "task_services_not_running": true,
+    "no_gpu_compute_processes": true,
+    "no_ray_head_or_raylet_process": true
+  },
+  "commands": {
+    "ss": {
+      "argv": [
+        "ss",
+        "-ltnp"
+      ],
+      "exit_code": 0,
+      "stdout": "State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                     \nLISTEN 0      128        127.0.0.1:36867      0.0.0.0:*    users:((\"code-6d62b1d5da\",pid=1576,fd=11)) \nLISTEN 0      128        127.0.0.1:45673      0.0.0.0:*    users:((\"code-6d62b1d5da\",pid=420938,fd=9))\nLISTEN 0      128          0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=445,fd=4))              \nLISTEN 0      128        127.0.0.1:16006      0.0.0.0:*    users:((\"tensorboard\",pid=850,fd=10))      \nLISTEN 0      2048       127.0.0.1:11112      0.0.0.0:*    users:((\"fastapi\",pid=846,fd=12))          \nLISTEN 0      2048       127.0.0.1:11111      0.0.0.0:*    users:((\"fastapi\",pid=844,fd=13))          \nLISTEN 0      4096       127.0.0.1:18384      0.0.0.0:*                                               \nLISTEN 0      4096       127.0.0.1:20241      0.0.0.0:*    users:((\"cloudflared\",pid=1254,fd=10))     \nLISTEN 0      4096       127.0.0.1:20243      0.0.0.0:*    users:((\"cloudflared\",pid=1374,fd=9))      \nLISTEN 0      4096       127.0.0.1:20242      0.0.0.0:*    users:((\"cloudflared\",pid=1352,fd=9))      \nLISTEN 0      4096               *:8384             *:*    users:((\"caddy\",pid=1288,fd=8))            \nLISTEN 0      4096               *:10785            *:*                                               \nLISTEN 0      4096               *:6006             *:*    users:((\"caddy\",pid=1288,fd=6))            \nLISTEN 0      4096               *:1111             *:*    users:((\"caddy\",pid=1288,fd=3))            \nLISTEN 0      128             [::]:22            [::]:*    users:((\"sshd\",pid=445,fd=5))              \nLISTEN 0      1024           [::1]:34699         [::]:*    users:((\"server\",pid=990,fd=6))            \n",
+      "stderr": ""
+    },
+    "nvidia_smi_compute_apps": {
+      "argv": [
+        "nvidia-smi",
+        "--query-compute-apps=pid,process_name,used_memory",
+        "--format=csv,noheader"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "supervisor_owned_services": {
+      "argv": [
+        "supervisorctl",
+        "status",
+        "real_ppo_fcda2e237b",
+        "real_ppo_guard_fcda2e237b"
+      ],
+      "exit_code": 3,
+      "stdout": "real_ppo_fcda2e237b              EXITED    Oct 22 05:26 PM\nreal_ppo_guard_fcda2e237b        STOPPED   Oct 22 05:27 PM\n",
+      "stderr": ""
+    },
+    "ray_process_inventory": {
+      "argv": [
+        "bash",
+        "-lc",
+        "ps -eo pid,args | rg '[r]ay start|[r]aylet' || true"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "prior_failure_log": "reviews/smoke05/telemetry_server_supervisor.log",
+  "prior_failure_log_sha256": "84669d080d2f172534605ee291cb36a9bb425dade2acc748feee7645fab85605"
+}

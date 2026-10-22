@@ -1,0 +1,1309 @@
+{
+  "experiment_id": "mig_ppo_real_calibration_9mode_eager",
+  "qps_levels": [
+    9.0,
+    12.0,
+    15.0,
+    18.0,
+    21.0
+  ],
+  "calibration_seeds": [
+    101,
+    202,
+    303
+  ],
+  "validation_seed": 404,
+  "warmup_sec": 15.0,
+  "measurement_sec": 60.0,
+  "drain_sec": 10.0,
+  "input_profiles": [
+    256,
+    512,
+    1048
+  ],
+  "output_profiles": [
+    256,
+    512,
+    1048
+  ],
+  "request_mode_count": 9,
+  "profile_mix": [
+    {
+      "name": "input256_output256",
+      "input_tokens": 256,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input256_output512",
+      "input_tokens": 256,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input256_output1048",
+      "input_tokens": 256,
+      "output_tokens": 1048,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output256",
+      "input_tokens": 512,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output512",
+      "input_tokens": 512,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output1048",
+      "input_tokens": 512,
+      "output_tokens": 1048,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output256",
+      "input_tokens": 1048,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output512",
+      "input_tokens": 1048,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output1048",
+      "input_tokens": 1048,
+      "output_tokens": 1048,
+      "weight": 1.0
+    }
+  ],
+  "profile_cycle": true,
+  "max_model_len": 2112,
+  "enforce_eager": true,
+  "max_num_seqs_per_instance": 128,
+  "model": "Qwen/Qwen2-0.5B",
+  "instance_count": 4,
+  "tensor_parallel_size": 1,
+  "migration_modes": [
+    "on"
+  ],
+  "reuse_one_four_instance_server_for_full_batch": true,
+  "server_side_abort_barrier_between_workload_phases": true,
+  "engine_latency_measurement": {
+    "metric": "executor_iteration_wall_ms",
+    "clock": "time.perf_counter",
+    "scope": "from Ray executor dispatch through awaited worker result",
+    "ray_spmd_and_non_spmd": true,
+    "cuda_synchronize_added": false
+  },
+  "readiness_gate": "before measurement: 4 ready Llumnix workers, 4 Manager registrations, Ray GPU resources 4/4, one worker per GPU",
+  "status": "complete",
+  "started_at_utc": "2026-10-21T16:25:10.591644+00:00",
+  "runs": [
+    {
+      "status": "complete",
+      "qps": 9.0,
+      "seed": 101,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 385,
+        "decode": 3509
+      },
+      "recorded_at_utc": "2026-10-21T17:58:11.812028+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 9.0,
+      "seed": 202,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 292,
+        "decode": 2952
+      },
+      "recorded_at_utc": "2026-10-21T17:58:11.887084+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 9.0,
+      "seed": 303,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 379,
+        "decode": 3392
+      },
+      "recorded_at_utc": "2026-10-21T17:58:11.980637+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 12.0,
+      "seed": 101,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 525,
+        "decode": 2802
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.072929+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 12.0,
+      "seed": 202,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 427,
+        "decode": 2921
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.160097+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 12.0,
+      "seed": 303,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 414,
+        "decode": 3151
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.247016+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 15.0,
+      "seed": 101,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 557,
+        "decode": 2701
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.326042+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 15.0,
+      "seed": 202,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 462,
+        "decode": 2656
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.401779+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 15.0,
+      "seed": 303,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 468,
+        "decode": 2334
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.470459+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 18.0,
+      "seed": 101,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 554,
+        "decode": 2486
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.556291+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 18.0,
+      "seed": 202,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 433,
+        "decode": 2440
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.633667+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 18.0,
+      "seed": 303,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 423,
+        "decode": 2431
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.705880+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 21.0,
+      "seed": 101,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 625,
+        "decode": 2297
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.781766+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 21.0,
+      "seed": 202,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 705,
+        "decode": 2717
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.866150+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 21.0,
+      "seed": 303,
+      "dataset_role": "calibration",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 662,
+        "decode": 2581
+      },
+      "recorded_at_utc": "2026-10-21T17:58:12.948715+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 9.0,
+      "seed": 404,
+      "dataset_role": "validation",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 331,
+        "decode": 3184
+      },
+      "recorded_at_utc": "2026-10-21T17:58:13.032839+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 12.0,
+      "seed": 404,
+      "dataset_role": "validation",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 404,
+        "decode": 2853
+      },
+      "recorded_at_utc": "2026-10-21T17:58:13.113194+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 15.0,
+      "seed": 404,
+      "dataset_role": "validation",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 547,
+        "decode": 2655
+      },
+      "recorded_at_utc": "2026-10-21T17:58:13.192181+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 18.0,
+      "seed": 404,
+      "dataset_role": "validation",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 637,
+        "decode": 2849
+      },
+      "recorded_at_utc": "2026-10-21T17:58:13.281286+00:00"
+    },
+    {
+      "status": "complete",
+      "qps": 21.0,
+      "seed": 404,
+      "dataset_role": "validation",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404",
+      "state_status": "complete",
+      "all_measurement_requests_sent": true,
+      "startup_gate_passed": true,
+      "startup_gates": {
+        "on": {
+          "passed": true,
+          "mode": "on",
+          "enforce_eager": true,
+          "ready_instances_reported": 4,
+          "manager_instance_count": 4,
+          "manager_instance_ids": [
+            "8505338ac3a24bcabf31782deb134cc9",
+            "937f13ac0fa5491dbdb07d6fd136f6b7",
+            "b3bb4538ed8c4886afd262686037a877",
+            "eaa70562c803446e9bae04738431ad51"
+          ],
+          "worker_gpu_assignments": {
+            "b3bb4538ed8c4886afd262686037a877": "2",
+            "8505338ac3a24bcabf31782deb134cc9": "3",
+            "eaa70562c803446e9bae04738431ad51": "1",
+            "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+          },
+          "readiness_monitor_stopped_before_workload": true,
+          "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+          "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+          "ray_gpu_resources": 4,
+          "reused_for_full_batch": true,
+          "total_qps_seed_runs": 20
+        }
+      },
+      "request_completions_may_be_censored": true,
+      "positive_engine_latency_samples": {
+        "prefill": 609,
+        "decode": 2295
+      },
+      "recorded_at_utc": "2026-10-21T17:58:13.356553+00:00"
+    }
+  ],
+  "failure_history": [
+    {
+      "status": "failed",
+      "qps": null,
+      "seed": null,
+      "dataset_role": "batch",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505",
+      "return_code": 1,
+      "missing_or_invalid_runs": [
+        {
+          "qps": 9.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101"
+        },
+        {
+          "qps": 9.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202"
+        },
+        {
+          "qps": 9.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303"
+        },
+        {
+          "qps": 12.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101"
+        },
+        {
+          "qps": 12.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202"
+        },
+        {
+          "qps": 12.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303"
+        },
+        {
+          "qps": 15.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101"
+        },
+        {
+          "qps": 15.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202"
+        },
+        {
+          "qps": 15.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303"
+        },
+        {
+          "qps": 18.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101"
+        },
+        {
+          "qps": 18.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202"
+        },
+        {
+          "qps": 18.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303"
+        },
+        {
+          "qps": 21.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101"
+        },
+        {
+          "qps": 21.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202"
+        },
+        {
+          "qps": 21.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303"
+        },
+        {
+          "qps": 9.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404"
+        },
+        {
+          "qps": 12.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404"
+        },
+        {
+          "qps": 15.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404"
+        },
+        {
+          "qps": 18.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404"
+        },
+        {
+          "qps": 21.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404"
+        }
+      ],
+      "recorded_at_utc": "2026-10-21T17:07:03.605056+00:00"
+    },
+    {
+      "status": "failed",
+      "qps": null,
+      "seed": null,
+      "dataset_role": "batch",
+      "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505",
+      "return_code": 1,
+      "missing_or_invalid_runs": [
+        {
+          "qps": 9.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101"
+        },
+        {
+          "qps": 9.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202"
+        },
+        {
+          "qps": 9.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303"
+        },
+        {
+          "qps": 12.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101"
+        },
+        {
+          "qps": 12.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202"
+        },
+        {
+          "qps": 12.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303"
+        },
+        {
+          "qps": 15.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101"
+        },
+        {
+          "qps": 15.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202"
+        },
+        {
+          "qps": 15.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303"
+        },
+        {
+          "qps": 18.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101"
+        },
+        {
+          "qps": 18.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202"
+        },
+        {
+          "qps": 18.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303"
+        },
+        {
+          "qps": 21.0,
+          "seed": 101,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101"
+        },
+        {
+          "qps": 21.0,
+          "seed": 202,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202"
+        },
+        {
+          "qps": 21.0,
+          "seed": 303,
+          "dataset_role": "calibration",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303"
+        },
+        {
+          "qps": 9.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404"
+        },
+        {
+          "qps": 12.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404"
+        },
+        {
+          "qps": 15.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404"
+        },
+        {
+          "qps": 18.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404"
+        },
+        {
+          "qps": 21.0,
+          "seed": 404,
+          "dataset_role": "validation",
+          "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404"
+        }
+      ],
+      "recorded_at_utc": "2026-10-21T17:44:18.992754+00:00"
+    }
+  ],
+  "resumed_at_utc": "2026-10-21T17:44:56.720579+00:00",
+  "last_completed_run": {
+    "status": "complete",
+    "qps": 21.0,
+    "seed": 404,
+    "dataset_role": "validation",
+    "experiment_dir": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404",
+    "state_status": "complete",
+    "all_measurement_requests_sent": true,
+    "startup_gate_passed": true,
+    "startup_gates": {
+      "on": {
+        "passed": true,
+        "mode": "on",
+        "enforce_eager": true,
+        "ready_instances_reported": 4,
+        "manager_instance_count": 4,
+        "manager_instance_ids": [
+          "8505338ac3a24bcabf31782deb134cc9",
+          "937f13ac0fa5491dbdb07d6fd136f6b7",
+          "b3bb4538ed8c4886afd262686037a877",
+          "eaa70562c803446e9bae04738431ad51"
+        ],
+        "worker_gpu_assignments": {
+          "b3bb4538ed8c4886afd262686037a877": "2",
+          "8505338ac3a24bcabf31782deb134cc9": "3",
+          "eaa70562c803446e9bae04738431ad51": "1",
+          "937f13ac0fa5491dbdb07d6fd136f6b7": "0"
+        },
+        "readiness_monitor_stopped_before_workload": true,
+        "verified_at_utc": "2026-10-21T17:52:15.436142+00:00",
+        "ray_gpu_status": "======== Autoscaler status: 2026-10-21 17:52:13.078471 ========\nNode status\n---------------------------------------------------------------\nActive:\n 1 node_d782c8d660a254257e86485197ee26ae8c6df092de6adaed50b1d4b7\nPending:\n (no pending nodes)\nRecent failures:\n (no failures)\n\nResources\n---------------------------------------------------------------\nTotal Usage:\n 6.0/38.0 CPU (4.0 used of 12.0 reserved in placement groups)\n 4.0/4.0 GPU (4.0 used of 4.0 reserved in placement groups)\n 0B/57.92GiB memory\n 0B/24.82GiB object_store_memory\n\nTotal Constraints:\n (no request_resources() constraints)\nTotal Demands:\n (no resource demands)\n",
+        "ray_gpu_resources": 4,
+        "reused_for_full_batch": true,
+        "total_qps_seed_runs": 20
+      }
+    },
+    "request_completions_may_be_censored": true,
+    "positive_engine_latency_samples": {
+      "prefill": 609,
+      "decode": 2295
+    },
+    "recorded_at_utc": "2026-10-21T17:58:13.356553+00:00"
+  },
+  "combined_inputs": {
+    "calibration": {
+      "seeds": [
+        101,
+        202,
+        303
+      ],
+      "instance_csv": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration_inputs/service_instance.csv",
+      "migration_csv": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration_inputs/migration_events.csv",
+      "instance_rows": 49058,
+      "migration_terminal_events": 74
+    },
+    "validation": {
+      "seed": 404,
+      "instance_csv": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation_inputs/service_instance.csv",
+      "migration_csv": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation_inputs/migration_events.csv",
+      "instance_rows": 16462,
+      "migration_terminal_events": 31,
+      "excluded_from_calibration": true
+    }
+  },
+  "completed_at_utc": "2026-10-21T17:58:15.238083+00:00",
+  "continuation_provenance": {
+    "reused_completed_runs": 17,
+    "supplemental_runs": [
+      "qps_21_seed202",
+      "qps_21_seed303",
+      "qps_21_seed404"
+    ],
+    "note": "The 17 preserved runs were collected before the scheduler migration-out slot reservation guard was added. The three supplemental runs were collected after that guard was added. Workload, model, serving configuration, and latency instrumentation were kept the same; the scheduler code version differs for these supplemental runs."
+  }
+}

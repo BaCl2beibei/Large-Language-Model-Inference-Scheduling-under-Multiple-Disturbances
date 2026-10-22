@@ -1,0 +1,393 @@
+{
+  "experiment_id": "ppo_calibration_mixed_2112_eager_reused_server",
+  "created_at_utc": "2026-10-22T12:53:54.556168+00:00",
+  "environment": {
+    "captured_at_utc": "2026-10-22T12:53:53.154027+00:00",
+    "python": "3.10.12 (main, Jul 26 2023, 13:20:36) [Clang 16.0.3 ]",
+    "packages": {
+      "torch": "2.4.0",
+      "vllm": "0.6.3.post1",
+      "ray": "2.47.1",
+      "aiohttp": "3.14.5",
+      "matplotlib": "3.10.9",
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "transformers": "4.46.3",
+      "tokenizers": "0.20.3"
+    },
+    "torch": {
+      "version": "2.4.0+cu121",
+      "cuda": "12.1",
+      "cuda_available": true,
+      "device_count": 4
+    },
+    "gpus": [
+      {
+        "index": 0,
+        "uuid": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      },
+      {
+        "index": 1,
+        "uuid": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      },
+      {
+        "index": 2,
+        "uuid": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      },
+      {
+        "index": 3,
+        "uuid": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee",
+        "name": "NVIDIA GeForce RTX 3060",
+        "memory_total_mib": 12288,
+        "memory_used_mib": 1
+      }
+    ],
+    "gpu_count": 4,
+    "cpu_count_logical": 80,
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2673 v4 @ 2.30GHz",
+    "memory_total_bytes": 135011971072,
+    "memory_available_bytes": 106546855936,
+    "workspace_disk": {
+      "total": 85899345920,
+      "used": 31518969856,
+      "free": 54380376064
+    },
+    "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+    "model_files": [
+      {
+        "name": ".gitattributes",
+        "size_bytes": 1519
+      },
+      {
+        "name": "LICENSE",
+        "size_bytes": 11344
+      },
+      {
+        "name": "README.md",
+        "size_bytes": 4026
+      },
+      {
+        "name": "config.json",
+        "size_bytes": 661
+      },
+      {
+        "name": "generation_config.json",
+        "size_bytes": 138
+      },
+      {
+        "name": "merges.txt",
+        "size_bytes": 1671839
+      },
+      {
+        "name": "model.safetensors",
+        "size_bytes": 988097824
+      },
+      {
+        "name": "tokenizer.json",
+        "size_bytes": 7028015
+      },
+      {
+        "name": "tokenizer_config.json",
+        "size_bytes": 1289
+      },
+      {
+        "name": "vocab.json",
+        "size_bytes": 2776833
+      }
+    ],
+    "git_commit": "92f05f545943b2f984bde1ddd30c7bf8e413da56",
+    "git_status": "D benchmark/results/baseline_4gpu/config.json\n D benchmark/results/baseline_4gpu/configs/llumnix_off.yml\n D benchmark/results/baseline_4gpu/configs/llumnix_on.yml\n D benchmark/results/baseline_4gpu/environment_audit.md\n D benchmark/results/baseline_4gpu/plots/gpu_resources.png\n D benchmark/results/baseline_4gpu/plots/migration.png\n D benchmark/results/baseline_4gpu/plots/p95_latency.png\n D benchmark/results/baseline_4gpu/plots/slo_violations.png\n D benchmark/results/baseline_4gpu/plots/throughput.png\n D benchmark/results/baseline_4gpu/report.md\n D benchmark/results/baseline_4gpu/server_logs/off_ray_status.txt\n D benchmark/results/baseline_4gpu/server_logs/on_ray_status.txt\n D benchmark/results/baseline_4gpu/state.json\n D benchmark/results/baseline_4gpu_archive_20261020_100500/config.json\n D benchmark/results/baseline_4gpu_archive_20261020_100500/configs/llumnix_off.yml\n D benchmark/results/baseline_4gpu_archive_20261020_100500/configs/llumnix_on.yml\n D benchmark/results/baseline_4gpu_archive_20261020_100500/environment_audit.md\n D benchmark/results/baseline_4gpu_archive_20261020_100500/server_logs/off_ray_status.txt\n D benchmark/results/baseline_4gpu_archive_20261020_100500/state.json\n D benchmark/results/migration_crossover_20261020_120747/config.json\n D benchmark/results/migration_crossover_20261020_120747/configs/llumnix_off.yml\n D benchmark/results/migration_crossover_20261020_120747/configs/llumnix_on.yml\n D benchmark/results/migration_crossover_20261020_120747/environment_audit.md\n D benchmark/results/migration_crossover_20261020_120747/plots/gpu_resources.png\n D benchmark/results/migration_crossover_20261020_120747/plots/migration.png\n D benchmark/results/migration_crossover_20261020_120747/plots/p95_latency.png\n D benchmark/results/migration_crossover_20261020_120747/plots/slo_violations.png\n D benchmark/results/migration_crossover_20261020_120747/plots/throughput.png\n D benchmark/results/migration_crossover_20261020_120747/report.md\n D benchmark/results/migration_crossover_20261020_120747/server_logs/off_ray_status.txt\n D benchmark/results/migration_crossover_20261020_120747/server_logs/on_ray_status.txt\n D benchmark/results/migration_crossover_20261020_120747/state.json\n D benchmark/results/migration_crossover_20261020_121712/config.json\n D benchmark/results/migration_crossover_20261020_121712/configs/llumnix_off.yml\n D benchmark/results/migration_crossover_20261020_121712/configs/llumnix_on.yml\n D benchmark/results/migration_crossover_20261020_121712/environment_audit.md\n D benchmark/results/migration_crossover_20261020_121712/plots/gpu_resources.png\n D benchmark/results/migration_crossover_20261020_121712/plots/migration.png\n D benchmark/results/migration_crossover_20261020_121712/plots/p95_latency.png\n D benchmark/results/migration_crossover_20261020_121712/plots/slo_violations.png\n D benchmark/results/migration_crossover_20261020_121712/plots/throughput.png\n D benchmark/results/migration_crossover_20261020_121712/report.md\n D benchmark/results/migration_crossover_20261020_121712/server_logs/off_ray_status.txt\n D benchmark/results/migration_crossover_20261020_121712/server_logs/on_ray_status.txt\n D benchmark/results/migration_crossover_20261020_121712/state.json\n D benchmark/results/migration_crossover_20261020_122409/config.json\n D benchmark/results/migration_crossover_20261020_122409/configs/llumnix_off.yml\n D benchmark/results/migration_crossover_20261020_122409/configs/llumnix_on.yml\n D benchmark/results/migration_crossover_20261020_122409/environment_audit.md\n D benchmark/results/migration_crossover_20261020_122409/report.md\n D benchmark/results/migration_crossover_20261020_122409/state.json\n D benchmark/results/migration_crossover_20261020_123005/config.json\n D benchmark/results/migration_crossover_20261020_123005/configs/llumnix_off.yml\n D benchmark/results/migration_crossover_20261020_123005/configs/llumnix_on.yml\n D benchmark/results/migration_crossover_20261020_123005/environment_audit.md\n D benchmark/results/migration_crossover_20261020_123005/report.md\n D benchmark/results/migration_crossover_20261020_123005/server_logs/off_ray_status.txt\n D benchmark/results/migration_crossover_20261020_123005/state.json\n D benchmark/results/migration_crossover_20261020_123639/config.json\n D benchmark/results/migration_crossover_20261020_123639/configs/llumnix_off.yml\n D benchmark/results/migration_crossover_20261020_123639/configs/llumnix_on.yml\n D benchmark/results/migration_crossover_20261020_123639/environment_audit.md\n D benchmark/results/migration_crossover_20261020_123639/plots/gpu_resources.png\n D benchmark/results/migration_crossover_20261020_123639/plots/migration.png\n D benchmark/results/migration_crossover_20261020_123639/plots/p95_latency.png\n D benchmark/results/migration_crossover_20261020_123639/plots/slo_violations.png\n D benchmark/results/migration_crossover_20261020_123639/plots/throughput.png\n D benchmark/results/migration_crossover_20261020_123639/report.md\n D benchmark/results/migration_crossover_20261020_123639/server_logs/off_ray_status.txt\n D benchmark/results/migration_crossover_20261020_123639/server_logs/on_ray_status.txt\n D benchmark/results/migration_crossover_20261020_123639/state.json\n D benchmark/results/migration_crossover_combined_20261020_123639/config.json\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/gpu_resources.png\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/mean_latency.png\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/migration.png\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/p95_latency.png\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/p95_latency_original.png\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/slo_violations.png\n D benchmark/results/migration_crossover_combined_20261020_123639/plots/throughput.png\n D benchmark/results/migration_crossover_combined_20261020_123639/report.md\n D benchmark/results/migration_crossover_combined_20261020_123639/server_logs/prior_5p5675_to_20/off_ray_status.txt\n D benchmark/results/migration_crossover_combined_20261020_123639/server_logs/prior_5p5675_to_20/on_ray_status.txt\n D benchmark/results/migration_crossover_combined_20261020_123639/server_logs/qps_0_to_5/off_ray_status.txt\n D benchmark/results/migration_crossover_combined_20261020_123639/server_logs/qps_0_to_5/on_ray_status.txt\n D benchmark/results/migration_crossover_combined_20261020_123639/state.json\n D benchmark/results/migration_pair_suppression_20261020_130424/config.json\n D benchmark/results/migration_pair_suppression_20261020_130424/configs/llumnix_off.yml\n D benchmark/results/migration_pair_suppression_20261020_130424/configs/llumnix_on.yml\n D benchmark/results/migration_pair_suppression_20261020_130424/environment_audit.md\n D benchmark/results/migration_pair_suppression_20261020_130424/plots/gpu_resources.png\n D benchmark/results/migration_pair_suppression_20261020_130424/plots/mean_latency.png\n D benchmark/results/migration_pair_suppression_20261020_130424/plots/migration.png\n D benchmark/results/migration_pair_suppression_20261020_130424/plots/p95_latency.png\n D benchmark/results/migration_pair_suppression_20261020_130424/plots/slo_violations.png\n D benchmark/results/migration_pair_suppression_20261020_130424/plots/throughput.png\n D benchmark/results/migration_pair_suppression_20261020_130424/report.md\n D benchmark/results/migration_pair_suppression_20261020_130424/server_logs/off_ray_status.txt\n D benchmark/results/migration_pair_suppression_20261020_130424/server_logs/on_ray_status.txt\n D benchmark/results/migration_pair_suppression_20261020_130424/state.json\n D benchmark/results/qps15_1024x1024_20261021_082226/config.json\n D benchmark/results/qps15_1024x1024_20261021_082226/configs/llumnix_off.yml\n D benchmark/results/qps15_1024x1024_20261021_082226/configs/llumnix_on.yml\n D benchmark/results/qps15_1024x1024_20261021_082226/environment_audit.md\n D benchmark/results/qps15_1024x1024_20261021_082226/server_logs/off_ray_status.txt\n D benchmark/results/qps15_1024x1024_20261021_082226/server_logs/on_ray_status.txt\n D benchmark/results/qps15_1024x1024_20261021_082226/state.json\n D benchmark/results/qps15_1024x1024_20261021_085325/config.json\n D benchmark/results/qps15_1024x1024_20261021_085325/configs/llumnix_off.yml\n D benchmark/results/qps15_1024x1024_20261021_085325/configs/llumnix_on.yml\n D benchmark/results/qps15_1024x1024_20261021_085325/environment_audit.md\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/gpu_resources.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/gpu_utilization_memory_summary.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/instance_kv_cache.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/instance_kv_cache_per_instance.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/instance_request_pressure.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/instance_waiting_queue.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/latency_percentiles.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/mean_latency.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/migration_metrics.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/p95_latency.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/slo_violations.png\n D benchmark/results/qps15_1024x1024_20261021_085325/plots/throughput.png\n D benchmark/results/qps15_1024x1024_20261021_085325/report.md\n D benchmark/results/qps15_1024x1024_20261021_085325/server_logs/off_ray_status.txt\n D benchmark/results/qps15_1024x1024_20261021_085325/server_logs/on_ray_status.txt\n D benchmark/results/qps15_1024x1024_20261021_085325/state.json\n D benchmark/results/qps15_1024x1024_20261021_101642/config.json\n D benchmark/results/qps15_1024x1024_20261021_101642/configs/llumnix_off.yml\n D benchmark/results/qps15_1024x1024_20261021_101642/configs/llumnix_on.yml\n D benchmark/results/qps15_1024x1024_20261021_101642/environment_audit.md\n D benchmark/results/qps15_1024x1024_20261021_101642/server_logs/off_ray_status.txt\n D benchmark/results/qps15_1024x1024_20261021_101642/state.json\n D benchmark/results/qps15_1024x1024_20261021_103444/config.json\n D benchmark/results/qps15_1024x1024_20261021_103444/configs/llumnix_off.yml\n D benchmark/results/qps15_1024x1024_20261021_103444/configs/llumnix_on.yml\n D benchmark/results/qps15_1024x1024_20261021_103444/environment_audit.md\n D benchmark/results/qps15_1024x1024_20261021_103444/state.json\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/config.json\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/configs/llumnix_off.yml\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/configs/llumnix_on.yml\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/environment_audit.md\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/gpu_resources.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/gpu_utilization_memory_summary.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/instance_kv_cache.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/instance_kv_cache_per_instance.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/instance_request_pressure.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/instance_waiting_queue.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/latency_percentiles.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/mean_latency.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/migration_metrics.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/p95_latency.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/slo_violations.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/plots/throughput.png\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/report.md\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/server_logs/off_ray_status.txt\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/server_logs/on_ray_status.txt\n D benchmark/results/qps15_1024x1024_nodefrag_20261021_093128/state.json\n D benchmark/results/qps15_1024x1024_nodefrag_seq64_20261021_110724/config.json\n D benchmark/results/qps15_1024x1024_nodefrag_seq64_20261021_110724/configs/llumnix_off.yml\n D benchmark/results/qps15_1024x1024_nodefrag_seq64_20261021_110724/configs/llumnix_on.yml\n D benchmark/results/qps15_1024x1024_nodefrag_seq64_20261021_110724/environment_audit.md\n D benchmark/results/qps15_1024x1024_nodefrag_seq64_20261021_110724/report.md\n D benchmark/results/qps15_1024x1024_nodefrag_seq64_20261021_110724/state.json\n D benchmark/results/qps30_512x512_20261020_144700/config.json\n D benchmark/results/qps30_512x512_20261020_144700/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261020_144700/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261020_144700/environment_audit.md\n D benchmark/results/qps30_512x512_20261020_144700/plots/gpu_resources.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/gpu_utilization_memory_summary.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/instance_gpu_utilization.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/instance_kv_cache.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/instance_kv_cache_per_instance.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/instance_request_pressure.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/instance_waiting_queue.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/latency_percentiles.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/mean_latency.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/migration_metrics.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/p95_latency.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/slo_violations.png\n D benchmark/results/qps30_512x512_20261020_144700/plots/throughput.png\n D benchmark/results/qps30_512x512_20261020_144700/report.md\n D benchmark/results/qps30_512x512_20261020_144700/server_logs/off_ray_status.txt\n D benchmark/results/qps30_512x512_20261020_144700/server_logs/on_ray_status.txt\n D benchmark/results/qps30_512x512_20261020_144700/state.json\n D benchmark/results/qps30_512x512_20261021_053243/config.json\n D benchmark/results/qps30_512x512_20261021_053243/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_053243/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_053243/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_053243/state.json\n D benchmark/results/qps30_512x512_20261021_053547/config.json\n D benchmark/results/qps30_512x512_20261021_053547/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_053547/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_053547/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_053547/state.json\n D benchmark/results/qps30_512x512_20261021_053921/config.json\n D benchmark/results/qps30_512x512_20261021_053921/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_053921/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_053921/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_053921/state.json\n D benchmark/results/qps30_512x512_20261021_054253/config.json\n D benchmark/results/qps30_512x512_20261021_054253/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_054253/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_054253/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_054253/server_logs/off_ray_status.txt\n D benchmark/results/qps30_512x512_20261021_054253/server_logs/on_ray_status.txt\n D benchmark/results/qps30_512x512_20261021_054253/state.json\n D benchmark/results/qps30_512x512_20261021_060228/config.json\n D benchmark/results/qps30_512x512_20261021_060228/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_060228/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_060228/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_060228/plots/gpu_resources.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/gpu_utilization_memory_summary.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/instance_kv_cache.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/instance_kv_cache_per_instance.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/instance_request_pressure.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/instance_waiting_queue.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/latency_percentiles.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/mean_latency.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/migration_metrics.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/p95_latency.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/slo_violations.png\n D benchmark/results/qps30_512x512_20261021_060228/plots/throughput.png\n D benchmark/results/qps30_512x512_20261021_060228/report.md\n D benchmark/results/qps30_512x512_20261021_060228/server_logs/off_ray_status.txt\n D benchmark/results/qps30_512x512_20261021_060228/server_logs/on_ray_status.txt\n D benchmark/results/qps30_512x512_20261021_060228/state.json\n D benchmark/results/qps30_512x512_20261021_065730/config.json\n D benchmark/results/qps30_512x512_20261021_065730/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_065730/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_065730/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_065730/state.json\n D benchmark/results/qps30_512x512_20261021_070312/config.json\n D benchmark/results/qps30_512x512_20261021_070312/configs/llumnix_off.yml\n D benchmark/results/qps30_512x512_20261021_070312/configs/llumnix_on.yml\n D benchmark/results/qps30_512x512_20261021_070312/environment_audit.md\n D benchmark/results/qps30_512x512_20261021_070312/plots/gpu_resources.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/gpu_utilization_memory_summary.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/instance_kv_cache.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/instance_kv_cache_per_instance.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/instance_request_pressure.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/instance_waiting_queue.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/latency_percentiles.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/mean_latency.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/migration_events_per_second.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/migration_metrics.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/p95_latency.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/slo_violations.png\n D benchmark/results/qps30_512x512_20261021_070312/plots/throughput.png\n D benchmark/results/qps30_512x512_20261021_070312/report.md\n D benchmark/results/qps30_512x512_20261021_070312/server_logs/off_ray_status.txt\n D benchmark/results/qps30_512x512_20261021_070312/server_logs/on_ray_status.txt\n D benchmark/results/qps30_512x512_20261021_070312/state.json\n D benchmark/results/qps5_512x512_20261020_142459/config.json\n D benchmark/results/qps5_512x512_20261020_142459/configs/llumnix_off.yml\n D benchmark/results/qps5_512x512_20261020_142459/configs/llumnix_on.yml\n D benchmark/results/qps5_512x512_20261020_142459/environment_audit.md\n D benchmark/results/qps5_512x512_20261020_142459/plots/gpu_resources.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/gpu_utilization_memory_summary.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/instance_kv_cache.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/instance_request_pressure.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/mean_latency.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/migration.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/p95_latency.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/slo_violations.png\n D benchmark/results/qps5_512x512_20261020_142459/plots/throughput.png\n D benchmark/results/qps5_512x512_20261020_142459/report.md\n D benchmark/results/qps5_512x512_20261020_142459/server_logs/off_ray_status.txt\n D benchmark/results/qps5_512x512_20261020_142459/server_logs/on_ray_status.txt\n D benchmark/results/qps5_512x512_20261020_142459/state.json\n D benchmark/results/qps5_frequency_sweep_20261020_135638/config.json\n D benchmark/results/qps5_frequency_sweep_20261020_135638/configs/llumnix_frequency_1.yml\n D benchmark/results/qps5_frequency_sweep_20261020_135638/configs/llumnix_frequency_10.yml\n D benchmark/results/qps5_frequency_sweep_20261020_135638/configs/llumnix_frequency_5.yml\n D benchmark/results/qps5_frequency_sweep_20261020_135638/configs/llumnix_off.yml\n D benchmark/results/qps5_frequency_sweep_20261020_135638/environment_audit.md\n D benchmark/results/qps5_frequency_sweep_20261020_135638/plots/latency_comparison.png\n D benchmark/results/qps5_frequency_sweep_20261020_135638/plots/migration_comparison.png\n D benchmark/results/qps5_frequency_sweep_20261020_135638/report.md\n D benchmark/results/qps5_frequency_sweep_20261020_135638/server_logs/frequency_10_ray_status.txt\n D benchmark/results/qps5_frequency_sweep_20261020_135638/server_logs/frequency_1_ray_status.txt\n D benchmark/results/qps5_frequency_sweep_20261020_135638/server_logs/frequency_5_ray_status.txt\n D benchmark/results/qps5_frequency_sweep_20261020_135638/server_logs/off_ray_status.txt\n D benchmark/results/qps5_frequency_sweep_20261020_135638/state.json\n D benchmark/results/qps5_three_mode_20261020_132254/config.json\n D benchmark/results/qps5_three_mode_20261020_132254/configs/llumnix_dryrun.yml\n D benchmark/results/qps5_three_mode_20261020_132254/configs/llumnix_off.yml\n D benchmark/results/qps5_three_mode_20261020_132254/configs/llumnix_on.yml\n D benchmark/results/qps5_three_mode_20261020_132254/environment_audit.md\n D benchmark/results/qps5_three_mode_20261020_132254/plots/latency_comparison.png\n D benchmark/results/qps5_three_mode_20261020_132254/report.md\n D benchmark/results/qps5_three_mode_20261020_132254/server_logs/dryrun_ray_status.txt\n D benchmark/results/qps5_three_mode_20261020_132254/server_logs/off_ray_status.txt\n D benchmark/results/qps5_three_mode_20261020_132254/server_logs/on_ray_status.txt\n D benchmark/results/qps5_three_mode_20261020_132254/state.json\n D benchmark/results/qps5_threshold_sweep_20261020_133518/config.json\n D benchmark/results/qps5_threshold_sweep_20261020_133518/configs/llumnix_off.yml\n D benchmark/results/qps5_threshold_sweep_20261020_133518/configs/llumnix_threshold_2000.yml\n D benchmark/results/qps5_threshold_sweep_20261020_133518/configs/llumnix_threshold_20000.yml\n D benchmark/results/qps5_threshold_sweep_20261020_133518/configs/llumnix_threshold_5000.yml\n D benchmark/results/qps5_threshold_sweep_20261020_133518/configs/llumnix_threshold_8000.yml\n D benchmark/results/qps5_threshold_sweep_20261020_133518/environment_audit.md\n D benchmark/results/qps5_threshold_sweep_20261020_133518/plots/latency_comparison.png\n D benchmark/results/qps5_threshold_sweep_20261020_133518/plots/migration_comparison.png\n D benchmark/results/qps5_threshold_sweep_20261020_133518/report.md\n D benchmark/results/qps5_threshold_sweep_20261020_133518/server_logs/off_ray_status.txt\n D benchmark/results/qps5_threshold_sweep_20261020_133518/server_logs/threshold_20000_ray_status.txt\n D benchmark/results/qps5_threshold_sweep_20261020_133518/server_logs/threshold_2000_ray_status.txt\n D benchmark/results/qps5_threshold_sweep_20261020_133518/server_logs/threshold_5000_ray_status.txt\n D benchmark/results/qps5_threshold_sweep_20261020_133518/server_logs/threshold_8000_ray_status.txt\n D benchmark/results/qps5_threshold_sweep_20261020_133518/state.json\n M benchmark/run_baseline_4gpu.py\n M benchmark/run_ppo_batch_reuse.py\n M llumnix/backends/output_forwarder.py\n M llumnix/backends/vllm/executor.py\n M llumnix/backends/vllm/llm_engine.py\n M llumnix/backends/vllm/scheduler.py\n M llumnix/backends/vllm/worker.py\n M llumnix/entrypoints/setup.py\n M llumnix/entrypoints/vllm/api_server.py\n M llumnix/entrypoints/vllm/client.py\n M llumnix/entrypoints/vllm_v1/client.py\n M llumnix/envs.py\n M llumnix/llumlet/migration_coordinator.py\n M llumnix/queue/zmq_server.py\n M llumnix/ray_utils.py\n M llumnix/scaler.py\n M rl_scheduler/env.py\n M rl_scheduler/service_model.py\n?? benchmark/results/llumnix_causal_hifi_20261022_r1/\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/batch_config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed101/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed202/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_12_seed303/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed101/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed202/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_15_seed303/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed101/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed202/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_18_seed303/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed101/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed202/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_21_seed303/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed101/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed202/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration/qps_9_seed303/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/calibration_validation.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/collection.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/configs/\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/data_audit.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/mig_ppo_calibration.yaml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/mig_ppo_calibration_refined.yaml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/mig_ppo_calibration_system_validation.yaml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/model_comparison.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/plots/\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/refined_plots/\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/server_logs/\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/system_validation.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/system_validation_progress.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_12_seed404/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_15_seed404/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_18_seed404/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_21_seed404/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404/config.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404/configs_llumnix_on.yml\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404/state.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/validation/qps_9_seed404/worker_startup_gate_on.json\n?? benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/worker_startup_gate_on.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/analyze_pilot.py\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/configs/\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/off/config.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/off/configs/\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/off/pilot_metrics.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/off/server_logs/\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/off/state.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/off/worker_startup_gate_off.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/on/config.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/on/configs/\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/on/pilot_metrics.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/on/server_logs/\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/on/state.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/on/worker_startup_gate_on.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/paired_pilot_analysis.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/pilot_run_manifest.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/pilot_spec.json\n?? benchmark/results/ppo_migration_pilot_qps15_seed505_20261021/run_pilot.py\n?? benchmark/results/ppo_system_validation_corrected_20261021_1930/mig_ppo_calibration_system_validation.yaml\n?? benchmark/results/ppo_system_validation_corrected_20261021_1930/system_validation.json\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/mig_ppo_calibration_cli_raw.yaml\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/mig_ppo_calibration_system_validation.yaml\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/ppo_smoke/training_metrics.jsonl\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/ppo_smoke_calibration.yaml\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/ppo_smoke_cli_timesteps8/\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/ppo_smoke_config.yaml\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/ppo_smoke_short8/\n?? benchmark/results/ppo_system_validation_round1_decode_cadence_20261021/system_validation.json\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/mig_ppo_calibration_scale1_fallback.yaml\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/mig_ppo_calibration_system_validation.yaml\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/paired_cadence_trace_qps15_seed404.json.gz\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_calibration.yaml\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8/training_metrics.jsonl\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded/\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_bounded_config.yaml\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_corrected/training_metrics.jsonl\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8_corrected_config.yaml\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu_config.yaml\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_run_metadata.json\n?? benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/system_validation.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_12/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/configs/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/fixed_output_lengths.audit.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/config.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/configs/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/output_length_enforcement_audit.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/output_length_enforcement_audit_summary.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/server_logs/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/state.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/off/worker_startup_gate_off.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/pilot_spec.json\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_18/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_21/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_9/\n?? benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/run_seed505_fixed_qps.py\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/configs/\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/off/config.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/off/configs/\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/off/pilot_metrics.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/off/server_logs/\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/off/state.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/off/worker_startup_gate_off.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/on/config.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/on/configs/\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/on/pilot_metrics.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/on/server_logs/\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/on/state.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/on/worker_startup_gate_on.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/qps_15/pilot_spec.json\n?? benchmark/results/ppo_system_validation_round3_seed505_20261022/run_seed505_qps.py\n?? datasets/\n?? llumnix/metrics/causal_events.py\n?? model/\n?? rl_scheduler/causal_calibration.py\n?? rl_scheduler/causal_event_audit.py\n?? rl_scheduler/causal_event_io.py\n?? rl_scheduler/causal_system_validation.py\n?? rl_scheduler/tests/test_causal_models.py",
+    "workspace_is_volume": false,
+    "gpu_topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tPHB\tSYS\tSYS\t0-19,40-59\t0\t\tN/A\nGPU1\tPHB\t X \tSYS\tSYS\t0-19,40-59\t0\t\tN/A\nGPU2\tSYS\tSYS\t X \tPHB\t20-39,60-79\t1\t\tN/A\nGPU3\tSYS\tSYS\tPHB\t X \t20-39,60-79\t1\t\tN/A\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n"
+  },
+  "model": {
+    "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+    "max_model_len": 2112,
+    "tensor_parallel_size": 1
+  },
+  "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+  "qps_levels": [
+    18.0
+  ],
+  "model_id": {
+    "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+    "weights_sha256": "9cd8fc8c85a197b8c551d6b931b5709fe2611889d6b44945876472fecdf77cad",
+    "config_sha256": "b2388df676bbbe4f6aae6b617bdfa6e7c471c7a5b23862baae3dfbf85a5fe9ef"
+  },
+  "calibration_seeds": [
+    606,
+    909
+  ],
+  "validation_seed": 1319,
+  "validation_only_collection": true,
+  "calibration_only_collection": false,
+  "dataset_role": "batch",
+  "mode": "on",
+  "policy": "balanced",
+  "threshold": 9000.0,
+  "frequency": 1,
+  "input_profiles": [
+    256,
+    512,
+    1048
+  ],
+  "output_profiles": [
+    256,
+    512,
+    1048
+  ],
+  "request_mode_count": 9,
+  "measure_sec": 60.0,
+  "measurement_window_contract": {
+    "warmup_sec_per_run": 15.0,
+    "measurement_sec_per_run": 60.0,
+    "drain_sec_per_run": 30.0,
+    "arrival_model": "poisson",
+    "trace_ids_are_shared_across_modes": true
+  },
+  "runtime": {
+    "initial_instances": 4,
+    "tensor_parallel_size": 1,
+    "gpu_memory_utilization": 0.5,
+    "max_model_len": 2112,
+    "max_num_seqs_per_instance": 128,
+    "aggregate_max_num_seqs": 512,
+    "dtype": "half",
+    "enforce_eager": true,
+    "dispatch_policy": "load",
+    "load_metric": "remaining_steps",
+    "pair_migration_policy": "balanced",
+    "migration_backend": "rayrpc",
+    "enable_defrag": false,
+    "migrate_out_threshold": 9000.0,
+    "pair_migration_frequency": 1,
+    "routine_migration_enabled": true,
+    "placement_group_ready_timeout_sec": 60.0,
+    "init_instances_rpc_timeout_sec": 270.0
+  },
+  "workload": {
+    "arrival": "poisson",
+    "input_profiles": [
+      256,
+      512,
+      1048
+    ],
+    "output_profiles": [
+      256,
+      512,
+      1048
+    ],
+    "profile_mix": [
+      {
+        "name": "input256_output256",
+        "input_tokens": 256,
+        "output_tokens": 256,
+        "weight": 1.0
+      },
+      {
+        "name": "input256_output512",
+        "input_tokens": 256,
+        "output_tokens": 512,
+        "weight": 1.0
+      },
+      {
+        "name": "input256_output1048",
+        "input_tokens": 256,
+        "output_tokens": 1048,
+        "weight": 1.0
+      },
+      {
+        "name": "input512_output256",
+        "input_tokens": 512,
+        "output_tokens": 256,
+        "weight": 1.0
+      },
+      {
+        "name": "input512_output512",
+        "input_tokens": 512,
+        "output_tokens": 512,
+        "weight": 1.0
+      },
+      {
+        "name": "input512_output1048",
+        "input_tokens": 512,
+        "output_tokens": 1048,
+        "weight": 1.0
+      },
+      {
+        "name": "input1048_output256",
+        "input_tokens": 1048,
+        "output_tokens": 256,
+        "weight": 1.0
+      },
+      {
+        "name": "input1048_output512",
+        "input_tokens": 1048,
+        "output_tokens": 512,
+        "weight": 1.0
+      },
+      {
+        "name": "input1048_output1048",
+        "input_tokens": 1048,
+        "output_tokens": 1048,
+        "weight": 1.0
+      }
+    ],
+    "profile_cycle": true
+  },
+  "profile_mix": [
+    {
+      "name": "input256_output256",
+      "input_tokens": 256,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input256_output512",
+      "input_tokens": 256,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input256_output1048",
+      "input_tokens": 256,
+      "output_tokens": 1048,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output256",
+      "input_tokens": 512,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output512",
+      "input_tokens": 512,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output1048",
+      "input_tokens": 512,
+      "output_tokens": 1048,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output256",
+      "input_tokens": 1048,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output512",
+      "input_tokens": 1048,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output1048",
+      "input_tokens": 1048,
+      "output_tokens": 1048,
+      "weight": 1.0
+    }
+  ],
+  "warmup_sec": 15.0,
+  "drain_sec": 30.0,
+  "request_timeout_sec": null,
+  "arrival_model": "poisson",
+  "reused_four_instance_server": true,
+  "server_startups_for_entire_dataset": 1,
+  "causal_telemetry": true,
+  "causal_event_schema_version": 1,
+  "ignore_eos": false,
+  "engine_latency_measurement": {
+    "metric": "executor_iteration_wall_ms",
+    "clock": "time.perf_counter",
+    "scope": "from Ray executor dispatch through awaited worker result",
+    "ray_spmd_and_non_spmd": true,
+    "cuda_synchronize_added": false
+  },
+  "configs": {
+    "on": "configs/llumnix_on.yml"
+  },
+  "git_commit": "92f05f545943b2f984bde1ddd30c7bf8e413da56",
+  "git_dirty_diff_sha256": "9ba98c6e8019408c7f89210754c68228b90d6d513da2fe8d731ec82291fd6c8b",
+  "instrumented_source_sha256": "622f922b49f56349615c9a91616e8068a10917d456278939ebf168c26740afe3",
+  "source_file_sha256": {
+    "benchmark/run_baseline_4gpu.py": "523fae6e65ba502dd01406db8514073890c17eea283f17fc75d6f774dc3beb91",
+    "benchmark/run_ppo_batch_reuse.py": "14189edf28f0cb534f53d300309ae322638005905a967d0bd424f610ad9cbc8f",
+    "llumnix/metrics/causal_events.py": "bc3be7b1bb028e4f6337b87d5b26ebbc240fb4c34c934acf8a4b1fa4e1c270c5",
+    "llumnix/backends/vllm/scheduler.py": "a695a298b1cff1c9a833284f60dc89755d8200078da2f324d362a9e6ec45d9b6",
+    "llumnix/backends/vllm/llm_engine.py": "49c7c6a0df6de762b6f1eecab2680deac898fab6c7911bbcf9ad2b42bc07f1bf",
+    "llumnix/backends/vllm/executor.py": "55869f3f1ed722d9dea4ffd5e9f27776208211afd308006df6565ee11145515e",
+    "llumnix/backends/vllm/worker.py": "a1943e817c22b463776007fc17ce31d53fa5b9158280dbc981065b9c934bb86f",
+    "llumnix/llumlet/migration_coordinator.py": "ca68d9a8626fd0e3d96779400f0432fcbc485eaadfee5cc09ddaea3405f0d1e2",
+    "llumnix/entrypoints/vllm/api_server.py": "71811db74922eb342b1d275ff9201fce62b84fdc534b1948f5d78d859f8fb2b5",
+    "llumnix/entrypoints/setup.py": "d084b7f226024af5689e9ccb109c6aa5b0f7314c42830442756d9000e8da1562",
+    "llumnix/scaler.py": "4e026b816adedd64a8c6b45b192a163e000584f71d71383125abc8e4653e34c4",
+    "llumnix/ray_utils.py": "8c99a5dd0d7625b60aa16a29f9a5e4a9a6297a6a1ae12367f6d469046e54311f",
+    "llumnix/envs.py": "0b274b70a32ef3d0e171104fe020481535e6e5f0a75afa4ee84258789921f639",
+    "rl_scheduler/service_model.py": "cd48d7396d7e4cef2a6280fafb8c2a1f15a79451105615d2279a0272876b7816",
+    "rl_scheduler/env.py": "65e6359f65b6253dda447442b92088731f63c46a1bc679b41a5eac4e101a3808",
+    "rl_scheduler/causal_calibration.py": "60b4001a120a58f6bf7b9d03ed222e63041ee97467866f4f0389c793503b2c90",
+    "rl_scheduler/causal_event_io.py": "7098f8cab9e9ecb610eee3be0cbac361ca7ea483d5f8bba0bf5e053218eac1b9",
+    "rl_scheduler/causal_event_audit.py": "73bf2e207667a84a718ca91134c4734db9d4c248d075ec9fb550f31e90e93cf8",
+    "rl_scheduler/causal_system_validation.py": "f848cd6fad823d3832419d378c65b6a6c9681a5ef5a6f824c1f8e6245cd1e847"
+  },
+  "output_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/llumnix_causal_hifi_20261022_r1/queue_stage_seed1319_on_pg60_rpc270",
+  "status": "complete",
+  "effective_config_verified": true,
+  "all_measurement_requests_sent": true,
+  "completed_formal_runs": 1,
+  "causal_event_inventory": [
+    {
+      "path": "causal_events/events_5d430c52a833_429407.jsonl.gz",
+      "bytes": 5355114,
+      "sha256": "25878a0fabfe75e062318ca5063ad7b0ca80817e83f1cf5df77a231de0e10739",
+      "encoding": "gzip",
+      "uncompressed_bytes": 90012637,
+      "uncompressed_sha256": "1e0a8bf804b852ff351adb0553ee667fc9e6555a9a2a2756d1f319e2098a4b91"
+    },
+    {
+      "path": "causal_events/events_5d430c52a833_432806.jsonl.gz",
+      "bytes": 6890799,
+      "sha256": "eebc7550697da414dd1ae14a44a62d73dd15bf5d909e0bbc009c4c28d5fed051",
+      "encoding": "gzip",
+      "uncompressed_bytes": 101873985,
+      "uncompressed_sha256": "1518676af8e3d3b8ff721649a842cac1c5e0fa544723a3102e7806c5f9d5c6e3"
+    },
+    {
+      "path": "causal_events/events_5d430c52a833_432807.jsonl.gz",
+      "bytes": 6348574,
+      "sha256": "948cd15b6d86b70881ec95b012d4b8b91d746c26c27fd9d67d1c9f36f55d05c9",
+      "encoding": "gzip",
+      "uncompressed_bytes": 107936223,
+      "uncompressed_sha256": "2616de2d6e857a98e713fe4500b0c1bff656603716b3c27f2738eed375911579"
+    },
+    {
+      "path": "causal_events/events_5d430c52a833_432930.jsonl.gz",
+      "bytes": 1847865,
+      "sha256": "05c39392904fee581d354a487a7635644f69bf563a19e7eb6a4f8511f10bf4a9",
+      "encoding": "gzip",
+      "uncompressed_bytes": 28373163,
+      "uncompressed_sha256": "dda628b51fcb5665f0ee86f68ae756f396b6e92a9da4c54cb76e13ea41b90de8"
+    },
+    {
+      "path": "causal_events/events_5d430c52a833_432993.jsonl.gz",
+      "bytes": 1843311,
+      "sha256": "9cf04226d582411ed9d8606e090def3d3e1d778a613deeb230d4c09088de604d",
+      "encoding": "gzip",
+      "uncompressed_bytes": 28552999,
+      "uncompressed_sha256": "017ef6e6eb08d5b8afb3476515ee3435e93bef32e0af8b5305c0d37efeba913d"
+    }
+  ]
+}

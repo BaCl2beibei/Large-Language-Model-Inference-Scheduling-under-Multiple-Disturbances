@@ -1,0 +1,77 @@
+{
+  "experiment_id": "mig_ppo_seed505_fixed_output_lengths_round3",
+  "source_calibration_config": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/batch_config.json",
+  "qps": 12.0,
+  "seed": 505,
+  "measurement_sec": 60.0,
+  "drain_sec_after_arrivals": 30.0,
+  "shared_result_horizon_sec": 90.0,
+  "warmup_sec": 15.0,
+  "max_model_len": 2112,
+  "max_num_seqs_per_instance": 128,
+  "gpu_memory_utilization": 0.5,
+  "enforce_eager": true,
+  "profile_mix": [
+    {
+      "name": "input256_output256",
+      "input_tokens": 256,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input256_output512",
+      "input_tokens": 256,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input256_output1048",
+      "input_tokens": 256,
+      "output_tokens": 1048,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output256",
+      "input_tokens": 512,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output512",
+      "input_tokens": 512,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input512_output1048",
+      "input_tokens": 512,
+      "output_tokens": 1048,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output256",
+      "input_tokens": 1048,
+      "output_tokens": 256,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output512",
+      "input_tokens": 1048,
+      "output_tokens": 512,
+      "weight": 1.0
+    },
+    {
+      "name": "input1048_output1048",
+      "input_tokens": 1048,
+      "output_tokens": 1048,
+      "weight": 1.0
+    }
+  ],
+  "profile_cycle": true,
+  "migration_policy": "balanced",
+  "migrate_out_threshold": 9000.0,
+  "pair_migration_frequency": 1,
+  "mode_config_difference": "MANAGER.ENABLE_ROUTINE_MIGRATION only",
+  "output_length_policy": "per-request realized output lengths sampled from calibration seeds 101/202/303 successes; forced with min_tokens=max_tokens; same manifest in OFF and ON",
+  "generation_seed_policy": "request seed = experiment seed * 1,000,000 + numeric trace request suffix; same seed in OFF and ON"
+}

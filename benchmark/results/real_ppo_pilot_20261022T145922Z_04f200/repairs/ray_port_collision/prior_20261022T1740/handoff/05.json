@@ -1,0 +1,289 @@
+{
+  "stage": "05_live_smoke",
+  "status": "failed",
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "created_at_utc": "2026-10-22T17:29:47.024819+00:00",
+  "scope": "按固定命令执行 P1 telemetry live smoke；Ray 服务启动失败后依协议停止，未进入 shadow、active、overhead。",
+  "changed_files": [
+    "handoff/05.md",
+    "handoff/05.json",
+    "reviews/smoke05/preflight_dryruns.json",
+    "reviews/smoke05/dryrun_telemetry.stdout.log",
+    "reviews/smoke05/dryrun_telemetry.stderr.log",
+    "reviews/smoke05/dryrun_shadow.stdout.log",
+    "reviews/smoke05/dryrun_shadow.stderr.log",
+    "reviews/smoke05/dryrun_active.stdout.log",
+    "reviews/smoke05/dryrun_active.stderr.log",
+    "reviews/smoke05/dryrun_overhead.stdout.log",
+    "reviews/smoke05/dryrun_overhead.stderr.log",
+    "reviews/smoke05/telemetry_live.log",
+    "reviews/smoke05/telemetry_server_supervisor.log",
+    "reviews/smoke05/telemetry_guard_supervisor.log",
+    "reviews/smoke05/final_state.json",
+    "smoke_runs/05_telemetry_6101/intent.json",
+    "smoke_runs/05_telemetry_6101/failure.json",
+    "experiment_clock.json",
+    "owned_processes.json",
+    "service_session.json",
+    "services/real_ppo_fcda2e237b.sh",
+    "services/real_ppo_fcda2e237b.conf",
+    "services/real_ppo_guard_fcda2e237b.sh",
+    "services/real_ppo_guard_fcda2e237b.conf",
+    "/etc/supervisor/conf.d/real_ppo_fcda2e237b.conf",
+    "/etc/supervisor/conf.d/real_ppo_guard_fcda2e237b.conf"
+  ],
+  "source_hashes": {
+    "review_source_hash": "7439262de396a9f5d5678f686b5c92d9fd291c9a7fd60baa66dd32b751844065",
+    "review_config_hash": "28e28f55aed6b2ddb57ea52d0c98e62d7bcd43945a2c919d87656d854723e612",
+    "review_sha256": "6da8e984f34bf860b3ab140ae1bfabc973b30a030ab6829883f203bde552dbc5",
+    "relevant_files": {
+      "prompt": "3c74c9e58e999eb0be568b6896b5a6674120baf7a55d0ac9658fba2c35bf60ff",
+      "execution_plan": "b344e6a36cd63072e0c99a6bd9012bd4442bef1071a10a74e634ad899616b145",
+      "run_real_ppo.py": "39771520aedf9f36b5b5c03f74e1cd213cf9c7700bc5e87f28930ae893c9c688",
+      "real_service.py": "9670106a3e2c919b25a3bd3f54b24d468c1879f0d22874d69021ae8a5309c2f1",
+      "real_budget.py": "20ad5fda2bc3d25560477c30ceb135577a479a12ddafa7dd4ba14552f561be98",
+      "config": "928bcc7a1af112a979f6ca536d9b5732e30d781026fc1e992ad2be2df231fd5b",
+      "llumnix_config": "58c3594e375bb0a097be64e7e08f9a8cc30a5712dd9fd976b31e47410152d60c",
+      "smoke_spec": "7e1f0a1c6dff8f636c4ca7b22ab87e00ea93228fcd37949219aff69d120a2925",
+      "command_spec": "8c10d4ec380be437a4bdd1b9447ffb4f47ab4a5901aa792194d2b68ba3c95ee8",
+      "trace_manifest": "8e5125e46c0333144e388dac0b329ceecc4e4f824c2543bd00383f1f129f7068",
+      "telemetry_trace": "ee24eaaf5f50f4484533c75cb7919523bcd258e61a2aa5455db5d5aca629e581",
+      "active_pointer": "a838029bf818bb637cab6128f4513d83a2f151e5a7f88cd86ef1f80efbbb3210",
+      "bridge_review": "6da8e984f34bf860b3ab140ae1bfabc973b30a030ab6829883f203bde552dbc5",
+      "p1_offline_gate": "77dd72c690e0edf24c77621496322335c4a7e2b9ee100d77288b29fcb9b67875",
+      "p2_offline_gate": "ba0826380105f01a0b035a9d3279926068ec25932cfbbad308795fd7235e5161"
+    }
+  },
+  "actual_commands_and_exit_codes": [
+    {
+      "label": "telemetry_dry_run",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_telemetry_6101",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.15884096099762246,
+      "ready_for_live": true,
+      "blocked_reasons": [],
+      "stdout_log": "reviews/smoke05/dryrun_telemetry.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_telemetry.stderr.log"
+    },
+    {
+      "label": "shadow_dry_run",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_shadow_6102",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.16334972600452602,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "stdout_log": "reviews/smoke05/dryrun_shadow.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_shadow.stderr.log"
+    },
+    {
+      "label": "active_dry_run",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "active",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_active_6103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.14214162301504984,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "stdout_log": "reviews/smoke05/dryrun_active.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_active.stderr.log"
+    },
+    {
+      "label": "overhead_dry_run",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "overhead",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_overhead_6104",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "elapsed_sec": 0.17066218401305377,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "stdout_log": "reviews/smoke05/dryrun_overhead.stdout.log",
+      "stderr_log": "reviews/smoke05/dryrun_overhead.stderr.log"
+    },
+    {
+      "label": "telemetry_live_fixed_command",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_telemetry_6101"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "exit_code": 130,
+      "reason": "向本次 runner 发送 SIGINT；已在服务日志确认 Ray start 先以 exit code 1 失败，停止等待 readiness timeout 并触发 finally 清理。",
+      "log": "reviews/smoke05/telemetry_live.log"
+    },
+    {
+      "label": "Ray head startup child command",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/ray",
+        "start",
+        "--head",
+        "--node-ip-address=127.0.0.1",
+        "--port=16379",
+        "--temp-dir=/tmp/realppo_04f200",
+        "--num-gpus=4",
+        "--num-cpus=12",
+        "--include-dashboard=false",
+        "--disable-usage-stats"
+      ],
+      "exit_code": 1,
+      "reason": "Ray 拒绝端口 16379：与默认 worker_ports 10002–19999 重叠。",
+      "log": "reviews/smoke05/telemetry_server_supervisor.log"
+    }
+  ],
+  "checks_and_evidence": {
+    "04_review_current_and_passed": true,
+    "fixed_dry_runs_exit_zero": true,
+    "telemetry_ready_for_live": true,
+    "budget_guard_implemented_CPU_mock_verified": true,
+    "GPU_available_before_start": true,
+    "telemetry_request_lifecycle_completed": false,
+    "shadow_zero_migration_checked": false,
+    "active_migration_terminals_checked": false,
+    "overhead_pair_checked": false,
+    "live_gates_generated": false,
+    "cleanup_completed": true,
+    "cleanup_state": "server EXITED after startup failure; guard STOPPED; owned process ledger empty; no Ray/vLLM/service runner processes; four GPUs at 1 MiB and 0%; no compute apps."
+  },
+  "tests": {
+    "status": "not_run",
+    "reason": "05 固定步骤执行 smoke；没有运行测试套件，未改代码。",
+    "prior_review_tests_not_repeated": true
+  },
+  "observed_outcome": {
+    "failure": "Ray GCS port 16379 overlaps Ray worker port range 10002–19999, so ray start exited 1.",
+    "model_loaded": false,
+    "requests_sent": 0,
+    "migrations_attempted": 0,
+    "p1_live_gate_created": false,
+    "p2_shadow_live_gate_created": false,
+    "p2_active_live_gate_created": false,
+    "p2_live_gate_created": false,
+    "gpu_compute_processes_observed": false,
+    "task_experiment_wall_sec": 220.2929184436798,
+    "task_experiment_gpu_hours_observed": 0.0,
+    "four_gpu_wall_equivalent_hours": 0.19216502798928156,
+    "live_service_attempt_wall_sec": 52.78540658950806,
+    "post_cleanup_handoff_wall_sec": 167.50751185417175
+  },
+  "cleanup": {
+    "status": "passed",
+    "supervisor_status": "real_ppo_fcda2e237b              EXITED    Oct 22 05:26 PM\nreal_ppo_guard_fcda2e237b        STOPPED   Oct 22 05:27 PM\n",
+    "owned_processes_remaining": 0,
+    "matching_live_processes": [],
+    "gpu_status": "0, NVIDIA GeForce RTX 3060, 1 MiB, 12288 MiB, 0 %\n1, NVIDIA GeForce RTX 3060, 1 MiB, 12288 MiB, 0 %\n2, NVIDIA GeForce RTX 3060, 1 MiB, 12288 MiB, 0 %\n3, NVIDIA GeForce RTX 3060, 1 MiB, 12288 MiB, 0 %\n",
+    "compute_app_status": ""
+  },
+  "remaining_budget": {
+    "total_experiment_wall_time_sec": 28579.70708155632,
+    "P0_P3_sec": 6979.70708155632,
+    "P4_sec": 7200.0,
+    "P5_sec": 14400.0
+  },
+  "remaining_budget_as_of_utc": "2026-10-22T17:30:34.838912+00:00",
+  "unresolved": [
+    "固定 smoke 配置的 Ray port=16379 与 Ray 默认 worker_ports 冲突，阻止服务启动。",
+    "本步骤不允许修改代码/配置/端口或重试；需在另一个授权步骤处理并重新审查。",
+    "P1 telemetry 未通过，所以 shadow/active/overhead 未执行，真实 live gates 未生成。"
+  ],
+  "next_step": {
+    "step": "stop_after_05_handoff",
+    "executable": false,
+    "reason": "用户要求完成交接即停止；且 telemetry 启动失败，当前 05 prompt 禁止自行修复或重跑。"
+  },
+  "evidence_hashes": {
+    "reviews/smoke05/preflight_dryruns.json": "f98fbb6eb23baf8e58ade85fc69f8ed7e2403bae3845192e74f8dbaf18832052",
+    "reviews/smoke05/dryrun_telemetry.stdout.log": "c915afe59748fc552bbf8ece1dde84d5fa31b1a18b72d10840374bfe32ab435e",
+    "reviews/smoke05/dryrun_telemetry.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/smoke05/dryrun_shadow.stdout.log": "8f36b9c44bfbee68f969b586d215ff57d382ebdc947c05d7f3dc4d541ab9f187",
+    "reviews/smoke05/dryrun_shadow.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/smoke05/dryrun_active.stdout.log": "bbb514726215a68039039879ffaab597805b001bcee53c33087c5a2bf2c5f1a2",
+    "reviews/smoke05/dryrun_active.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/smoke05/dryrun_overhead.stdout.log": "302147d087f930ec92dc045e4469c73e6aa823eaa89abe1e8a8a9f7f7df1b6b0",
+    "reviews/smoke05/dryrun_overhead.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/smoke05/telemetry_live.log": "be253bd272fda2c13b8682ac3900bb8658aa8cc34b0c619f953972156818e504",
+    "reviews/smoke05/telemetry_server_supervisor.log": "84669d080d2f172534605ee291cb36a9bb425dade2acc748feee7645fab85605",
+    "reviews/smoke05/telemetry_guard_supervisor.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reviews/smoke05/final_state.json": "fb75bd4f03601b0683a5462c98a22790d18cbf913330346ea593720c2e28f2cc",
+    "smoke_runs/05_telemetry_6101/intent.json": "4b408434d04e9c3cb3a4a472e802ec4ce6546e26e6d7bf787b1d885b4250f288",
+    "smoke_runs/05_telemetry_6101/failure.json": "6362eabf60d4d77411bfc033c69062e1bc32a15768ecbeefb84acc5b959dc5fc",
+    "experiment_clock.json": "5778bb91bfd368e9dcc6e6f94263ca4f38903e3ed01371426be1ce507dc88acd",
+    "owned_processes.json": "b1c7edd7ed57c46d81e59e6186e8fd4439207b16f7d27c8ada316341152e561b",
+    "service_session.json": "8975bb50470d333feac0c040a6411c6c28322054edcfbc13dbf67f2dfef6a649"
+  },
+  "hash_algorithm": "SHA256 file bytes; relevant source/config files were checked against passed 04 bridge review by the live CLI dry-run."
+}

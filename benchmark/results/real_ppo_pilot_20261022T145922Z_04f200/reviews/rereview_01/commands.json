@@ -1,0 +1,118 @@
+[
+  {
+    "command": "original review suite via run_review_tests.py (migration_chain output redirected)",
+    "exit_code": 0,
+    "tests": 9,
+    "elapsed_sec": 0.13412526895990595,
+    "log": "reviews/rereview_01/original_9.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_repairs",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.7772338680224493,
+    "log": "reviews/rereview_01/repair_regressions.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "telemetry",
+      "--mode",
+      "shadow",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_telemetry_6101",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.19039238896220922,
+    "log": "reviews/rereview_01/dryrun_telemetry.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "bridge",
+      "--mode",
+      "shadow",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_shadow_6102",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.18319098796928301,
+    "log": "reviews/rereview_01/dryrun_shadow.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "bridge",
+      "--mode",
+      "active",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_active_6103",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.14759527903515846,
+    "log": "reviews/rereview_01/dryrun_active.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "bridge",
+      "--mode",
+      "overhead",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_overhead_6104",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.13218626100569963,
+    "log": "reviews/rereview_01/dryrun_overhead.log"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_runner",
+      "rl_scheduler.tests.test_real_env.EnvironmentTests.test_cleanup_timeout_and_controller_exit_are_invalid",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.7460654620081186,
+    "log": "reviews/rereview_01/integration.log"
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "command": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_metrics",
+      "-v"
+    ],
+    "exit_code": 0,
+    "wall_time_sec": 1.3733846200047992,
+    "log": "p1_evidence/unit_and_http.log",
+    "log_sha256": "eb4766f23ff52a37eef34e05163fdb562b056fc07a0f263bd1e2447c92ebe0d4"
+  },
+  {
+    "command": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "py_compile",
+      "rl_scheduler/real_metrics.py",
+      "rl_scheduler/real_client.py",
+      "rl_scheduler/tests/test_real_metrics.py",
+      "llumnix/metrics/causal_events.py",
+      "llumnix/entrypoints/vllm/real_metrics_stream.py",
+      "llumnix/entrypoints/vllm/api_server.py"
+    ],
+    "exit_code": 0,
+    "wall_time_sec": 0.06686846702359617,
+    "log": "p1_evidence/compile.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "wall_time_sec": 0.08091141597833484,
+    "log": "p1_evidence/diff_check.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "command": [
+      "nvidia-smi",
+      "--query-compute-apps=pid,process_name,used_memory",
+      "--format=csv,noheader"
+    ],
+    "exit_code": 0,
+    "wall_time_sec": 0.10195574501994997,
+    "log": "p1_evidence/gpu_inventory_only.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

@@ -1,0 +1,444 @@
+{
+  "budget_clock_started": false,
+  "captured_at_utc": "2026-10-22T14:59:28.249007+00:00",
+  "current_uid": 0,
+  "current_user": "root",
+  "git": {
+    "head": "92f05f545943b2f984bde1ddd30c7bf8e413da56",
+    "head_exit_code": 0,
+    "p0_prompt_sha256": "fd8bd1a5ced3c0a8cb692bb9c14ed3321218addd95f5bb66cc6c459e35ef1fb1",
+    "status_command_exit_code": 0,
+    "status_counts": {
+      " D": 310,
+      " M": 18,
+      "??": 1266
+    },
+    "taskbook_sha256": "b344e6a36cd63072e0c99a6bd9012bd4442bef1071a10a74e634ad899616b145",
+    "tracked_changed_count": 328,
+    "tracked_diff_exit_code": 0,
+    "untracked_path_count": 1266
+  },
+  "gpu": {
+    "compute_pids": [],
+    "compute_process_query_exit_code": 0,
+    "compute_processes_raw": [],
+    "devices_raw": [
+      "0, NVIDIA GeForce RTX 3060, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 12288 MiB, 1 MiB, 0 %",
+      "1, NVIDIA GeForce RTX 3060, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 12288 MiB, 1 MiB, 0 %",
+      "2, NVIDIA GeForce RTX 3060, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 12288 MiB, 1 MiB, 0 %",
+      "3, NVIDIA GeForce RTX 3060, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 12288 MiB, 1 MiB, 0 %"
+    ],
+    "query_exit_code": 0
+  },
+  "gpu_experiment_started_by_p0": false,
+  "inference_configuration": {
+    "interpretation": "Historical saved configurations only; no live inference service is running. The last pilot forced exact output lengths and is not reused in the new draft.",
+    "latest_saved_calibration": {
+      "dataset_role": "batch",
+      "max_model_len": 2112,
+      "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B",
+      "path": "benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/batch_config.json",
+      "profile_mix": [
+        {
+          "input_tokens": 256,
+          "name": "input256_output256",
+          "output_tokens": 256,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 256,
+          "name": "input256_output512",
+          "output_tokens": 512,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 256,
+          "name": "input256_output1048",
+          "output_tokens": 1048,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 512,
+          "name": "input512_output256",
+          "output_tokens": 256,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 512,
+          "name": "input512_output512",
+          "output_tokens": 512,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 512,
+          "name": "input512_output1048",
+          "output_tokens": 1048,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 1048,
+          "name": "input1048_output256",
+          "output_tokens": 256,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 1048,
+          "name": "input1048_output512",
+          "output_tokens": 512,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 1048,
+          "name": "input1048_output1048",
+          "output_tokens": 1048,
+          "weight": 1.0
+        }
+      ],
+      "sha256": "1a7c37663f03698f31db8b691077899385d729a994b8db2768d96754645ff6aa",
+      "tensor_parallel_size": 1
+    },
+    "latest_saved_validation": {
+      "drain_sec_after_arrivals": 30.0,
+      "enforce_eager": true,
+      "experiment_id": "mig_ppo_seed505_fixed_output_lengths_round3",
+      "gpu_memory_utilization": 0.5,
+      "historical_output_length_policy": "per-request realized output lengths sampled from calibration seeds 101/202/303 successes; forced with min_tokens=max_tokens; same manifest in OFF and ON",
+      "max_model_len": 2112,
+      "max_num_seqs_per_instance": 128,
+      "measurement_sec": 60.0,
+      "path": "benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/pilot_spec.json",
+      "profile_mix": [
+        {
+          "input_tokens": 256,
+          "name": "input256_output256",
+          "output_tokens": 256,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 256,
+          "name": "input256_output512",
+          "output_tokens": 512,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 256,
+          "name": "input256_output1048",
+          "output_tokens": 1048,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 512,
+          "name": "input512_output256",
+          "output_tokens": 256,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 512,
+          "name": "input512_output512",
+          "output_tokens": 512,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 512,
+          "name": "input512_output1048",
+          "output_tokens": 1048,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 1048,
+          "name": "input1048_output256",
+          "output_tokens": 256,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 1048,
+          "name": "input1048_output512",
+          "output_tokens": 512,
+          "weight": 1.0
+        },
+        {
+          "input_tokens": 1048,
+          "name": "input1048_output1048",
+          "output_tokens": 1048,
+          "weight": 1.0
+        }
+      ],
+      "qps": 15.0,
+      "seed": 505,
+      "sha256": "9687f46fe5e35e9c26f2bd055422858e4f47230caeeff32f53b8f48666170b5f"
+    },
+    "live_inference_process_detected": false,
+    "saved_llumnix_on_config": {
+      "instance": {
+        "ENABLE_DEFRAG": false,
+        "MAX_MIGRATION_CONCURRENCY": 1,
+        "MIGRATION_BACKEND": "rayrpc",
+        "MIGRATION_LOAD_METRIC": "remaining_steps",
+        "REQUEST_MIGRATION_POLICY": "SR"
+      },
+      "manager": {
+        "DISPATCH_LOAD_METRIC": "remaining_steps",
+        "DISPATCH_POLICY": "load",
+        "ENABLE_PRE_STOP_MIGRATION": false,
+        "ENABLE_ROUTINE_MIGRATION": true,
+        "ENABLE_SCALING": false,
+        "INITIAL_INSTANCES": 4,
+        "MIGRATE_OUT_THRESHOLD": 9000.0,
+        "PAIR_MIGRATION_FREQUENCY": 1,
+        "PAIR_MIGRATION_POLICY": "balanced",
+        "POLLING_INTERVAL": 0.05
+      },
+      "path": "benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/configs/llumnix_on.yml",
+      "server": {
+        "HOST": "127.0.0.1",
+        "LAUNCH_RAY_CLUSTER": true,
+        "PORT": 8080,
+        "RAY_CLUSTER_PORT": 6379,
+        "REQUEST_OUTPUT_QUEUE_TYPE": "zmq"
+      },
+      "sha256": "f05ad276b51a8c0033a21d56b9b19814d1a4716abb24d0375f1489683b8ab100"
+    }
+  },
+  "models_loaded_by_p0": false,
+  "processes": {
+    "inference_like": [],
+    "interpretation": "No Ray/inference process or GPU compute PID observed. Long-lived Python children belong to managed service trees; the user-owned Python child is under the supervised syncthing wrapper. No process was stopped.",
+    "python_and_related": [
+      {
+        "comm": "python3",
+        "cwd": "/workspace",
+        "elapsed_seconds": 122376,
+        "parent_process": {
+          "comm": "cron.sh",
+          "ppid": 705,
+          "user": "root"
+        },
+        "pid": 757,
+        "ppid": 750,
+        "user": "root"
+      },
+      {
+        "comm": "python3",
+        "cwd": "/workspace",
+        "elapsed_seconds": 122376,
+        "parent_process": {
+          "comm": "caddy.sh",
+          "ppid": 705,
+          "user": "root"
+        },
+        "pid": 758,
+        "ppid": 749,
+        "user": "root"
+      },
+      {
+        "comm": "python3",
+        "cwd": "/workspace",
+        "elapsed_seconds": 122376,
+        "parent_process": {
+          "comm": "instance_portal",
+          "ppid": 705,
+          "user": "root"
+        },
+        "pid": 766,
+        "ppid": 751,
+        "user": "root"
+      },
+      {
+        "comm": "python3",
+        "cwd": "/workspace",
+        "elapsed_seconds": 122376,
+        "parent_process": {
+          "comm": "tunnel_manager.",
+          "ppid": 705,
+          "user": "root"
+        },
+        "pid": 777,
+        "ppid": 763,
+        "user": "root"
+      },
+      {
+        "comm": "python3",
+        "cwd": "unavailable",
+        "elapsed_seconds": 122376,
+        "parent_process": {
+          "comm": "syncthing.sh",
+          "ppid": 705,
+          "user": "user"
+        },
+        "pid": 779,
+        "ppid": 756,
+        "user": "user"
+      },
+      {
+        "comm": "python3",
+        "cwd": "/workspace",
+        "elapsed_seconds": 122376,
+        "parent_process": {
+          "comm": "tensorboard.sh",
+          "ppid": 705,
+          "user": "root"
+        },
+        "pid": 787,
+        "ppid": 759,
+        "user": "root"
+      },
+      {
+        "comm": "python3",
+        "cwd": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream",
+        "elapsed_seconds": 392,
+        "parent_process": {
+          "comm": "bash",
+          "ppid": 423433,
+          "user": "root"
+        },
+        "pid": 452382,
+        "ppid": 452370,
+        "user": "root"
+      }
+    ],
+    "ray_like": []
+  },
+  "project_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream",
+  "python_environments": [
+    {
+      "executable": "/usr/bin/python3",
+      "exit_code": 0,
+      "label": "system_python3",
+      "path": "/usr/bin/python3",
+      "selected_distributions": {
+        "PyYAML": "6.0.3",
+        "gymnasium": null,
+        "llumnix": null,
+        "numpy": "2.5.4",
+        "pandas": null,
+        "pytest": null,
+        "ray": null,
+        "safetensors": null,
+        "torch": null,
+        "transformers": null,
+        "vllm": null
+      },
+      "version": "3.12.3"
+    },
+    {
+      "executable": "/venv/main/bin/python",
+      "exit_code": 0,
+      "label": "vast_main",
+      "path": "/venv/main/bin/python",
+      "selected_distributions": {
+        "PyYAML": "6.0.3",
+        "gymnasium": null,
+        "llumnix": null,
+        "numpy": "2.5.4",
+        "pandas": null,
+        "pytest": "9.1.1",
+        "ray": null,
+        "safetensors": null,
+        "torch": "2.6.0+cpu",
+        "transformers": null,
+        "vllm": null
+      },
+      "version": "3.12.15"
+    },
+    {
+      "executable": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "exit_code": 0,
+      "label": "project_venv",
+      "path": ".venv/bin/python",
+      "selected_distributions": {
+        "PyYAML": "6.0.3",
+        "gymnasium": null,
+        "llumnix": "0.1.dev230+g09e0a10.d20261020",
+        "numpy": "1.26.4",
+        "pandas": "2.3.3",
+        "pytest": null,
+        "ray": "2.47.1",
+        "safetensors": "0.8.0",
+        "torch": "2.4.0",
+        "transformers": "4.46.3",
+        "vllm": "0.6.3.post1"
+      },
+      "version": "3.10.12"
+    }
+  ],
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "seed_search_summary": {
+    "content_matches": 0,
+    "filename_matches": 0,
+    "search_method": "exact seed metadata fields/declarations and result paths; broad numeric scan superseded",
+    "selected_candidates": {
+      "development": [
+        4101,
+        4102,
+        4103
+      ],
+      "final": [
+        5101,
+        5102,
+        5103
+      ],
+      "opportunity": [
+        2101,
+        2102,
+        2103
+      ],
+      "training_range": "3100-3199"
+    }
+  },
+  "services": {
+    "supervisor_status_exit_code": 3,
+    "supervisor_status_lines": [
+      "caddy                            RUNNING   pid 749, uptime 1 day, 9:59:36",
+      "cron                             RUNNING   pid 750, uptime 1 day, 9:59:36",
+      "instance_portal                  RUNNING   pid 751, uptime 1 day, 9:59:36",
+      "jupyter                          EXITED    Oct 21 04:59 AM",
+      "pyworker                         EXITED    Oct 21 04:59 AM",
+      "syncthing                        RUNNING   pid 756, uptime 1 day, 9:59:36",
+      "tensorboard                      RUNNING   pid 759, uptime 1 day, 9:59:36",
+      "tunnel_manager                   RUNNING   pid 763, uptime 1 day, 9:59:36"
+    ],
+    "tcp_listener_exit_code": 0,
+    "tcp_listener_lines": [
+      "State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                     ",
+      "LISTEN 0      128        127.0.0.1:36867      0.0.0.0:*    users:((\"code-6d62b1d5da\",pid=1576,fd=11)) ",
+      "LISTEN 0      128        127.0.0.1:45673      0.0.0.0:*    users:((\"code-6d62b1d5da\",pid=420938,fd=9))",
+      "LISTEN 0      128          0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=445,fd=4))              ",
+      "LISTEN 0      128        127.0.0.1:16006      0.0.0.0:*    users:((\"tensorboard\",pid=850,fd=10))      ",
+      "LISTEN 0      2048       127.0.0.1:11112      0.0.0.0:*    users:((\"fastapi\",pid=846,fd=12))          ",
+      "LISTEN 0      2048       127.0.0.1:11111      0.0.0.0:*    users:((\"fastapi\",pid=844,fd=13))          ",
+      "LISTEN 0      4096       127.0.0.1:18384      0.0.0.0:*                                               ",
+      "LISTEN 0      4096       127.0.0.1:20241      0.0.0.0:*    users:((\"cloudflared\",pid=1254,fd=10))     ",
+      "LISTEN 0      4096       127.0.0.1:20243      0.0.0.0:*    users:((\"cloudflared\",pid=1374,fd=9))      ",
+      "LISTEN 0      4096       127.0.0.1:20242      0.0.0.0:*    users:((\"cloudflared\",pid=1352,fd=9))      ",
+      "LISTEN 0      4096               *:8384             *:*    users:((\"caddy\",pid=1288,fd=8))            ",
+      "LISTEN 0      4096               *:10785            *:*                                               ",
+      "LISTEN 0      4096               *:6006             *:*    users:((\"caddy\",pid=1288,fd=6))            ",
+      "LISTEN 0      4096               *:1111             *:*    users:((\"caddy\",pid=1288,fd=3))            ",
+      "LISTEN 0      128             [::]:22            [::]:*    users:((\"sshd\",pid=445,fd=5))              ",
+      "LISTEN 0      1024           [::1]:34699         [::]:*    users:((\"server\",pid=990,fd=6))            "
+    ]
+  },
+  "taskbook_new_files_and_cli": {
+    "project_venv_is_existing_llumnix_env": true,
+    "real_test_file_count": 0,
+    "real_test_files_present": [],
+    "required_files_absent": [
+      "rl_scheduler/real_env.py",
+      "rl_scheduler/real_bridge.py",
+      "rl_scheduler/real_observation.py",
+      "rl_scheduler/real_metrics.py",
+      "rl_scheduler/real_reward.py",
+      "rl_scheduler/real_rollout.py",
+      "rl_scheduler/train_real_ppo.py",
+      "rl_scheduler/evaluate_real.py",
+      "rl_scheduler/configs/real_pilot.yaml",
+      "benchmark/run_real_ppo.py"
+    ]
+  },
+  "workspace": {
+    "backup_note": "false means this is container storage, lost on recycle/destroy; off-box backup is needed for irreplaceable artifacts.",
+    "raw_value": "false",
+    "workspace_is_volume": false,
+    "workspace_volume_command_exit_code": 0
+  }
+}

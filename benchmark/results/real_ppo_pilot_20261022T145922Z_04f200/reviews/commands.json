@@ -1,0 +1,91 @@
+[
+  {
+    "argv": [
+      ".venv/bin/python",
+      "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py"
+    ],
+    "exit_code": 1,
+    "elapsed_sec": 3.385723284969572,
+    "log": "reviews/counterexamples_initial.log",
+    "type": "independent CPU regression expectations; failures are findings"
+  },
+  {
+    "argv": [
+      ".venv/bin/python",
+      "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py"
+    ],
+    "exit_code": 1,
+    "elapsed_sec": 0.21561495697824284,
+    "log": "reviews/counterexamples.log",
+    "CPU_only": true
+  },
+  {
+    "argv": [
+      ".venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_metrics.AccountingTests.test_deadline_before_at_after_and_single_token",
+      "rl_scheduler.tests.test_real_metrics.AccountingTests.test_late_receipt_never_backfills_historical_observation",
+      "rl_scheduler.tests.test_real_metrics.AccountingTests.test_regression_is_not_new_tokens_and_blocks_completeness",
+      "rl_scheduler.tests.test_real_metrics.AccountingTests.test_sequence_gap_late_missing_tail_and_flush_required",
+      "rl_scheduler.tests.test_real_metrics.AccountingTests.test_sampled_counts_never_become_client_tokens",
+      "rl_scheduler.tests.test_real_metrics.AccountingTests.test_unconfirmed_cancellation_blocks_cleanup",
+      "rl_scheduler.tests.test_real_metrics.ClientHTTPTests",
+      "rl_scheduler.tests.test_real_bridge.ArbiterTests.test_atomic_global_slot_under_race",
+      "rl_scheduler.tests.test_real_bridge.ArbiterTests.test_idempotent_duplicate_and_changed_payload",
+      "rl_scheduler.tests.test_real_env.ObservationTests",
+      "rl_scheduler.tests.test_real_env.EnvironmentTests.test_cleanup_timeout_and_controller_exit_are_invalid",
+      "rl_scheduler.tests.test_real_env.BudgetAndServiceTests.test_persistent_budget_phase_caps_restart_and_wall_jump",
+      "rl_scheduler.tests.test_real_env.BudgetAndServiceTests.test_owned_cleanup_preserves_unregistered_process",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_budget_watchdog_expires_and_stops_only_run_service",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.3666606959886849,
+    "log": "reviews/targeted_regressions.log",
+    "CPU_only": true
+  },
+  {
+    "argv": [
+      ".venv/bin/python",
+      "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/verify_smoke_cli.py"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.18127810501027852,
+    "log": "reviews/smoke_cli.log",
+    "CPU_only": true
+  },
+  {
+    "argv": [
+      "nvidia-smi",
+      "--query-compute-apps=pid,process_name,used_memory",
+      "--format=csv,noheader"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.09221191401593387,
+    "log": "reviews/gpu_process_inventory.log",
+    "CPU_only": true
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.07956622500205413,
+    "log": "reviews/diff_check.log",
+    "CPU_only": true
+  },
+  {
+    "argv": [
+      ".venv/bin/python",
+      "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/test_bridge_review.py",
+      "BridgeReview.test_R7_failed_worker_flush_must_not_disappear_from_inventory"
+    ],
+    "exit_code": 1,
+    "elapsed_sec": 0.11917444702703506,
+    "log": "reviews/failed_worker_flush.log",
+    "CPU_only": true
+  }
+]

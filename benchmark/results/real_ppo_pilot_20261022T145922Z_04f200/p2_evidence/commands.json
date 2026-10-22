@@ -1,0 +1,103 @@
+[
+  {
+    "command": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_metrics",
+      "rl_scheduler.tests.test_real_bridge",
+      "rl_scheduler.tests.test_real_env",
+      "rl_scheduler.tests.test_real_runner",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 1.5439004360232502,
+    "log": "p2_evidence/tests.log",
+    "log_sha256": "c755b2f0ff40b96ed3a210f0429ce17e32af84b90ae461dbc8f212fab0420f06",
+    "interpretation": "CPU verification"
+  },
+  {
+    "command": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "py_compile",
+      "benchmark/run_real_ppo.py",
+      "rl_scheduler/real_bridge.py",
+      "rl_scheduler/real_env.py",
+      "rl_scheduler/real_runner.py",
+      "rl_scheduler/real_service.py",
+      "rl_scheduler/real_budget.py",
+      "rl_scheduler/real_observation.py",
+      "rl_scheduler/real_client.py",
+      "rl_scheduler/real_metrics.py",
+      "llumnix/real_control.py",
+      "llumnix/manager.py",
+      "llumnix/llumlet/llumlet.py",
+      "llumnix/llumlet/migration_coordinator.py",
+      "llumnix/global_scheduler/migration_scheduler.py",
+      "llumnix/global_scheduler/global_scheduler.py",
+      "llumnix/backends/output_forwarder.py",
+      "llumnix/backends/vllm/worker.py",
+      "llumnix/backends/vllm/llm_engine.py",
+      "llumnix/entrypoints/vllm/api_server.py",
+      "llumnix/entrypoints/vllm/real_metrics_stream.py",
+      "llumnix/entrypoints/vllm/real_control_api.py",
+      "llumnix/metrics/causal_events.py",
+      "rl_scheduler/tests/test_real_metrics.py",
+      "rl_scheduler/tests/test_real_bridge.py",
+      "rl_scheduler/tests/test_real_env.py",
+      "rl_scheduler/tests/test_real_runner.py"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.12460903701139614,
+    "log": "p2_evidence/compile.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interpretation": "CPU verification"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.09405642800265923,
+    "log": "p2_evidence/diff_check.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interpretation": "CPU verification"
+  },
+  {
+    "command": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/p2_evidence/repro_trace_contract.py"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.06839543097885326,
+    "log": "p2_evidence/repro_trace_contract.log",
+    "log_sha256": "effc916d7981d093371e887e13f1a5214466f5f93e98fb2333537e56780da650",
+    "interpretation": "CPU verification"
+  },
+  {
+    "command": [
+      "nvidia-smi",
+      "--query-compute-apps=pid,process_name,used_memory",
+      "--format=csv,noheader"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.12503552105044946,
+    "log": "p2_evidence/gpu_process_inventory.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interpretation": "CPU verification"
+  },
+  {
+    "command": [
+      "supervisorctl",
+      "status"
+    ],
+    "exit_code": 3,
+    "elapsed_sec": 0.1280286519904621,
+    "log": "p2_evidence/supervisor_inventory.log",
+    "log_sha256": "f412dddb766d97bf5b782f4f17dcd769ee122b393754c81844d49378128db294",
+    "interpretation": "read-only inventory; pre-existing EXITED Jupyter/pyworker can produce code 3"
+  }
+]

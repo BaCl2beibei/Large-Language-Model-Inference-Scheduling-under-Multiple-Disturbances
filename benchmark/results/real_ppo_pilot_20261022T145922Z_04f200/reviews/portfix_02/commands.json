@@ -1,0 +1,147 @@
+[
+  {
+    "command": "original review suite via run_review_tests.py (migration_chain output redirected)",
+    "exit_code": 0,
+    "tests": 9,
+    "elapsed_sec": 0.10715154994977638,
+    "log": "reviews/portfix_02/original_9.log",
+    "interpretation": null
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_repairs",
+      "-v"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.7292562500224449,
+    "log": "reviews/portfix_02/repair_regressions.log",
+    "interpretation": null
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "telemetry",
+      "--mode",
+      "shadow",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_portfix2_telemetry_6101",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.15084423497319221,
+    "log": "reviews/portfix_02/dryrun_telemetry.log",
+    "interpretation": "negative CPU dry-run before publishing the fresh review; a blocked plan is expected and no live stage ran."
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "bridge",
+      "--mode",
+      "shadow",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_portfix2_shadow_6102",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.1496379949967377,
+    "log": "reviews/portfix_02/dryrun_shadow.log",
+    "interpretation": "negative CPU dry-run before publishing the fresh review; a blocked plan is expected and no live stage ran."
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "bridge",
+      "--mode",
+      "active",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_portfix2_active_6103",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.1252635609707795,
+    "log": "reviews/portfix_02/dryrun_active.log",
+    "interpretation": "negative CPU dry-run before publishing the fresh review; a blocked plan is expected and no live stage ran."
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--stage",
+      "bridge",
+      "--mode",
+      "overhead",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "05_portfix2_overhead_6104",
+      "--dry-run"
+    ],
+    "exit_code": 0,
+    "elapsed_sec": 0.11606222699629143,
+    "log": "reviews/portfix_02/dryrun_overhead.log",
+    "interpretation": "negative CPU dry-run before publishing the fresh review; a blocked plan is expected and no live stage ran."
+  },
+  {
+    "command": "runner/cleanup integration CPU tests",
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_existing_trace_generator_receives_required_arrival_contract",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_complete_CPU_HTTP_episode_through_real_env_IO_and_ledger",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_backend_prepare_fence_is_checked_after_destination_rebuild",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_guard_release_failure_keeps_unknown_source_fence",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_budget_watchdog_expires_and_stops_only_run_service",
+      "rl_scheduler.tests.test_real_env.EnvironmentTests.test_cleanup_timeout_and_controller_exit_are_invalid",
+      "-v"
+    ],
+    "exit_code": 0,
+    "tests": 6,
+    "log": "reviews/portfix_02/integration.log"
+  },
+  {
+    "command": "Ray port/config/resource audit",
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/portfix_02/port_config_audit.py"
+    ],
+    "exit_code": 0,
+    "log": "reviews/portfix_02/port_config_audit.json"
+  },
+  {
+    "command": "generate current offline gates and 04 review",
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/portfix_02/finalize_portfix_02.py"
+    ],
+    "exit_code": 0,
+    "log": null
+  }
+]

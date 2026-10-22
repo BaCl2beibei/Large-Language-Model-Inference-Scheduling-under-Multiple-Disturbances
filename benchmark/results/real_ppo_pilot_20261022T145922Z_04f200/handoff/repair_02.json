@@ -1,0 +1,49 @@
+{
+  "stage": "repair_02_ray_port_collision",
+  "status": "incomplete",
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "created_at_utc": "2026-10-22T17:40:24.192601+00:00",
+  "scope": "只修复 P1 telemetry 启动前置中的 Ray GCS 端口冲突；没有重跑实验。",
+  "change": {
+    "file": "rl_scheduler/configs/real_pilot.yaml",
+    "field": "service.ray_port",
+    "old_value": 16379,
+    "new_value": 20000,
+    "reason": "Ray 默认 worker_ports 为 10002–19999；旧 GCS port 16379 与该范围重叠。新端口位于范围之外。"
+  },
+  "checks": {
+    "yaml_parsed": true,
+    "configured_port": 20000,
+    "port_listener_check_exit_code": 0,
+    "port_listener_output": "State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess",
+    "port_has_no_listener": true,
+    "ray_default_worker_port_range_observed_in_failed_start_log": true,
+    "failed_05_evidence_preserved": true,
+    "live_smoke_rerun": false,
+    "gpu_started": false,
+    "test_suite_run": false
+  },
+  "hashes": {
+    "old_config_sha256": "928bcc7a1af112a979f6ca536d9b5732e30d781026fc1e992ad2be2df231fd5b",
+    "new_config_sha256": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+    "commands_05_sha256": "8c10d4ec380be437a4bdd1b9447ffb4f47ab4a5901aa792194d2b68ba3c95ee8",
+    "bridge_review_json_sha256": "6da8e984f34bf860b3ab140ae1bfabc973b30a030ab6829883f203bde552dbc5",
+    "bridge_review_bound_config_sha256": "928bcc7a1af112a979f6ca536d9b5732e30d781026fc1e992ad2be2df231fd5b",
+    "ray_parameter_source_sha256": "c6ffa75176653e2d5fb8b65f4678e2a3cf48bf4df01618e0e2a54898ee2f1dc6",
+    "failed_ray_start_log_sha256": "84669d080d2f172534605ee291cb36a9bb425dade2acc748feee7645fab85605",
+    "failed_05_handoff_sha256": "791420604b7967bd9a9facd1dc4e7ba48f6a1795306d00768445233a4832842e",
+    "repair_prompt_sha256": "3c74c9e58e999eb0be568b6896b5a6674120baf7a55d0ac9658fba2c35bf60ff"
+  },
+  "invalidated_for_live_reuse": [
+    "04 bridge review config binding",
+    "P1/P2 offline gate config bindings",
+    "commands/05_smoke.json expected config_sha256",
+    "05 live preflight result for old config"
+  ],
+  "next_required": "为新配置重新生成/审查绑定 hash 的命令与 gate；之后再由独立授权启动 telemetry。修复本身没有重新验证真实 Ray 集群。",
+  "remaining_risks": [
+    "端口 20000 在检查时无监听，但未来可能被其他服务占用；受监管启动仍应做运行时冲突检查。"
+  ],
+  "hash_algorithm": "SHA256 file bytes"
+}

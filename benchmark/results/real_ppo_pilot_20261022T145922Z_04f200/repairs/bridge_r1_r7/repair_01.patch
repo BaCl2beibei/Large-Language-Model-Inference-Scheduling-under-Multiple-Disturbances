@@ -1,0 +1,1079 @@
+--- before/benchmark/run_real_ppo.py
++++ after/benchmark/run_real_ppo.py
+@@ -52,6 +52,77 @@
+     return parser.parse_args(argv)
+ 
+ 
++LIVE_GATES = {'telemetry':'p1_live.json', 'shadow':'p2_shadow_live.json',
++              'active':'p2_active_live.json', 'overhead':'p2_live.json'}
++LIVE_ORDER = tuple(LIVE_GATES)
++LIVE_CHECKS = {
++    'telemetry': {'episodes_reconciled','low_load_normal_completion'},
++    'shadow': {'episodes_reconciled','CPU_decision_path_P95_below_100ms','zero_actual_migration','zero_coordinator_migration_attempts'},
++    'active': {'episodes_reconciled','CPU_decision_path_P95_below_100ms','at_least_10_terminals','at_least_5_successes'},
++    'overhead': {'episodes_reconciled','paired_overhead_within_thresholds'},
++}
++
++
++def live_dependencies(run_dir, key, offline):
++    """Every live stage requires the independent review and all earlier live gates."""
++    review_path=run_dir/'reviews/bridge_review.json'
++    review=validate_gate(review_path,run_dir)
++    if review.get('stage')!='04_bridge_review':raise RuntimeError('independent step-04 review required')
++    for gate in offline:
++        for name,value in gate['source_hashes'].items():
++            if review['source_hashes'].get(name)!=value:
++                raise RuntimeError('review does not bind current offline source: '+name)
++        for name,value in gate['config_hashes'].items():
++            if review['config_hashes'].get(name)!=value:
++                raise RuntimeError('review does not bind current offline config: '+name)
++    for name,value in review.get('dependency_hashes',{}).items():
++        if sha(ROOT/name)!=value:raise RuntimeError('review dependency changed: '+name)
++    dependencies={'reviews/bridge_review.json':sha(review_path)}
++    for previous in LIVE_ORDER[:LIVE_ORDER.index(key)]:
++        name='gates/'+LIVE_GATES[previous]
++        gate=validate_gate(run_dir/name,run_dir)
++        if gate.get('live_case')!=previous or gate.get('dependency_gate_hashes')!=dependencies:
++            raise RuntimeError('live gate dependency chain changed: '+name)
++        if gate['source_hashes']!=review['source_hashes'] or gate['config_hashes']!=review['config_hashes']:
++            raise RuntimeError('live gate review binding changed: '+name)
++        if gate['result_path'] not in gate['evidence_hashes']:
++            raise RuntimeError('unbound live result: '+name)
++        result=json.loads((run_dir/gate['result_path']).read_text())
++        if (result.get('status')!='passed' or not result.get('checks')
++                or not LIVE_CHECKS[previous].issubset(result['checks'])
++                or not all(value is True for value in result['checks'].values())):
++            raise RuntimeError('live result not passed: '+name)
++        dependencies[name]=sha(run_dir/name)
++    return dependencies
++
++
++def publish_live_gate(run_dir,key,invocation,intent):
++    """Called only after owned service cleanup; status is derived from actual results."""
++    run_dir=Path(run_dir)
++    path=run_dir/'smoke_runs'/invocation/'result.json'
++    result=json.loads(path.read_text())
++    review=validate_gate(run_dir/'reviews/bridge_review.json',run_dir)
++    if live_dependencies(run_dir,key,[])!=intent['dependency_gate_hashes']:
++        raise RuntimeError('live dependency hashes changed during execution')
++    result_path=str(path.relative_to(run_dir))
++    evidence={str(p.relative_to(run_dir)):sha(p) for p in path.parent.rglob('*') if p.is_file()}
++    for row in result.get('results',[]):
++        for p in (run_dir/'runs'/row['episode_id']).rglob('*'):
++            if p.is_file():evidence[str(p.relative_to(run_dir))]=sha(p)
++    checks=[{'name':name,'status':'passed' if passed is True else 'failed'}
++            for name,passed in result.get('checks',{}).items()]
++    checks.append({'name':'owned_cleanup_completed','status':'passed'})
++    gate={'stage':'05_live','live_case':key,'status':result['status'], 'checks':checks,
++          'source_hashes':review['source_hashes'],'source_hash':review['source_hash'],
++          'config_hashes':review['config_hashes'],'evidence_hashes':evidence,
++          'dependency_gate_hashes':intent['dependency_gate_hashes'],'result_path':result_path}
++    if (not LIVE_CHECKS[key].issubset(result.get('checks',{}))
++            or any(c['status']!='passed' for c in checks)):gate['status']='incomplete'
++    destination=run_dir/'gates'/LIVE_GATES[key]
++    if destination.exists():raise RuntimeError('live gate already exists; preserve prior attempt')
++    atomic_json(destination,gate)
++
++
+ def plan(args,cfg):
+     if args.stage not in ('telemetry','bridge'):raise ValueError('stage not implemented: '+args.stage)
+     run_dir=args.output_dir.resolve()
+@@ -62,22 +133,42 @@
+     from rl_scheduler.real_runner import verify_trace_manifest
+     verify_trace_manifest(cfg)
+     # P1's API registration changed in P2 and is explicitly revalidated, not silently ignored.
+-    p1=run_dir/'gates/p1_offline_revalidated_03.json'
+-    if p1.exists():validate_gate(p1,run_dir)
+-    else:validate_gate(run_dir/'gates/p1_offline.json',run_dir)
+-    if not args.dry_run:validate_gate(run_dir/'gates/p2_offline.json',run_dir)
+     key='telemetry' if args.stage=='telemetry' else args.mode
++    paths=pointer.get('offline_gates',{
++        'P1':'gates/p1_offline_revalidated_03.json' if (run_dir/'gates/p1_offline_revalidated_03.json').exists() else 'gates/p1_offline.json',
++        'P2':'gates/p2_offline.json'})
++    blockers=[];offline=[];dependencies={}
++    for name in ('P1','P2'):
++        try:offline.append(validate_gate(run_dir/paths[name],run_dir))
++        except (RuntimeError,OSError,KeyError,ValueError) as exc:blockers.append(name+': '+str(exc))
++    try:dependencies=live_dependencies(run_dir,key,offline)
++    except (RuntimeError,OSError,KeyError,ValueError) as exc:blockers.append('live prerequisites: '+str(exc))
++    if (run_dir/'gates'/LIVE_GATES[key]).exists():blockers.append('live stage already attempted')
++    if blockers and not args.dry_run:raise RuntimeError('; '.join(blockers))
+     repeats=4 if key=='overhead' else 1
+     case=cfg['smoke'][key]
+     duration=repeats*(case['arrival_sec']+case['drain_sec']+60)+60
+     if args.manage_services:duration+=cfg['service']['startup_timeout_sec']
+-    budget=BudgetLedger(run_dir).require(duration)
++    ledger=BudgetLedger(run_dir)
++    if args.dry_run:
++        state=json.loads((run_dir/'experiment_clock.json').read_text())
++        if state['first_started_wall'] is not None:
++            delta=max(0.,time.time()-state['last_wall'])
++            if state['boot_id']==ledger.boot_id:delta=max(delta,time.monotonic()-state['last_mono'])
++            state['elapsed_sec']+=delta
++            if state['phase']:state['phase_usage'][state['phase']]+=delta
++        budget={'remaining':ledger._remaining(state)}
++        if state['exhausted'] or min(budget['remaining']['total_experiment_wall_time_sec'],budget['remaining']['P0_P3_sec'])<duration:
++            blockers.append('budget reserve insufficient')
++    else:budget=ledger.require(duration)
+     return {'stage':args.stage,'mode':key,'config':str(args.config.resolve()),'config_hash':sha(args.config),
+             'episodes':repeats,'case':case,'estimated_max_sec':duration,
+             'remaining_budget':budget['remaining'],'manage_services':args.manage_services,
+             'server_argv':cfg['service']['server_argv'],'env':cfg['service']['env'],
+             'GPU_will_start':bool(args.manage_services and not args.dry_run),
+-            'dry_run':args.dry_run,'training_implemented':False}
++            'dry_run':args.dry_run,'training_implemented':False,
++            'blocked_reasons':blockers,'ready_for_live':not blockers,
++            'dependency_gate_hashes':dependencies}
+ 
+ 
+ async def wait_ready(cfg,budget):
+@@ -116,17 +207,19 @@
+                 service.start()
+             else:
+                 service.assert_running_owned()
++                started_service=True
+             budget=BudgetLedger(args.output_dir)
+             asyncio.run(wait_ready(cfg,budget))
+             result=asyncio.run(run_live(cfg,run_dir=args.output_dir,stage=args.stage,mode=args.mode,invocation_id=invocation))
+-            print(json.dumps({'status':result['status'],'result':str(folder/'result.json')}))
+-            return 0 if result['status']=='passed' else 1
+         except BaseException as exc:
+             atomic_json(folder/'failure.json',{'status':'incomplete','reason':type(exc).__name__+':'+str(exc),
+                                               'remaining_budget':BudgetLedger(args.output_dir).status()['remaining']})
+             raise
+         finally:
+             if started_service:service.stop()
++        publish_live_gate(args.output_dir,intent['mode'],invocation,intent)
++        print(json.dumps({'status':result['status'],'result':str(folder/'result.json')}))
++        return 0 if result['status']=='passed' else 1
+     except (ValueError,RuntimeError,OSError,KeyError) as exc:
+         print(json.dumps({'status':'incomplete','reason':str(exc)}),file=sys.stderr);return 2
+ 
+--- before/llumnix/backends/vllm/llm_engine.py
++++ after/llumnix/backends/vllm/llm_engine.py
+@@ -295,7 +295,12 @@
+             context.add_trace_timeline("engine_step_postprocess_timestamp_end")
+ 
+         if request_outputs:
+-            server_request_outputs, server_info_dict = self._gen_server_request_outputs(request_outputs, request_processing_contexts)
++            # Retain engine production/events above, but fence future delivery of
++            # cancelled requests, including output from an already executing step.
++            kept = [(output,context) for output,context in zip(request_outputs,request_processing_contexts)
++                    if output.request_id not in getattr(self, '_real_cancelled_requests', set())]
++            server_request_outputs, server_info_dict = self._gen_server_request_outputs(
++                [pair[0] for pair in kept], [pair[1] for pair in kept])
+             if server_request_outputs:
+                 self.output_forwarder.put_request_outputs_to_server(server_request_outputs, server_info_dict)
+ 
+@@ -603,7 +608,10 @@
+         return ret
+ 
+     def _remove_running_request(self, request_id: str) -> bool:
+-        return self.engine.scheduler[0].remove_running_request(request_id)
++        removed = self.engine.scheduler[0].remove_running_request(request_id)
++        if request_id in getattr(self.engine, '_real_cancelled_requests', set()):
++            self.engine.abort_request({request_id})
++        return removed
+ 
+     def remove_waiting_request(self, *args, **kwargs) -> bool:
+         return self.engine.scheduler[0].remove_waiting_request(*args, **kwargs)
+--- before/llumnix/entrypoints/vllm/api_server.py
++++ after/llumnix/entrypoints/vllm/api_server.py
+@@ -67,12 +67,27 @@
+ 
+ 
+ async def _real_metrics_abort_confirmed(request_id: str) -> bool:
+-    # The legacy client.abort swallows RPC errors, so its return is not an ack.
+-    instance_ids, instances = llumnix_client._get_instance_for_abort(request_id)
+-    if not instance_ids or len(instance_ids) != len(instances):
++    # Recent-output routing can still point to the old migration source.
++    # Only the Manager can fence pending dispatch and every possible owner.
++    manager = getattr(llumnix_client, 'manager', None)
++    if manager is None:
+         return False
+-    for instance in instances:
+-        await asyncio_wait_for_ray_remote_call_with_timeout(instance.abort, request_id, timeout=50.0)
++    import asyncio
++    import time
++    deadline = time.monotonic()+50.
++    while time.monotonic()<deadline:
++        result = await asyncio_wait_for_ray_remote_call_with_timeout(
++            manager.real_cancel_request, request_id, timeout=max(.001,deadline-time.monotonic()))
++        if result.get('status')=='absent':break
++        await asyncio.sleep(min(.1,max(0.,deadline-time.monotonic())))
++    else:
++        return False
++    # The control-plane barrier includes output-forwarder delivery completion.
++    # Drain the API queue before finishing the local stream; the route also waits
++    # for its HTTP handler's done event before reporting cancelled_confirmed.
++    while llumnix_client.request_output_queue.qsize():
++        if time.monotonic()>=deadline:return False
++        await asyncio.sleep(.01)
+     llumnix_client._clear_client_request_states(request_id)
+     return True
+ 
+--- before/llumnix/entrypoints/vllm/client.py
++++ after/llumnix/entrypoints/vllm/client.py
+@@ -72,6 +72,10 @@
+                 self.manager_available = True
+             # pylint: disable=broad-except
+             except Exception as e:
++                if request_id.startswith('real-'):
++                    # Real-metrics IDs are server-generated and never bypass the
++                    # Manager's dispatch/cancellation fence on uncertain delivery.
++                    raise
+                 self._handle_generate_by_manager_error(request_id, e)
+                 # Do not re-generate the request to avoid duplicate requests.
+                 if self.manager_available:
+--- before/llumnix/entrypoints/vllm/real_metrics_stream.py
++++ after/llumnix/entrypoints/vllm/real_metrics_stream.py
+@@ -49,7 +49,8 @@
+         server_id = 'real-' + hashlib.sha256(json.dumps(key).encode()).hexdigest()
+         state = {'run_id': run_id, 'episode_id': episode_id, 'request_id': request_id,
+                  'server_request_id': server_id, 'done': asyncio.Event(), 'cancel': False,
+-                 'ready': asyncio.Event(), 'outcome': 'unknown', 'tokens': 0}
++                 'ready': asyncio.Event(), 'outcome': 'unknown', 'tokens': 0,
++                 'cancel_checked': asyncio.Event(), 'cancel_proven': False}
+         seen.add(key)
+         active[key] = state
+ 
+@@ -78,7 +79,8 @@
+                     if output.finished:
+                         state['outcome'] = 'success'
+                 if state['outcome'] != 'success' and state['cancel']:
+-                    state['outcome'] = 'cancelled'
++                    await state['cancel_checked'].wait()
++                    state['outcome'] = 'cancelled' if state['cancel_proven'] else 'unknown'
+                 publish(state, 'server_terminal', outcome=state['outcome'])
+                 yield frame('terminal', outcome=state['outcome'],
+                             reason='manual_drain' if state['cancel'] else None)
+@@ -116,8 +118,11 @@
+                         await asyncio.wait_for(state['ready'].wait(), max(0., deadline-time.monotonic()))
+                         if abort_confirmed is None:
+                             status = 'unconfirmed_no_barrier'
++                            state['cancel_checked'].set()
+                         else:
+                             confirmed = await asyncio.wait_for(abort_confirmed(state['server_request_id']), max(0., deadline-time.monotonic()))
++                            state['cancel_proven'] = confirmed is True
++                            state['cancel_checked'].set()
+                             await asyncio.wait_for(state['done'].wait(), max(0., deadline-time.monotonic()))
+                             status = ('cancelled_confirmed' if confirmed and state['outcome'] == 'cancelled'
+                                       else 'already_terminal' if state['outcome'] == 'success' else 'unknown')
+@@ -125,6 +130,8 @@
+                         status = 'unconfirmed_timeout'
+                     except Exception:
+                         status = 'unconfirmed_error'
++                    finally:
++                        state['cancel_checked'].set()
+                 publish(state, 'diagnostic', stage='cancel_ack', confirmed=status == 'cancelled_confirmed', status=status)
+             # Unknown lookup does not cancel a future request and is never confirmed.
+             results.append({'request_id': request_id, 'status': status,
+--- before/llumnix/llumlet/llumlet.py
++++ after/llumnix/llumlet/llumlet.py
+@@ -210,13 +210,20 @@
+         *args,
+         **kwargs,
+     ) -> None:
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            return
+         request_processing_context.add_trace_timeline("llumlet_generate_timestamp")
+         self.llumlet_metrics.llumlet_request_qps.increase(
+             labels={"instance_id": self.instance_id}
+         )
+-        await self.backend_engine.add_request(
+-            request_id, request_processing_context, expected_steps, *args, **kwargs
+-        )
++        generating = self.__dict__.setdefault('_real_generating', set())
++        generating.add(request_id)
++        try:
++            await self.backend_engine.add_request(
++                request_id, request_processing_context, expected_steps, *args, **kwargs
++            )
++        finally:
++            generating.discard(request_id)
+ 
+     async def abort(self, request_id: Union[RequestIDType, Iterable[RequestIDType]]) -> None:
+         if isinstance(request_id, (str, int)):
+@@ -279,6 +286,8 @@
+         return self.__dict__.get('_real_decision_results', {}).get(decision_id)
+ 
+     def real_control_reserve(self, request_id, expected_epoch):
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            return {'status': 'rejected'}
+         state = self.real_control_state()
+         if state['epoch'] != expected_epoch or not state['healthy'] or state['is_migrating']:
+             return {'status': 'rejected'}
+@@ -297,6 +306,10 @@
+         local['pending_delivery'] = self.real_control_state()['pending_delivery']
+         return {'local': local, 'workers': worker_acks, 'state': self.real_control_state()}
+ 
++    async def real_cancel_request(self, request_id):
++        from llumnix.real_control import cancel_instance_request
++        return await cancel_instance_request(self, request_id)
++
+     def execute_engine_method(self, method, *args, **kwargs):
+         executor = getattr(self.backend_engine, method)
+         return executor(*args, **kwargs)
+@@ -311,7 +324,13 @@
+ 
+     async def execute_migration_method_async(self, method, *args, **kwargs):
+         executor = getattr(self.migration_coordinator, method)
+-        return await executor(*args, **kwargs)
++        active = self.__dict__.setdefault('_real_inbound_tasks', set())
++        task = asyncio.current_task()
++        active.add(task)
++        try:
++            return await executor(*args, **kwargs)
++        finally:
++            active.discard(task)
+ 
+     async def call_engine_utility_async(self, method: str, *args) -> Any:
+         """Call engine utility function for backend vLLM v1."""
+--- before/llumnix/llumlet/migration_coordinator.py
++++ after/llumnix/llumlet/migration_coordinator.py
+@@ -641,6 +641,8 @@
+                         token_ids: List[int],
+                         is_first_stage: bool,
+                         real_expected_epoch: Optional[str] = None) -> MigrationResponse:
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            return MigrationResponse(success=False, return_value=None)
+         if real_expected_epoch is not None and getattr(self, '_real_capacity_guards', {}).get(request_id) != real_expected_epoch:
+             return MigrationResponse(success=False, return_value=None)
+         if is_first_stage and not self.has_migration_slot():
+@@ -761,12 +763,16 @@
+     @update_migrating_in_request_id_set_decorator
+     @update_pending_migrate_in_request_decorator
+     async def recv_cache(self, request_id: RequestIDType, *args, **kwargs) -> MigrationResponse:
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            return MigrationResponse(success=False, return_value=None)
+         # pylint: disable=protected-access
+         return await self.backend_engine.recv_cache(request_id, *args, **kwargs)
+ 
+     @update_migrating_in_request_id_set_decorator
+     @update_pending_migrate_in_request_decorator
+     async def commit_dst_request(self, request_id: RequestIDType, backend_request: LlumnixRequest) -> MigrationResponse:
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            return MigrationResponse(success=False, return_value=None)
+         result = await self.backend_engine.commit_dst_request(request_id, backend_request)
+         emit_causal_event(
+             "migration_destination_committed",
+--- before/llumnix/manager.py
++++ after/llumnix/manager.py
+@@ -142,6 +142,8 @@
+         request_processing_context: RequestProcessingContext,
+         *args, **kwargs
+     ) -> Tuple[str, str]:
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            raise RuntimeError('request cancellation fence installed')
+         def choose_destination_instance(prefill_instance_id: str, decode_instance_id: str, dispatch_kwargs: Dict):
+             if self.backend_type == BackendType.BLADELLM:
+                 if self.manager_args.enable_bladellm_engine_pd_disagg:
+@@ -174,6 +176,8 @@
+             await asyncio.sleep(NO_INSTANCE_RETRY_GENERATE_INTERVAL)
+ 
+         initial_instance_id = kwargs.pop('real_initial_instance_id', None)
++        if request_id in getattr(self, '_real_cancelled_requests', set()):
++            raise RuntimeError('request cancelled while waiting for dispatch')
+         if initial_instance_id is not None:
+             controller = getattr(self, '_real_arbiter', None)
+             if self.enable_pd_disagg or initial_instance_id not in self.instances or not controller or not controller.lease:
+@@ -187,11 +191,14 @@
+                 self.global_scheduler.dispatch(request_id, dispatch_context=kwargs)
+         target_instance_id = choose_destination_instance(prefill_instance_id, decode_instance_id, kwargs)
+         request_processing_context.add_trace_timeline('manager_generate_timestamp')
+-        asyncio.create_task(
++        dispatch_task = asyncio.create_task(
+             self._generate_with_exception_handling(
+                 request_id, request_processing_context, request_expected_steps, target_instance_id, *args, **kwargs
+             )
+         )
++        dispatches = self.__dict__.setdefault('_real_dispatch_tasks', {})
++        dispatches.setdefault(request_id, set()).add(dispatch_task)
++        dispatch_task.add_done_callback(lambda task: dispatches[request_id].discard(task))
+         return prefill_instance_id, decode_instance_id
+ 
+     async def _generate_with_exception_handling(
+@@ -203,6 +210,8 @@
+         *args, **kwargs
+     ) -> None:
+         try:
++            if request_id in getattr(self, '_real_cancelled_requests', set()):
++                return
+             await asyncio_wait_for_ray_remote_call_with_timeout(
+                 self.instances[target_instance_id].generate,
+                 request_id, request_processing_context, request_expected_steps, *args, **kwargs
+@@ -211,7 +220,8 @@
+         except Exception as e:
+             log_instance_exception(e, target_instance_id, "generate", request_id)
+             self.scale_down(target_instance_id)
+-            await asyncio.create_task(self.generate(request_id, request_processing_context, *args, **kwargs))
++            if request_id not in getattr(self, '_real_cancelled_requests', set()):
++                await self.generate(request_id, request_processing_context, *args, **kwargs)
+ 
+     @classmethod
+     def from_args(
+--- before/llumnix/real_control.py
++++ after/llumnix/real_control.py
+@@ -9,6 +9,64 @@
+ 
+ 
+ class ControlledRejection(Exception):pass
++
++
++async def cancel_instance_request(owner, request_id):
++    """Install a permanent per-epoch fence, then prove absence from v0 queues.
++
++    In-flight transfers/adds are allowed to finish under the fence. We never free
++    blocks being used by a transfer or infer absence from an abort RPC return.
++    """
++    cancelled = owner.__dict__.setdefault('_real_cancelled_requests', set())
++    cancelled.add(request_id)
++    coordinator = owner.migration_coordinator
++    coordinator.__dict__.setdefault('_real_cancelled_requests', set()).add(request_id)
++    engine = owner.backend_engine.engine
++    engine.__dict__.setdefault('_real_cancelled_requests', set()).add(request_id)
++    if len(engine.scheduler)!=1:
++        raise RuntimeError('cancellation requires one v0 scheduler')
++    scheduler = engine.scheduler[0]
++    if (getattr(owner, '_real_generating', set())
++            or getattr(owner, '_real_inbound_tasks', set())
++            or coordinator.migrating_out_request_id_set
++            or getattr(owner, '_real_control_inflight', None)):
++        return {'status':'unknown', 'reason':'request_operations_inflight'}
++    # Reuse the engine's step/output-processing barrier before freeing storage.
++    # Its boundary callback also removes waiting/swapped requests under the fence.
++    resident = (request_id in engine.request_ids
++                or request_id in scheduler.migrating_out_request_last_stage
++                or any(any(r.request_id==request_id for r in queue)
++                       for queue in (scheduler.running,scheduler.waiting,scheduler.swapped)))
++    if resident:
++        await owner.backend_engine.remove_running_request(request_id)
++    if (getattr(owner, '_real_generating', set()) or getattr(owner, '_real_inbound_tasks', set())
++            or coordinator.migrating_out_request_id_set or getattr(owner, '_real_control_inflight', None)):
++        return {'status':'unknown', 'reason':'request_operations_inflight'}
++    await owner.backend_engine.abort_request({request_id})
++    # No transfer is active now; paused and preallocated storage may be reclaimed.
++    paused = scheduler.migrating_out_request_last_stage.get(request_id)
++    if paused is not None:
++        owner.backend_engine.free_src_request(paused)
++        scheduler.migrating_out_request_last_stage.pop(request_id, None)
++    coordinator.free_pre_alloc_cache(request_id)
++    coordinator.__dict__.setdefault('_real_capacity_guards', {}).pop(request_id, None)
++    await owner.backend_engine.abort_request({request_id})
++    queues = (scheduler.running, scheduler.waiting, scheduler.swapped)
++    queues_empty = all(all(r.request_id!=request_id for r in queue) for queue in queues)
++    # v0's inherited abort does not update Llumnix's diagnostic request_ids set.
++    if queues_empty and request_id not in scheduler.migrating_out_request_last_stage:
++        engine.clear_request(request_id)
++    absent = (queues_empty
++              and request_id not in scheduler.pre_alloc_cache_dict
++              and request_id not in scheduler.migrating_out_request_last_stage
++              and request_id not in engine.request_ids
++              and request_id not in coordinator.migrating_in_request_id_set
++              and request_id not in coordinator.migrating_out_request_id_set
++              and request_id not in coordinator.pending_migrate_in_request_time)
++    pending = engine.output_forwarder.thread_forwarder.real_pending_delivery()
++    return {'status':'absent' if absent and pending==0 else 'unknown',
++            'instance_id':owner.instance_id, 'epoch':instance_state(owner)['epoch'],
++            'pending_delivery':pending, 'fenced':True}
+ 
+ 
+ def instance_state(owner):
+@@ -60,6 +118,8 @@
+         receipt.update(terminal_status='rejected', rejection_reason=reason, terminal_ns=time.monotonic_ns())
+         return deepcopy(receipt)
+     coordinator = owner.migration_coordinator
++    if expected_candidate_id in getattr(owner, '_real_cancelled_requests', set()):
++        return reject('request_cancelled')
+     if coordinator.enable_engine_migration_interface:
+         return reject('engine_migration_interface_unsupported')
+     if coordinator.migration_scheduler.request_migration_policy != 'SR':
+@@ -86,6 +146,8 @@
+         # Destination RPC yielded: inspect SR again immediately before claiming it.
+         source = instance_state(owner)
+         requests = coordinator.migration_scheduler._get_shortest_running_request(0, float('inf'))
++        if expected_candidate_id in getattr(owner, '_real_cancelled_requests', set()):
++            raise ControlledRejection('request_cancelled_at_execution')
+         if source['epoch'] != source_epoch or not requests or str(requests[0].request_id) != expected_candidate_id:
+             raise ControlledRejection('SR_candidate_changed_at_execution')
+         request = requests[0]
+@@ -166,5 +228,32 @@
+         instances = await asyncio.gather(*(actor.real_control_flush.remote()
+                                            for actor in list(self.instances.values())))
+         manager = await asyncio.to_thread(flush,5.)
+-        manager['pending_delivery'] = 0 if not getattr(self,'_real_native_tasks',set()) else 1
++        manager['pending_delivery'] = (len(getattr(self,'_real_native_tasks',set()))
++                                      + sum(len(tasks) for tasks in getattr(self,'_real_dispatch_tasks',{}).values()))
+         return {'manager': manager, 'instances': instances}
++
++    async def real_cancel_request(self, request_id):
++        import asyncio
++        self.__dict__.setdefault('_real_cancelled_requests', set()).add(request_id)
++        actors = dict(self.instances)
++        if len(actors)!=4 or self.enable_pd_disagg:
++            return {'status':'unknown', 'reason':'unsupported_or_changed_inventory'}
++        acknowledgements = await asyncio.gather(*(actor.real_cancel_request.remote(request_id)
++                                                   for actor in actors.values()))
++        valid_roles = all(ack.get('instance_id')==instance_id and ack.get('epoch')
++                          and ack.get('status')=='absent' and ack.get('fenced') is True
++                          and ack.get('pending_delivery')==0
++                          for instance_id,ack in zip(actors,acknowledgements))
++        if not valid_roles:
++            return {'status':'unknown', 'instances':acknowledgements}
++        current = await asyncio.gather(*(actor.real_control_state.remote() for actor in actors.values()))
++        controller = getattr(self, '_real_arbiter', None)
++        stable = (actors==self.instances and not getattr(self,'_real_native_fault',False)
++                  and not getattr(self,'_real_native_tasks',set())
++                  and not self.__dict__.get('_real_dispatch_tasks',{}).get(request_id)
++                  and not (controller and (controller.slot or controller.invalid_reasons)))
++        known = stable and all(state.get('instance_id')==ack['instance_id'] and state.get('epoch')==ack['epoch']
++                               and state.get('healthy') is True and state.get('type')=='neutral'
++                               and state.get('is_migrating') is False
++                               for state,ack in zip(current,acknowledgements))
++        return {'status':'absent' if known else 'unknown', 'instances':acknowledgements}
+--- before/rl_scheduler/real_bridge.py
++++ after/rl_scheduler/real_bridge.py
+@@ -89,10 +89,11 @@
+         self._lock = asyncio.Lock()
+         self._tasks = set()
+         self.release_requested = False
++        self.acquiring = False
+ 
+     @property
+     def ordinary_blocked(self):
+-        return self.lease is not None or self.slot is not None
++        return self.acquiring or self.lease is not None or self.slot is not None
+ 
+     def external_intervention(self, reason):
+         if self.ordinary_blocked:
+@@ -132,11 +133,18 @@
+         async with self._lock:
+             if self.lease is not None or self.slot is not None or not self.native_idle():
+                 raise RuntimeError('controller or native migration still owns cluster')
+-            states = await self.state_provider()
+-            mapping = self._check_mapping(states)
+-            if any(s.get('healthy') is not True or s.get('is_migrating') is not False
+-                   or s.get('type') != 'neutral' for s in states):
+-                raise RuntimeError('cluster unhealthy, non-neutral, or migrating')
++            self.acquiring = True  # Manager's ordinary scheduler reads this before any await.
++            interventions = len(self.invalid_reasons)
++            try:
++                states = await self.state_provider()
++                mapping = self._check_mapping(states)
++                if not self.native_idle() or len(self.invalid_reasons)!=interventions:
++                    raise RuntimeError('native activity or intervention during acquisition')
++                if any(s.get('healthy') is not True or s.get('is_migrating') is not False
++                       or s.get('type') != 'neutral' for s in states):
++                    raise RuntimeError('cluster unhealthy, non-neutral, or migrating')
++            finally:
++                self.acquiring = False
+             now = self.clock()
+             self.lease = {'lease_id': f'{self.epoch}-{uuid.uuid4().hex}', 'run_id': run_id,
+                           'episode_id': episode_id, 'controller_version': controller_version,
+@@ -299,6 +307,7 @@
+         self.base_url, self.session = base_url.rstrip('/'), session
+         self.lease = None
+         self.pending = {}
++        self.unresolved = set()
+ 
+     async def call(self, method, **payload):
+         async with self.session.post(self.base_url+'/real_control/'+method, json=payload) as response:
+@@ -330,16 +339,29 @@
+             if self.pending[decision_id] != payload:
+                 raise ValueError('decision ID reused with different payload')
+             return await self.query_receipt(decision_id)
++        for previous in tuple(self.unresolved):
++            await self.query_receipt(previous)
++        if self.unresolved:
++            raise RuntimeError('unresolved decision fence; stop sampling and clean up')
+         self.pending[decision_id] = payload
+         import aiohttp
+         try:
+-            return await self.call('submit_migration',**payload)
++            result = await self.call('submit_migration',**payload)
+         except (asyncio.TimeoutError, ConnectionError, OSError, aiohttp.ClientError):
+-            return {'decision_id': decision_id, 'receipt_status': 'unknown', 'terminal_status': None,
+-                    'rejection_reason': 'transport_uncertain_query_before_any_new_action'}
++            result = {'decision_id': decision_id, 'receipt_status': 'unknown', 'terminal_status': None,
++                      'rejection_reason': 'transport_uncertain_query_before_any_new_action'}
++        self._remember(decision_id,result)
++        return result
++
++    def _remember(self,decision_id,result):
++        if result.get('terminal_status') in TERMINALS or result.get('receipt_status') in ('stay','shadow'):
++            self.unresolved.discard(decision_id)
++        else:self.unresolved.add(decision_id)
+ 
+     async def query_receipt(self, decision_id):
+-        return await self.call('query_receipt',lease_id=self.lease['lease_id'],decision_id=decision_id)
++        result=await self.call('query_receipt',lease_id=self.lease['lease_id'],decision_id=decision_id)
++        self._remember(decision_id,result)
++        return result
+ 
+     async def release_controller(self):
+         if not self.lease:
+--- before/rl_scheduler/real_env.py
++++ after/rl_scheduler/real_env.py
+@@ -63,13 +63,14 @@
+         self.state='new';self.invalid_reasons=[];self.decisions=[];self.receipts={}
+         self.baseline=None;self.lease=None;self.previous_decision_ns=None
+         self.finalised=False
++        self.unresolved_decision = None
+ 
+     async def reset(self,*,mode='active',controller_version='smoke-v1'):
+         if self.state not in ('new','finished'):
+             raise RuntimeError('previous episode has not finished cleanup')
+         if self.invalid_reasons:raise RuntimeError('invalid environment cannot be reused')
+         self.budget.require(self.config.arrival_sec+self.config.drain_sec+self.config.cleanup_sec)
+-        await self.io.prepare()
++        await asyncio.wait_for(self.io.prepare(),timeout=self.config.cleanup_sec)
+         snapshot=await self.bridge.snapshot()
+         self.baseline=assert_idle(snapshot,self.baseline)
+         self.lease=await self.bridge.acquire_controller(self.run_id,controller_version,self.episode_id,mode)
+@@ -117,6 +118,13 @@
+             observation=self.current_observation
+             now=self.clock();raw=observation['raw']
+             if type(action) is not int or not 0<=action<=12:raise ValueError('action must be 0..12')
++            if action and self.unresolved_decision is not None:
++                previous = self.unresolved_decision
++                final = await self.bridge.query_receipt(previous)
++                self.receipts[previous] = deepcopy(final)
++                if final.get('terminal_status') not in ('succeeded','failed','rejected'):
++                    raise RuntimeError('unresolved decision '+previous+'; stop sampling and clean up')
++                self.unresolved_decision = None
+             decision_id=f'{self.run_id}:{self.episode_id}:{len(self.decisions)}'
+             dt=(now-self.previous_decision_ns)/1e9 if self.previous_decision_ns is not None else (now-self.start_ns)/1e9
+             self.previous_decision_ns=now
+@@ -144,6 +152,8 @@
+             record['cpu_decision_latency_ms']=(self.clock()-raw['decision_path_started_ns'])/1e6
+             self.decisions.append(deepcopy(record));self.decision_sink(deepcopy(record))
+             self.receipts[decision_id]=deepcopy(receipt)
++            if receipt.get('receipt_status') in ('accepted','unknown') and receipt.get('terminal_status') not in ('succeeded','failed','rejected'):
++                self.unresolved_decision = decision_id
+             # Return the next observation after one real interval. The action above
+             # retains exactly the observation/mask from which it was selected.
+             await self.io.sleep(max(0.,self.config.decision_interval_sec-(self.clock()-now)/1e9))
+--- before/rl_scheduler/real_runner.py
++++ after/rl_scheduler/real_runner.py
+@@ -22,13 +22,53 @@
+ 
+ 
+ def flatten_acks(value):
+-    if isinstance(value,dict):
+-        if 'source' in value and 'durable' in value:
+-            yield value
+-        else:
+-            for nested in value.values():yield from flatten_acks(nested)
+-    elif isinstance(value,list):
+-        for nested in value:yield from flatten_acks(nested)
++    """Validate every role barrier before coalescing process-shared producers.
++
++    A worker's queue barrier cannot be replaced by the later local fsync, even
++    when both roles share a writer. Cross-round regression remains a ledger error.
++    """
++    producers = {}
++    def visit(node):
++        if isinstance(node, dict):
++            if any(key in node for key in ('status', 'source', 'durable')):
++                if (node.get('status') != 'passed' or node.get('durable') is not True
++                        or node.get('pending_delivery') != 0 or not node.get('source')
++                        or type(node.get('last_sequence')) is not int or node['last_sequence'] < 0
++                        or type(node.get('through_ns')) is not int or node['through_ns'] <= 0):
++                    raise RuntimeError('unconfirmed role flush: '+str(node))
++                old = producers.get(node['source'])
++                if old:
++                    a = (old['last_sequence'], old['through_ns'])
++                    b = (node['last_sequence'], node['through_ns'])
++                    if not (all(x <= y for x,y in zip(a,b)) or all(x >= y for x,y in zip(a,b))):
++                        raise RuntimeError('inconsistent same-producer watermarks')
++                    if b < a:return
++                producers[node['source']] = node
++            else:
++                for nested in node.values():visit(nested)
++        elif isinstance(node,list):
++            for nested in node:visit(nested)
++    visit(value)
++    yield from producers.values()
++
++
++def role_inventory(raw, worker_count=1):
++    """Required roles come from the fixed four-instance TP topology, not successes."""
++    roles = {'api': raw['api'], 'manager': raw['cluster']['manager']}
++    instances = raw['cluster']['instances']
++    if not isinstance(instances,list) or len(instances)!=4:
++        raise RuntimeError('incomplete cluster producer inventory')
++    for i,instance in enumerate(instances):
++        roles[f'instance:{i}:local'] = instance['local']
++        workers = instance['workers']
++        if not isinstance(workers,list) or len(workers)!=worker_count:
++            raise RuntimeError('incomplete worker role inventory')
++        for j,ack in enumerate(workers):roles[f'instance:{i}:worker:{j}']=ack
++    for role,ack in roles.items():
++        if not isinstance(ack,dict) or 'source' not in ack:
++            raise RuntimeError('missing role acknowledgement: '+role+': '+str(ack))
++        list(flatten_acks(ack))
++    return {role:ack['source'] for role,ack in roles.items()}
+ 
+ 
+ def checkpoint(raw):
+@@ -61,10 +101,8 @@
+         assert_idle(snapshot)
+         self.mapping=snapshot['mapping']
+         raw=await self.bridge.call('flush')
+-        # Four instances must provide local + at least one worker acknowledgement.
+-        cluster=raw['cluster']
+-        if len(cluster['instances'])!=4 or any(not x['workers'] for x in cluster['instances']):
+-            raise RuntimeError('incomplete cluster producer inventory')
++        atomic_json(self.directory/'initial_flush.json',raw)
++        self.roles=role_inventory(raw)
+         self.acks=list(flatten_acks(raw))
+         if any(x.get('status')!='passed' or not x.get('durable') for x in self.acks):
+             raise RuntimeError('initial producer flush unconfirmed')
+@@ -145,6 +183,9 @@
+     async def flush(self,ledger):
+         raw=await self.bridge.call('flush')
+         self.checkpoint_history.append(raw)
++        atomic_json(self.directory/'flush_history.json',self.checkpoint_history)
++        if role_inventory(raw)!=self.roles:
++            raise RuntimeError('role producer identity changed inside episode')
+         await self.poll(ledger)
+         client_cp=self.journal.checkpoint(pending_delivery=0 if all(task.done() for task in self.tasks.values()) else 1)
+         ledger.poll_events(self.cursor,self.journal.path);ledger.acknowledge(client_cp)
+@@ -210,8 +251,14 @@
+     io=LiveEpisodeIO(bridge,session,run_id=run_id,episode_id=episode_id,run_dir=run_dir,trace=trace,
+                      sampling=cfg['sampling'],arrival_sec=case['arrival_sec'],route_shares=case.get('route_shares'))
+     records=[]
++    def save_decision(record):
++        # The submitted action and uncertain receipt survive an interrupted run.
++        import os
++        records.append(record)
++        with (io.directory/'decisions.jsonl').open('a') as stream:
++            stream.write(json.dumps(record,allow_nan=False)+'\n');stream.flush();os.fsync(stream.fileno())
+     env=RealEnv(bridge,io,BudgetLedger(run_dir),run_id=run_id,episode_id=episode_id,ledger_factory=io.ledger,
+-                config=RealEnvConfig(arrival_sec=case['arrival_sec'],drain_sec=case['drain_sec']),decision_sink=records.append)
++                config=RealEnvConfig(arrival_sec=case['arrival_sec'],drain_sec=case['drain_sec']),decision_sink=save_decision)
+     result=None
+     try:
+         observation,_=await env.reset(mode=mode)
+@@ -265,7 +312,7 @@
+             seed=case['seed']
+             result=await run_episode(cfg,case,bridge=bridge,session=traffic_session,run_dir=run_dir,
+                                      episode_id=invocation_id+'_'+label,mode=control_mode,seed=seed,monitor=monitor)
+-            results.append({'label':label,'result':result})
++            results.append({'label':label,'episode_id':invocation_id+'_'+label,'result':result})
+             if result['status']!='passed':break
+         status=all(row['result']['status']=='passed' for row in results) and len(results)==len(cases)
+         checks={'episodes_reconciled':bool(status)}
+--- before/rl_scheduler/tests/test_real_repairs.py
++++ after/rl_scheduler/tests/test_real_repairs.py
+@@ -0,0 +1,310 @@
++"""CPU protocol regressions for independent bridge review R1--R7.
++
++Run against real method bodies; only actors, KV storage and engine steps are mocked.
++No model, Ray initialization, service installation or shared budget writes.
++"""
++import ast
++import asyncio
++from copy import deepcopy
++import json
++from pathlib import Path
++import tempfile
++from types import SimpleNamespace as Obj
++import unittest
++from unittest.mock import patch
++
++from rl_scheduler.real_bridge import ControlArbiter, RealBridge, digest
++from rl_scheduler.real_metrics import RequestLedger, Checkpoint
++from rl_scheduler.real_runner import flatten_acks, role_inventory, checkpoint
++from rl_scheduler.tests.test_real_bridge import Clock, states, extract_method, load_file
++from rl_scheduler.tests.test_real_env import environment, ROOT
++
++
++def ack(source='p', seq=0, through=100, **extra):
++    return dict(source=source, status='passed', durable=True, pending_delivery=0,
++                last_sequence=seq, through_ns=through, **extra)
++
++
++def tree():
++    return {'api':ack('api'), 'cluster':{'manager':ack('manager'), 'instances':[
++        {'local':ack(f'l{i}'), 'workers':[ack(f'w{i}')]} for i in range(4)]}}
++
++
++class FlushRepairs(unittest.TestCase):
++    def test_shared_and_independent_producers_and_cross_round_regression(self):
++        raw=tree();raw['cluster']['instances'][0]={'local':ack('shared',through=200),'workers':[ack('shared',through=100)]}
++        self.assertEqual(len(role_inventory(raw)),10)
++        merged=list(flatten_acks(raw));self.assertEqual(len(merged),9)
++        self.assertEqual(next(a['through_ns'] for a in merged if a['source']=='shared'),200)
++        ledger=RequestLedger('r','e',start_ns=0,arrival_end_ns=1,score_deadline_ns=2,
++                             expected_sources=['shared'],expected_request_ids=[])
++        ledger.acknowledge(checkpoint(ack('shared',through=200)))
++        ledger.acknowledge(checkpoint(ack('shared',through=100)))
++        self.assertIn('checkpoint_regression:shared',ledger.issues)
++        self.assertEqual(len(list(flatten_acks(tree()))),10)
++
++    def test_failed_worker_and_missing_role_never_disappear(self):
++        for reason in ('pending_cuda_telemetry','writer_closed','tracing_disabled'):
++            for shared in (True,False):
++                raw=tree();instance=raw['cluster']['instances'][0]
++                if shared:instance['local']=ack('same-process')
++                instance['workers']=[{'status':'incomplete','reason':reason}]
++                with self.subTest(reason=reason,shared=shared),self.assertRaises(RuntimeError):role_inventory(raw)
++                with self.assertRaises(RuntimeError):list(flatten_acks(raw))
++        for change in ('missing','empty','extra'):
++            raw=tree()
++            if change=='missing':raw['cluster']['instances'].pop()
++            elif change=='empty':raw['cluster']['instances'][0]['workers']=[]
++            else:raw['cluster']['instances'][0]['workers'].append(ack('extra'))
++            with self.assertRaises(RuntimeError):role_inventory(raw)
++
++    def test_every_role_requires_explicit_zero_pending_and_durability(self):
++        for role in ('api','manager','local','worker'):
++            for pending in (None,1):
++                raw=tree()
++                target={'api':raw['api'],'manager':raw['cluster']['manager'],
++                        'local':raw['cluster']['instances'][0]['local'],
++                        'worker':raw['cluster']['instances'][0]['workers'][0]}[role]
++                if pending is None:target.pop('pending_delivery')
++                else:target['pending_delivery']=pending
++                with self.subTest(role=role,pending=pending),self.assertRaises(RuntimeError):role_inventory(raw)
++
++
++class DecisionRepairs(unittest.IsolatedAsyncioTestCase):
++    async def test_env_unknown_stops_new_action_preserves_sample_and_cleans(self):
++        env,clock,bridge,io=environment();calls=[]
++        async def submit(*args):
++            calls.append(('submit',args[0]));return {'receipt_status':'unknown','terminal_status':None}
++        async def query(rid):calls.append(('query',rid));return {'receipt_status':'unknown','terminal_status':None}
++        bridge.submit_migration=submit;bridge.query_receipt=query
++        await env.reset();await env.step(1,old_logp=-2.)
++        original=deepcopy(env.decisions[0])
++        with self.assertRaises(RuntimeError):await env.step(1,old_logp=-3.)
++        self.assertEqual(env.decisions,[original]);self.assertEqual(original['sampled_action'],1)
++        self.assertEqual(original['old_logp'],-2.);self.assertEqual(original['receipt_status'],'unknown')
++        self.assertEqual([c[0] for c in calls],['submit','query'])
++        result=await env.close();self.assertFalse(result['valid_episode'])
++
++    async def test_transport_fence_queries_old_id_and_resolves_only_known_terminal(self):
++        bridge=RealBridge('http://127.0.0.1:1',None);bridge.lease={'lease_id':'lease'};calls=[];known=[False]
++        async def rpc(method,**payload):
++            calls.append((method,payload['decision_id']))
++            if method=='submit_migration':raise ConnectionError()
++            return {'terminal_status':'failed' if known[0] else 'unknown'}
++        bridge.call=rpc
++        await bridge.submit_migration('old','0','1','c','v')
++        with self.assertRaises(RuntimeError):await bridge.submit_migration('new','0','1','c','v')
++        self.assertEqual(calls,[('submit_migration','old'),('query_receipt','old')])
++        known[0]=True
++        await bridge.submit_migration('new','0','1','c','v')
++        self.assertEqual(calls[-2:],[('query_receipt','old'),('submit_migration','new')])
++
++    async def test_acquisition_fence_cleanup_and_failover_intervention(self):
++        clock=Clock();core=None
++        async def provider():
++            self.assertTrue(core.ordinary_blocked)
++            core.external_intervention('pre_stop')
++            return states(clock)
++        core=ControlArbiter(provider,None,clock=clock)
++        with self.assertRaises(RuntimeError):await core.acquire_controller('r','v','e')
++        self.assertFalse(core.acquiring);self.assertIsNone(core.lease)
++        self.assertIn('pre_stop',core.invalid_reasons)
++        async def unavailable():raise ConnectionError()
++        core.state_provider=unavailable
++        with self.assertRaises(ConnectionError):await core.acquire_controller('r','v','e')
++        self.assertFalse(core.ordinary_blocked)
++
++
++def cancellation_owner(module, index='0'):
++    scheduler=Obj(running=[],waiting=[],swapped=[],pre_alloc_cache_dict={},migrating_out_request_last_stage={})
++    engine=Obj(scheduler=[scheduler],request_ids=set(),output_forwarder=Obj(thread_forwarder=Obj(real_pending_delivery=lambda:0)))
++    engine.clear_request=engine.request_ids.discard
++    coordinator=Obj(migrating_out_request_id_set=set(),migrating_in_request_id_set=set(),pending_migrate_in_request_time={})
++    def free(rid):
++        scheduler.pre_alloc_cache_dict.pop(rid,None);coordinator.migrating_in_request_id_set.discard(rid)
++        coordinator.pending_migrate_in_request_time.pop(rid,None)
++    coordinator.free_pre_alloc_cache=free
++    async def abort(ids):
++        for queue in (scheduler.running,scheduler.waiting,scheduler.swapped):queue[:]=[r for r in queue if r.request_id not in ids]
++    async def boundary(rid):
++        for r in list(scheduler.running):
++            if r.request_id==rid:scheduler.running.remove(r);scheduler.migrating_out_request_last_stage[rid]=r
++        await abort({rid})
++    backend=Obj(engine=engine,abort_request=abort,remove_running_request=boundary,
++                free_src_request=lambda req:engine.clear_request(req.request_id))
++    return Obj(backend_engine=backend,migration_coordinator=coordinator,instance_id=index)
++
++
++class CancellationRepairs(unittest.IsolatedAsyncioTestCase):
++    async def asyncSetUp(self):
++        self.module=load_file('_repair_real_control','llumnix/real_control.py')
++        self.state_patch=patch.object(self.module,'instance_state',lambda owner:{'epoch':'epoch-'+owner.instance_id})
++        self.state_patch.start();self.addCleanup(self.state_patch.stop)
++
++    async def test_migrated_owner_and_paused_preallocated_are_fenced(self):
++        owners=[cancellation_owner(self.module,str(i)) for i in range(4)]
++        dst=owners[1];dst.backend_engine.engine.scheduler[0].running.append(Obj(request_id='r'))
++        dst.backend_engine.engine.request_ids.add('r')
++        src=owners[0];s=src.backend_engine.engine.scheduler[0]
++        s.migrating_out_request_last_stage['r']=Obj(request_id='r');s.pre_alloc_cache_dict['r']=object()
++        src.migration_coordinator.migrating_in_request_id_set.add('r');src.migration_coordinator.pending_migrate_in_request_time['r']=1
++        async def actor_call(owner,rid):return await self.module.cancel_instance_request(owner,rid)
++        actors={o.instance_id:Obj(real_cancel_request=Obj(remote=lambda rid,o=o:actor_call(o,rid)),
++                    real_control_state=Obj(remote=lambda o=o:asyncio.sleep(0,result={
++                        'instance_id':o.instance_id,'epoch':'epoch-'+o.instance_id,
++                        'healthy':True,'type':'neutral','is_migrating':False}))) for o in owners}
++        manager=Obj(instances=actors,enable_pd_disagg=False)
++        result=await self.module.ManagerControlMixin.real_cancel_request(manager,'r')
++        self.assertEqual(result['status'],'absent')
++        for owner in owners:
++            self.assertIn('r',owner._real_cancelled_requests)
++            self.assertIn('r',owner.migration_coordinator._real_cancelled_requests)
++            self.assertNotIn('r',owner.backend_engine.engine.request_ids)
++        self.assertFalse(s.migrating_out_request_last_stage);self.assertFalse(s.pre_alloc_cache_dict)
++
++    async def test_unfinished_dispatch_transfer_and_delivery_stay_unknown(self):
++        for reason in ('generate','incoming','outgoing','controlled','delivery'):
++            owner=cancellation_owner(self.module)
++            if reason=='generate':owner._real_generating={'r'}
++            elif reason=='incoming':owner._real_inbound_tasks={object()}
++            elif reason=='outgoing':owner.migration_coordinator.migrating_out_request_id_set.add('r')
++            elif reason=='controlled':owner._real_control_inflight='d'
++            else:owner.backend_engine.engine.output_forwarder.thread_forwarder.real_pending_delivery=lambda:1
++            result=await self.module.cancel_instance_request(owner,'r')
++            self.assertEqual(result['status'],'unknown',reason)
++            self.assertIn('r',owner._real_cancelled_requests)
++        epochs={str(i):'epoch-'+str(i) for i in range(4)}
++        actors={str(i):Obj(real_cancel_request=Obj(remote=lambda rid,i=i:asyncio.sleep(0,result={
++            'status':'absent','fenced':True,'pending_delivery':0,'instance_id':str(i),'epoch':'epoch-'+str(i)})),
++            real_control_state=Obj(remote=lambda i=i:asyncio.sleep(0,result={
++                'instance_id':str(i),'epoch':epochs[str(i)],'healthy':True,'type':'neutral','is_migrating':False})))
++            for i in range(4)}
++        manager=Obj(instances=actors,enable_pd_disagg=False,_real_dispatch_tasks={'r':{object()}})
++        self.assertEqual((await self.module.ManagerControlMixin.real_cancel_request(manager,'r'))['status'],'unknown')
++        manager._real_dispatch_tasks.clear();epochs['1']='rebuilt'
++        self.assertEqual((await self.module.ManagerControlMixin.real_cancel_request(manager,'r'))['status'],'unknown')
++        epochs['1']='epoch-1'
++        self.assertEqual((await self.module.ManagerControlMixin.real_cancel_request(manager,'r'))['status'],'absent')
++
++    async def test_uncertain_RPC_cannot_produce_absence_proof(self):
++        async def lost(rid):raise ConnectionError('reply lost')
++        actors={str(i):Obj(real_cancel_request=Obj(remote=lost)) for i in range(4)}
++        manager=Obj(instances=actors,enable_pd_disagg=False)
++        with self.assertRaises(ConnectionError):
++            await self.module.ManagerControlMixin.real_cancel_request(manager,'r')
++        self.assertIn('r',manager._real_cancelled_requests)
++
++    async def test_late_generate_preallocate_receive_and_commit_do_not_create_request(self):
++        owner=cancellation_owner(self.module);await self.module.cancel_instance_request(owner,'r')
++        generate=extract_method('llumnix/llumlet/llumlet.py','Llumlet','generate',{})
++        await generate(owner,'r',None,1)  # Must return before calling any backend add.
++        response=lambda **kw:Obj(**kw)
++        for name,args in [('pre_alloc_cache',('r',None,0,5,[],True)),('recv_cache',('r',)),('commit_dst_request',('r',None))]:
++            method=extract_method('llumnix/llumlet/migration_coordinator.py','MigrationCoordinator',name,{'MigrationResponse':response})
++            result=method(owner.migration_coordinator,*args)
++            if asyncio.iscoroutine(result):result=await result
++            self.assertFalse(result.success,name)
++        manager_generate=extract_method('llumnix/manager.py','Manager','generate',{})
++        with self.assertRaises(RuntimeError):await manager_generate(Obj(_real_cancelled_requests={'r'}),'r',None)
++
++    async def test_engine_boundary_and_output_barrier_are_required(self):
++        owner=cancellation_owner(self.module);entered=asyncio.Event();release=asyncio.Event()
++        owner.backend_engine.engine.request_ids.add('r')
++        async def boundary(rid):entered.set();await release.wait()
++        owner.backend_engine.remove_running_request=boundary
++        task=asyncio.create_task(self.module.cancel_instance_request(owner,'r'))
++        await entered.wait();self.assertFalse(task.done());release.set()
++        self.assertEqual((await task)['status'],'absent')
++        boundary_method=extract_method('llumnix/backends/vllm/llm_engine.py','BackendVLLM','_remove_running_request',{})
++        seen=[]
++        backend=Obj(engine=Obj(_real_cancelled_requests={'r'},scheduler=[Obj(remove_running_request=lambda rid:seen.append(('pause',rid)))],
++                               abort_request=lambda ids:seen.append(('abort',ids))))
++        boundary_method(backend,'r')
++        self.assertEqual(seen,[('pause','r'),('abort',{'r'})])
++
++    async def test_API_uses_Manager_proof_and_drains_queue_before_clearing(self):
++        tree_ast=ast.parse((ROOT/'llumnix/entrypoints/vllm/api_server.py').read_text())
++        method=next(n for n in tree_ast.body if isinstance(n,ast.AsyncFunctionDef) and n.name=='_real_metrics_abort_confirmed')
++        events=[];pending=[1]
++        async def call(method,rid,**kw):
++            events.append(('manager',rid));return {'status':'absent'}
++        client=Obj(manager=Obj(real_cancel_request=object()),request_output_queue=Obj(qsize=lambda:pending[0]),
++                   _clear_client_request_states=lambda rid:events.append(('clear',rid)))
++        ns={'llumnix_client':client,'asyncio_wait_for_ray_remote_call_with_timeout':call}
++        exec(compile(ast.Module(body=[method],type_ignores=[]),'api_server.py','exec'),ns)
++        task=asyncio.create_task(ns['_real_metrics_abort_confirmed']('r'))
++        await asyncio.sleep(.001);self.assertEqual(events,[('manager','r')]);self.assertFalse(task.done())
++        pending[0]=0;self.assertTrue(await task);self.assertEqual(events[-1],('clear','r'))
++
++    async def test_unproven_abort_never_labels_server_cancelled(self):
++        import httpx
++        from fastapi import FastAPI
++        from rl_scheduler.real_client import NulJSONDecoder
++        module=load_file('_repair_stream','llumnix/entrypoints/vllm/real_metrics_stream.py')
++        ready=asyncio.Event();stopped=asyncio.Event()
++        class Client:
++            async def generate(self,*args,**kwargs):
++                ready.set()
++                async def stream():
++                    await stopped.wait()
++                    if False:yield None
++                return Obj(generator=stream)
++        async def unproven(rid):stopped.set();return False
++        app=FastAPI();events=[]
++        module.install_real_metrics_routes(app,Client,lambda **kw:kw,lambda *a,**kw:events.append(kw),None,unproven)
++        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test') as client:
++            task=asyncio.create_task(client.post('/generate_real_metrics',json=dict(run_id='r',episode_id='e',request_id='a',prompt='x')))
++            await ready.wait()
++            result=await client.post('/cancel_real_metrics',json=dict(run_id='r',episode_id='e',request_ids=['a']))
++            self.assertEqual(result.json()['results'][0]['status'],'unknown')
++            output=await task;frames=NulJSONDecoder().feed(output.content)
++            self.assertEqual(frames[-1]['outcome'],'unknown')
++
++
++class GateRepairs(unittest.TestCase):
++    def setUp(self):self.cli=load_file('_repair_cli','benchmark/run_real_ppo.py')
++
++    def fixture(self,directory):
++        root=Path(directory);run=root/'run';(run/'reviews').mkdir(parents=True);(run/'gates').mkdir()
++        (root/'source.py').write_text('cpu fixture');(run/'cfg.json').write_text('{}');(run/'proof.txt').write_text('cpu proof')
++        source={'source.py':self.cli.sha(root/'source.py')}
++        gate={'status':'passed','checks':[{'name':'cpu','status':'passed'}], 'source_hashes':source,'source_hash':digest(source),
++              'config_hashes':{'cfg.json':self.cli.sha(run/'cfg.json')},'evidence_hashes':{'proof.txt':self.cli.sha(run/'proof.txt')}}
++        review=dict(gate,stage='04_bridge_review')
++        (run/'reviews/bridge_review.json').write_text(json.dumps(review))
++        original=self.cli.validate_gate
++        def validate(path,run_dir):return original(path,run_dir,source_root=root)
++        return run,gate,patch.object(self.cli,'validate_gate',side_effect=validate)
++
++    def test_review_absent_failed_incomplete_and_stale_are_blocked(self):
++        for state in ('missing','failed','incomplete','stale','unbound'):
++            with tempfile.TemporaryDirectory() as d:
++                run,gate,patched=self.fixture(d);p=run/'reviews/bridge_review.json';review=json.loads(p.read_text())
++                if state=='missing':p.unlink()
++                elif state=='stale':(Path(d)/'source.py').write_text('changed')
++                elif state=='unbound':review['source_hashes']={'source.py':gate['source_hashes']['source.py']};gate['source_hashes']['extra.py']='x'
++                else:review['status']=state
++                if state!='missing':p.write_text(json.dumps(review))
++                with patched,self.assertRaises((OSError,RuntimeError)):
++                    self.cli.live_dependencies(run,'telemetry',[gate])
++
++    def test_live_frozen_order_and_result_hash_chain(self):
++        with tempfile.TemporaryDirectory() as d:
++            run,gate,patched=self.fixture(d)
++            with patched:
++                dependencies=self.cli.live_dependencies(run,'telemetry',[gate])
++                for index,key in enumerate(self.cli.LIVE_ORDER):
++                    if index:
++                        with self.assertRaises(OSError):self.cli.live_dependencies(run,key,[gate])
++                        previous=self.cli.LIVE_ORDER[index-1]
++                        folder=run/'smoke_runs'/previous;folder.mkdir(parents=True)
++                        checks={name:True for name in self.cli.LIVE_CHECKS[previous]}
++                        (folder/'result.json').write_text(json.dumps({'status':'passed','checks':checks,'results':[]}))
++                        self.cli.publish_live_gate(run,previous,previous,{'dependency_gate_hashes':dependencies})
++                        dependencies=self.cli.live_dependencies(run,key,[gate])
++                self.assertEqual(len(dependencies),4)
++                (run/'smoke_runs/telemetry/result.json').write_text('{}')
++                with self.assertRaises(RuntimeError):self.cli.live_dependencies(run,'overhead',[gate])
++
++
++if __name__=='__main__':unittest.main(verbosity=2)

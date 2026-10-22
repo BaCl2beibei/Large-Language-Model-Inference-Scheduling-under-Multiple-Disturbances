@@ -1,0 +1,84 @@
+{
+  "artifacts": [
+    "preflight.json",
+    "source_manifest_before.json",
+    "implementation.md",
+    "budget.json",
+    "experiment_spec.yaml",
+    "seed_search.json",
+    "commands.json"
+  ],
+  "captured_evidence_hashes": {
+    "budget_json_sha256": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983",
+    "preflight_json_sha256": "640471cb989a0f0ce5691ad2316ab64dc69be8507d3a5dfce0515a2db3a95f83",
+    "seed_search_json_sha256": "f9c605747eb23eb1ff31faed4e72b9260ba27907cbafc53858450f756d12e11a",
+    "source_manifest_before_json_sha256": "b40b377e9490a249a25b3049a821829a18b2ab3bda8ea2725619b5a1d58e1d0f"
+  },
+  "checks": [
+    {
+      "evidence": "rl_scheduler/runs/real_ppo_handoff/active_run.json",
+      "name": "active_pointer_created_atomically",
+      "status": "passed"
+    },
+    {
+      "evidence": "preflight.json",
+      "name": "python_runtime_and_service_ownership_captured",
+      "status": "passed"
+    },
+    {
+      "evidence": "preflight.json",
+      "name": "gpu_and_ray_occupancy_captured_without_experiment",
+      "status": "passed"
+    },
+    {
+      "evidence": "source_manifest_before.json and compressed diff",
+      "name": "tracked_diff_and_existing_deletions_preserved",
+      "status": "passed"
+    },
+    {
+      "evidence": "source_manifest_before.json",
+      "name": "related_untracked_source_snapshotted_and_hashed",
+      "status": "passed"
+    },
+    {
+      "evidence": "seed_search.json; exact seed fields/declarations and paths",
+      "name": "suggested_seed_candidates_searched_and_reserved",
+      "status": "passed"
+    },
+    {
+      "evidence": "preflight.json",
+      "name": "real_ppo_new_files_and_cli_verified_absent",
+      "status": "passed"
+    },
+    {
+      "evidence": "experiment_spec.yaml",
+      "name": "experiment_spec_yaml_syntax",
+      "status": "passed"
+    },
+    {
+      "blocking_before_gpu": true,
+      "evidence": "budget.json",
+      "name": "budget_expiry_enforcement",
+      "status": "not_implemented"
+    },
+    {
+      "blocking_before_opportunity_gpu_run": true,
+      "evidence": "experiment_spec.yaml",
+      "name": "exact_runtime_sampling_parameters",
+      "status": "pending_before_P3"
+    }
+  ],
+  "config_hash": "095688b60ce963dab253178c8e247c8d85586d019945dfc0d13050efe3718fa0",
+  "next_step_executable": "Sol may review P0 and implement P1 on CPU; any GPU experiment remains blocked until persistent budget expiry enforcement and P3 protocol freeze.",
+  "reason": "P0 environment inventory and handoff are complete. This gate authorizes review/P1 CPU work only, not GPU work. Automatic budget enforcement and exact live sampling configuration remain explicitly pending.",
+  "remaining_budget": {
+    "P0_P3_sec": 7200,
+    "P4_sec": 7200,
+    "P5_sec": 14400,
+    "total_experiment_wall_time_sec": 28800
+  },
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "source_hash": "13b8b356371d688ea4c3b3b597139db2d74b1f6231b8b0279766c920518ead3d",
+  "stage": "P0",
+  "status": "passed"
+}

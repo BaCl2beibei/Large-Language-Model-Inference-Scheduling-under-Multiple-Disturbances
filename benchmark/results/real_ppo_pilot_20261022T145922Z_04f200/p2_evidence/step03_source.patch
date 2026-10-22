@@ -1,0 +1,2840 @@
+--- p2_before/benchmark/run_real_ppo.py
++++ p2_after/benchmark/run_real_ppo.py
+@@ -0,0 +1,134 @@
++#!/usr/bin/env python3
++"""Audited real telemetry and bridge smoke CLI. No PPO stages are implemented."""
++from __future__ import annotations
++
++import argparse
++import asyncio
++from datetime import datetime,timezone
++import hashlib
++import json
++from pathlib import Path
++import sys
++import time
++
++ROOT=Path(__file__).resolve().parents[1]
++if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
++
++from rl_scheduler.real_budget import BudgetLedger,atomic_json
++from rl_scheduler.real_bridge import digest
++
++
++def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def validate_gate(path,run_dir,*,source_root=ROOT):
++    value=json.loads(Path(path).read_text())
++    if value.get('status')!='passed':raise RuntimeError('gate not passed: '+str(path))
++    if not value.get('checks') or any(check.get('status')!='passed' for check in value['checks']):
++        raise RuntimeError('gate lacks successful evidence checks')
++    if not value.get('evidence_hashes'):raise RuntimeError('gate lacks evidence hashes')
++    source_map=value.get('source_hashes')
++    if not source_map or value.get('source_hash')!=digest(source_map):raise RuntimeError('invalid source binding')
++    for name,expected in source_map.items():
++        if sha(source_root/name)!=expected:raise RuntimeError('gate source changed: '+name)
++    config_bindings=value.get('config_hashes',{'experiment_spec.yaml':value.get('config_hash')})
++    for name,expected in config_bindings.items():
++        candidate=Path(run_dir)/name if (Path(run_dir)/name).exists() else source_root/name
++        if sha(candidate)!=expected:raise RuntimeError('gate config changed: '+name)
++    for name,expected in value.get('evidence_hashes',{}).items():
++        if sha(Path(run_dir)/name)!=expected:raise RuntimeError('gate evidence changed: '+name)
++    return value
++
++
++def parse_args(argv=None):
++    parser=argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--config',type=Path,required=True)
++    parser.add_argument('--stage',choices=['telemetry','bridge','preflight','opportunity','train','evaluate'],required=True)
++    parser.add_argument('--mode',choices=['shadow','active','overhead'],default='shadow')
++    parser.add_argument('--output-dir',type=Path,required=True)
++    parser.add_argument('--dry-run',action='store_true')
++    parser.add_argument('--manage-services',action='store_true')
++    parser.add_argument('--invocation-id')
++    return parser.parse_args(argv)
++
++
++def plan(args,cfg):
++    if args.stage not in ('telemetry','bridge'):raise ValueError('stage not implemented: '+args.stage)
++    run_dir=args.output_dir.resolve()
++    pointer=json.loads((ROOT/'rl_scheduler/runs/real_ppo_handoff/active_run.json').read_text())
++    if Path(pointer['run_dir']).resolve()!=run_dir:raise RuntimeError('active run pointer mismatch')
++    if cfg.get('schema_version')!='real-pilot-v1':raise ValueError('wrong real config schema')
++    if args.config.resolve()!=ROOT/'rl_scheduler/configs/real_pilot.yaml':raise ValueError('unregistered configuration path')
++    from rl_scheduler.real_runner import verify_trace_manifest
++    verify_trace_manifest(cfg)
++    # P1's API registration changed in P2 and is explicitly revalidated, not silently ignored.
++    p1=run_dir/'gates/p1_offline_revalidated_03.json'
++    if p1.exists():validate_gate(p1,run_dir)
++    else:validate_gate(run_dir/'gates/p1_offline.json',run_dir)
++    if not args.dry_run:validate_gate(run_dir/'gates/p2_offline.json',run_dir)
++    key='telemetry' if args.stage=='telemetry' else args.mode
++    repeats=4 if key=='overhead' else 1
++    case=cfg['smoke'][key]
++    duration=repeats*(case['arrival_sec']+case['drain_sec']+60)+60
++    if args.manage_services:duration+=cfg['service']['startup_timeout_sec']
++    budget=BudgetLedger(run_dir).require(duration)
++    return {'stage':args.stage,'mode':key,'config':str(args.config.resolve()),'config_hash':sha(args.config),
++            'episodes':repeats,'case':case,'estimated_max_sec':duration,
++            'remaining_budget':budget['remaining'],'manage_services':args.manage_services,
++            'server_argv':cfg['service']['server_argv'],'env':cfg['service']['env'],
++            'GPU_will_start':bool(args.manage_services and not args.dry_run),
++            'dry_run':args.dry_run,'training_implemented':False}
++
++
++async def wait_ready(cfg,budget):
++    import aiohttp
++    timeout=cfg['service']['startup_timeout_sec'];started=time.monotonic()
++    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3.)) as session:
++        while time.monotonic()-started<timeout:
++            budget.require(60.)
++            try:
++                async with session.get(cfg['service']['base_url']+'/is_ready') as response:
++                    if response.status==200 and await response.json() is True:return
++            except (aiohttp.ClientError,asyncio.TimeoutError):pass
++            await asyncio.sleep(1.)
++    raise TimeoutError('four-instance readiness not established within startup bound')
++
++
++def main(argv=None):
++    args=parse_args(argv)
++    try:
++        import yaml
++        cfg=yaml.safe_load(args.config.read_text())
++        intent=plan(args,cfg)
++        if args.dry_run:
++            print(json.dumps(intent,indent=2));return 0
++        from rl_scheduler.real_service import ManagedService
++        from rl_scheduler.real_runner import run_live
++        service=ManagedService(ROOT,args.output_dir,args.config.resolve())
++        invocation=args.invocation_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'_'+args.stage+'_'+args.mode
++        folder=args.output_dir/'smoke_runs'/invocation
++        folder.mkdir(parents=True,exist_ok=False)
++        atomic_json(folder/'intent.json',intent)
++        started_service=False
++        try:
++            if args.manage_services:
++                started_service=True  # start failure also needs owned-only cleanup
++                service.start()
++            else:
++                service.assert_running_owned()
++            budget=BudgetLedger(args.output_dir)
++            asyncio.run(wait_ready(cfg,budget))
++            result=asyncio.run(run_live(cfg,run_dir=args.output_dir,stage=args.stage,mode=args.mode,invocation_id=invocation))
++            print(json.dumps({'status':result['status'],'result':str(folder/'result.json')}))
++            return 0 if result['status']=='passed' else 1
++        except BaseException as exc:
++            atomic_json(folder/'failure.json',{'status':'incomplete','reason':type(exc).__name__+':'+str(exc),
++                                              'remaining_budget':BudgetLedger(args.output_dir).status()['remaining']})
++            raise
++        finally:
++            if started_service:service.stop()
++    except (ValueError,RuntimeError,OSError,KeyError) as exc:
++        print(json.dumps({'status':'incomplete','reason':str(exc)}),file=sys.stderr);return 2
++
++
++if __name__=='__main__':raise SystemExit(main())
+--- p2_before/llumnix/backends/output_forwarder.py
++++ p2_after/llumnix/backends/output_forwarder.py
+@@ -13,6 +13,7 @@
+ 
+ from typing import Dict, List, Coroutine, Union
+ import asyncio
++import threading
+ from abc import ABC, abstractmethod
+ from enum import Enum
+ 
+@@ -128,6 +129,9 @@
+                 for req_output in req_outputs:
+                     aborted_request_ids.append(req_output.request_id)
+ 
++        if aborted_request_ids and hasattr(self, '_real_pending_lock'):
++            with self._real_pending_lock:
++                self._real_delivery_error = True
+         return aborted_request_ids
+ 
+     def add_trace_timeline(self, req_outputs: LlumnixRequestOutputsType, trace_name: str):
+@@ -169,6 +173,7 @@
+         )
+         if aborted_request_ids:
+             await asyncio_wait_for_ray_remote_call_with_timeout(self.engine_actor_handle.abort, aborted_request_ids)
++            raise RuntimeError('output delivery failed before API queue acknowledgement')
+ 
+     def stop(self):
+         if self.request_output_queue_type == QueueType.ZMQ:
+@@ -194,6 +199,13 @@
+             self.main_loop = asyncio.get_event_loop()
+         self.abort_request_callback = abort_request_callback
+         self.forwarder_loop = start_asyncio_thread("thread_output_forwarder")
++        self._real_pending_lock = threading.Lock()
++        self._real_pending = 0
++        self._real_delivery_error = False
++
++    def real_pending_delivery(self):
++        with self._real_pending_lock:
++            return None if self._real_delivery_error else self._real_pending
+ 
+ 
+     def put_nowait_to_servers(
+@@ -204,13 +216,21 @@
+         _record_output_forwarder_stage("output_forwarder_submit", server_request_outputs)
+         for req_outputs in server_request_outputs.values():
+             self.add_trace_timeline(req_outputs, trace_name="engine_thread_put_queue_timestamp")
+-        asyncio.run_coroutine_threadsafe(
++        with self._real_pending_lock:
++            self._real_pending += 1
++        future = asyncio.run_coroutine_threadsafe(
+             self._put_nowait_to_servers(
+                 server_request_outputs,
+                 server_info_dict,
+             ),
+             self.forwarder_loop,
+         )
++        def completed(result):
++            with self._real_pending_lock:
++                self._real_pending -= 1
++                if result.cancelled() or result.exception() is not None:
++                    self._real_delivery_error = True
++        future.add_done_callback(completed)
+ 
+     async def _put_nowait_to_servers(
+         self,
+--- p2_before/llumnix/backends/vllm/llm_engine.py
++++ p2_after/llumnix/backends/vllm/llm_engine.py
+@@ -43,6 +43,7 @@
+ from llumnix.queue.queue_type import QueueType
+ from llumnix.backends.utils import EngineState
+ from llumnix.backends.output_forwarder import RequestOutputForwardingMode, OutputForwarder
++from rl_scheduler.real_bridge import CumulativeTokenCounter
+ from llumnix.ray_utils import LlumnixActor, get_llumnix_actor_handle
+ from llumnix.llumlet.request import LlumnixRequest
+ from llumnix.constants import NO_OUTPUTS_STEP_INTERVAL, RAY_RPC_TIMEOUT
+@@ -100,6 +101,8 @@
+         self.disable_async_output_proc = disable_async_output_proc
+         self.request_ids = set()
+         self._causal_output_counts: Dict[str, int] = {}
++        self._real_token_counter = CumulativeTokenCounter()
++        self._real_output_tokens_total = 0
+         try:
+             self.scheduler[0].instance_id = instance_id
+         except (AttributeError, IndexError):
+@@ -230,6 +233,8 @@
+             request_id = str(request_output.request_id)
+             output_tokens = max((len(output.token_ids) for output in request_output.outputs), default=0)
+             previous_tokens = self._causal_output_counts.get(request_id, 0)
++            self._real_token_counter.observe(request_id, output_tokens)
++            self._real_output_tokens_total = self._real_token_counter.total
+             self._causal_output_counts[request_id] = output_tokens
+             scheduler = self.scheduler[0] if self.scheduler else None
+             batch_features = getattr(scheduler, "last_causal_batch_features", {}) or {}
+@@ -510,6 +515,7 @@
+             await self._run_workers_async("commit_seq_group_metadata", request_id)
+ 
+         seq = backend_request.get_seqs()[0]
++        self.engine._real_token_counter.baseline(request_id, backend_request.output_len)
+         seq.seq_id = next(self.engine.seq_counter)
+         logger.info("pop request {} from pre-allocated cache".format(request_id))
+         pre_alloc_blocks = self.engine.scheduler[0].pre_alloc_cache_dict.pop(request_id)
+--- p2_before/llumnix/backends/vllm/worker.py
++++ p2_after/llumnix/backends/vllm/worker.py
+@@ -48,6 +48,20 @@
+ 
+ 
+ class MigrationWorker(Worker):
++    def real_control_flush(self):
++        from llumnix.metrics.causal_events import flush
++        deadline = time.monotonic() + 5.
++        pending = getattr(self, '_causal_cuda_queue', None)
++        if pending is not None:
++            with pending.all_tasks_done:
++                while pending.unfinished_tasks and time.monotonic() < deadline:
++                    pending.all_tasks_done.wait(max(0., deadline-time.monotonic()))
++                if pending.unfinished_tasks:
++                    return {'status': 'incomplete', 'reason': 'pending_cuda_telemetry'}
++        ack = flush(max(0., deadline-time.monotonic()))
++        ack['pending_delivery'] = 0
++        return ack
++
+     def __init__(self, *args, **kwargs) -> None:
+         # replace sampler
+         # pylint: disable=import-outside-toplevel
+--- p2_before/llumnix/entrypoints/vllm/api_server.py
++++ p2_after/llumnix/entrypoints/vllm/api_server.py
+@@ -41,6 +41,7 @@
+ from llumnix.metrics.causal_events import emit_clock_sync as emit_causal_clock_sync
+ from llumnix.metrics.causal_events import flush as flush_causal_events
+ from llumnix.entrypoints.vllm.real_metrics_stream import install_real_metrics_routes
++from llumnix.entrypoints.vllm.real_control_api import install_real_control_routes
+ 
+ # Code file with __main__ should set the logger name to inherit the llumnix logger configuration.
+ logger = init_logger("llumnix.entrypoints.vllm.api_server")
+@@ -76,8 +77,9 @@
+     return True
+ 
+ 
+-install_real_metrics_routes(app, lambda: llumnix_client, SamplingParams,
++_real_metric_states = install_real_metrics_routes(app, lambda: llumnix_client, SamplingParams,
+                             emit_causal_event, flush_causal_events, _real_metrics_abort_confirmed)
++install_real_control_routes(app, lambda: llumnix_client, _real_metric_states, flush_causal_events)
+ 
+ 
+ # pylint: disable=unused-argument
+--- p2_before/llumnix/entrypoints/vllm/real_control_api.py
++++ p2_after/llumnix/entrypoints/vllm/real_control_api.py
+@@ -0,0 +1,36 @@
++"""Loopback-only control endpoints on the existing serving process."""
++from __future__ import annotations
++
++import asyncio
++from fastapi import Request
++from fastapi.responses import JSONResponse
++
++
++def install_real_control_routes(app, get_client, metric_states, flush):
++    @app.post('/real_control/{method}')
++    async def real_control(method: str, request: Request):
++        if not request.client or request.client.host not in ('127.0.0.1','::1','localhost','testclient'):
++            return JSONResponse({'error':'control requires loopback peer'},status_code=403)
++        payload=await request.json()
++        client=get_client()
++        try:
++            if method=='flush':
++                cluster=await client.manager.real_control_flush.remote()
++                local=await asyncio.to_thread(flush,5.)
++                queue=client.request_output_queue
++                pending=queue.qsize()+len(client.request_stream)+sum(not s['done'].is_set() for s in metric_states.values())
++                local['pending_delivery']=pending
++                return JSONResponse({'cluster':cluster,'api':local})
++            if method=='release_episode':
++                keys=[k for k in metric_states if k[:2]==(payload['run_id'],payload['episode_id'])]
++                if any(not metric_states[k]['done'].is_set() for k in keys):
++                    raise RuntimeError('episode handlers still active')
++                for key in keys:
++                    metric_states.pop(key)
++                return JSONResponse({'status':'released','removed':len(keys)})
++            result=await client.manager.real_control.remote(method,payload)
++            return JSONResponse(result)
++        except (RuntimeError,ValueError,KeyError) as exc:
++            return JSONResponse({'error':str(exc)},status_code=409)
++        except Exception as exc:
++            return JSONResponse({'error':'uncertain control RPC: '+type(exc).__name__},status_code=503)
+--- p2_before/llumnix/entrypoints/vllm/real_metrics_stream.py
++++ p2_after/llumnix/entrypoints/vllm/real_metrics_stream.py
+@@ -36,6 +36,7 @@
+         if 'prompt' not in body:
+             return JSONResponse({'error': 'prompt required'}, status_code=400)
+         prompt = body.pop('prompt')
++        initial_instance_id = body.pop('initial_instance_id', None)
+         body.pop('stream', None)
+         if body.get('n', 1) != 1 or body.get('best_of', 1) != 1:
+             return JSONResponse({'error': 'metrics stream requires n=best_of=1'}, status_code=400)
+@@ -60,7 +61,8 @@
+         async def stream():
+             state['task'] = asyncio.current_task()
+             try:
+-                generator = await get_client().generate(prompt, params, server_id)
++                route_kwargs = {'real_initial_instance_id': initial_instance_id} if initial_instance_id is not None else {}
++                generator = await get_client().generate(prompt, params, server_id, **route_kwargs)
+                 publish(state, 'accepted')
+                 state['ready'].set()
+                 yield frame('accepted')
+@@ -134,3 +136,5 @@
+         # This confirms this API process only; runner must collect all producers.
+         result = await asyncio.to_thread(flush, 5.)
+         return JSONResponse(result)
++
++    return active
+--- p2_before/llumnix/global_scheduler/global_scheduler.py
++++ p2_after/llumnix/global_scheduler/global_scheduler.py
+@@ -169,8 +169,8 @@
+ 
+         return prefill_instance_id, decode_instance_id, request_expected_steps
+ 
+-    def push_migrations(self, instance_info: Dict[str, InstanceInfo]) -> List[List[Tuple[str, str]]]:
+-        return self.migration_scheduler.push_migrations(instance_info)
++    def push_migrations(self, instance_info: Dict[str, InstanceInfo], allow_routine: bool = True) -> List[List[Tuple[str, str]]]:
++        return self.migration_scheduler.push_migrations(instance_info, allow_routine=allow_routine)
+ 
+     def check_scale(self) -> Tuple[str, str]:
+         scale_up_num, scale_down_num = self.scaling_scheduler.check_scale(self.instance_info, self.instance_id_set)
+--- p2_before/llumnix/global_scheduler/migration_scheduler.py
++++ p2_after/llumnix/global_scheduler/migration_scheduler.py
+@@ -204,7 +204,8 @@
+     # TODO(KuilongCui): The migration rules can be defined in constructor
+     def push_migrations(
+         self,
+-        instance_info: Dict[str, InstanceInfo]
++        instance_info: Dict[str, InstanceInfo],
++        allow_routine: bool = True,
+     ) -> List[Tuple[MigrationType, List[Tuple[str, str]]]]:
+         if self.enable_pre_stop_migration:
+             pre_stop_migration_tasks = []
+@@ -227,6 +228,8 @@
+                 if len(task[1]) > 0:
+                     return pre_stop_migration_tasks
+ 
++        if not allow_routine:
++            return []
+         routine_migration_tasks = []
+         if self.enable_pd_disagg:
+             routine_migration_tasks.append((
+--- p2_before/llumnix/llumlet/llumlet.py
++++ p2_after/llumnix/llumlet/llumlet.py
+@@ -253,10 +253,49 @@
+         self,
+         dst_instance_actor: ray.actor.ActorHandle,
+         dst_instance_context: InstanceContext,
+-        migration_type: Optional[MigrationType] = None
+-    ) -> None:
++        migration_type: Optional[MigrationType] = None,
++        expected_candidate_id: Optional[str] = None,
++        decision_id: Optional[str] = None,
++        migration_id: Optional[str] = None,
++        source_epoch: Optional[str] = None,
++        destination_epoch: Optional[str] = None,
++        wait_for_completion: bool = False,
++    ):
++        if expected_candidate_id is not None:
++            from llumnix.real_control import controlled_migrate
++            return await controlled_migrate(self, dst_instance_actor, dst_instance_context, migration_type,
++                expected_candidate_id=expected_candidate_id, decision_id=decision_id,
++                migration_id=migration_id, source_epoch=source_epoch, destination_epoch=destination_epoch)
++        if wait_for_completion:
++            return await self._migrate_out(dst_instance_actor, dst_instance_context, migration_type)
+         migrate_out_func = exception_wrapper_async(self._migrate_out)
+         asyncio.create_task(migrate_out_func(dst_instance_actor, dst_instance_context, migration_type))
++
++    def real_control_state(self):
++        from llumnix.real_control import instance_state
++        return instance_state(self)
++
++    def real_control_result(self, decision_id):
++        return self.__dict__.get('_real_decision_results', {}).get(decision_id)
++
++    def real_control_reserve(self, request_id, expected_epoch):
++        state = self.real_control_state()
++        if state['epoch'] != expected_epoch or not state['healthy'] or state['is_migrating']:
++            return {'status': 'rejected'}
++        guards = self.migration_coordinator.__dict__.setdefault('_real_capacity_guards', {})
++        guards[request_id] = expected_epoch
++        return {'status': 'prepared'}
++
++    def real_control_unreserve(self, request_id):
++        self.migration_coordinator.__dict__.setdefault('_real_capacity_guards', {}).pop(request_id,None)
++        return {'status': 'released'}
++
++    async def real_control_flush(self):
++        from llumnix.metrics.causal_events import flush
++        worker_acks = await self.backend_engine._run_workers_async('real_control_flush', timeout=10.)
++        local = await asyncio.to_thread(flush,5.)
++        local['pending_delivery'] = self.real_control_state()['pending_delivery']
++        return {'local': local, 'workers': worker_acks, 'state': self.real_control_state()}
+ 
+     def execute_engine_method(self, method, *args, **kwargs):
+         executor = getattr(self.backend_engine, method)
+--- p2_before/llumnix/llumlet/migration_coordinator.py
++++ p2_after/llumnix/llumlet/migration_coordinator.py
+@@ -304,10 +304,11 @@
+                                        dst_instance_actor: ray.actor.ActorHandle,
+                                        dst_instance_id: str,
+                                        migrate_out_request: LlumnixRequest,
+-                                       migration_type: Optional[MigrationType] = None) -> List[LlumnixRequest]:
++                                       migration_type: Optional[MigrationType] = None,
++                                       migration_id: Optional[str] = None) -> List[LlumnixRequest]:
+         t0 = time.time()
+         t0_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+-        migration_id = f"{self.instance_id}:{migrate_out_request.request_id}:{t0_ns}"
++        migration_id = migration_id or f"{self.instance_id}:{migrate_out_request.request_id}:{t0_ns}"
+         emit_causal_event(
+             "migration_attempt_started",
+             migration_id=migration_id,
+@@ -638,7 +639,10 @@
+                         request_arrival_time: float,
+                         block_num: int,
+                         token_ids: List[int],
+-                        is_first_stage: bool) -> MigrationResponse:
++                        is_first_stage: bool,
++                        real_expected_epoch: Optional[str] = None) -> MigrationResponse:
++        if real_expected_epoch is not None and getattr(self, '_real_capacity_guards', {}).get(request_id) != real_expected_epoch:
++            return MigrationResponse(success=False, return_value=None)
+         if is_first_stage and not self.has_migration_slot():
+             logger.debug(
+                 "Max migration concurrency ({}) reached, reject new migrate in attempt.".format(
+@@ -660,6 +664,15 @@
+                          block_num: int,
+                          token_ids: List[int],
+                          is_first_stage: bool) -> MigrationResponse:
++        if request_id in getattr(self, '_real_capacity_guards', set()):
++            from rl_scheduler.real_bridge import capacity_ok
++            info = self.backend_engine.engine.scheduler[0]._get_instance_info([])
++            destination = {'total_blocks': info.num_total_gpu_blocks,
++                           'free_blocks': info.num_free_gpu_blocks,
++                           'waiting_blocks': info.num_blocks_all_waiting_requests}
++            if not capacity_ok(destination, max(1, block_num)):
++                self.free_pre_alloc_cache(request_id)
++                return MigrationResponse(success=False, return_value=None)
+         response = self.backend_engine.pre_alloc_cache(request_id,
+                                                        request_status,
+                                                        request_arrival_time,
+@@ -681,6 +694,8 @@
+                                    token_ids: List[int],
+                                    is_first_stage: bool) -> MigrationResponse:
+         try:
++            epoch = getattr(self, '_real_request_guards', {}).get(str(request_id))
++            control_kwargs = {'real_expected_epoch': epoch} if epoch is not None else {}
+             return await asyncio_wait_for_ray_remote_call_with_timeout(
+                 dst_instance_actor.execute_migration_method,
+                 "pre_alloc_cache",
+@@ -689,10 +704,12 @@
+                 request_arrival_time,
+                 block_num,
+                 token_ids,
+-                is_first_stage
++                is_first_stage,
++                **control_kwargs
+             )
+         # pylint: disable=W0703
+         except Exception as e:
++            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(request_id))
+             log_instance_exception(e, dst_instance_id, "_dst_pre_alloc_cache", request_id)
+             # Once return False response, the migration status will become ABORTED_DST,
+             # which will stop and clear the migration.
+@@ -720,6 +737,7 @@
+             return True
+         # pylint: disable=W0703
+         except Exception as e:
++            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(request_id))
+             log_instance_exception(e, dst_instance_id, "_dst_free_pre_alloc_cache", request_id)
+             return False
+ 
+@@ -736,6 +754,7 @@
+             )
+         # pylint: disable=W0703
+         except Exception as e:
++            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(request_id))
+             log_instance_exception(e, dst_instance_id, "_send_cache", request_id)
+             return MigrationResponse(success=False, return_value=None)
+ 
+@@ -768,6 +787,7 @@
+             )
+         # pylint: disable=W0703
+         except Exception as e:
++            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(migrate_out_request.request_id))
+             log_instance_exception(e, dst_instance_id, "_dst_commit_dst_request", migrate_out_request.request_id)
+             return MigrationResponse(success=False, return_value=None)
+ 
+--- p2_before/llumnix/manager.py
++++ p2_after/llumnix/manager.py
+@@ -58,6 +58,7 @@
+     MAX_ACTOR_METHOD_RETRIES,
+ )
+ from llumnix.ray_utils import clear_gloo_backend_ray_resources
++from llumnix.real_control import ManagerControlMixin
+ 
+ logger = init_logger(__name__)
+ 
+@@ -67,7 +68,7 @@
+     clear_gloo_backend_ray_resources()
+ 
+ 
+-class Manager:
++class Manager(ManagerControlMixin):
+     def __init__(
+         self,
+         entrypoints_args: EntrypointsArgs,
+@@ -172,8 +173,18 @@
+                 NO_INSTANCE_RETRY_GENERATE_INTERVAL, request_id))
+             await asyncio.sleep(NO_INSTANCE_RETRY_GENERATE_INTERVAL)
+ 
+-        prefill_instance_id, decode_instance_id, request_expected_steps = \
+-            self.global_scheduler.dispatch(request_id, dispatch_context=kwargs)
++        initial_instance_id = kwargs.pop('real_initial_instance_id', None)
++        if initial_instance_id is not None:
++            controller = getattr(self, '_real_arbiter', None)
++            if self.enable_pd_disagg or initial_instance_id not in self.instances or not controller or not controller.lease:
++                raise RuntimeError('explicit smoke routing requires leased non-PD instance')
++            from llumnix.metrics.causal_events import emit
++            emit('real_initial_route', request_id=str(request_id), instance_id=initial_instance_id,
++                 route_source='pre_registered_smoke_disturbance')
++            prefill_instance_id, decode_instance_id, request_expected_steps = initial_instance_id, initial_instance_id, float('inf')
++        else:
++            prefill_instance_id, decode_instance_id, request_expected_steps = \
++                self.global_scheduler.dispatch(request_id, dispatch_context=kwargs)
+         target_instance_id = choose_destination_instance(prefill_instance_id, decode_instance_id, kwargs)
+         request_processing_context.add_trace_timeline('manager_generate_timestamp')
+         asyncio.create_task(
+@@ -282,18 +293,31 @@
+         # If encounter error during migration, to make manager keep running, we do not raise exception.
+         try:
+             instance_infos = self.global_scheduler.instance_info
+-            migration_tasks = self.global_scheduler.push_migrations(instance_infos)
++            controller = getattr(self, '_real_arbiter', None)
++            migration_tasks = self.global_scheduler.push_migrations(
++                instance_infos, allow_routine=not (controller and controller.ordinary_blocked))
+ 
+             for task in migration_tasks:
+                 migration_type, migrate_pairs = task
+                 for src_instance_id, dst_instance_id in migrate_pairs:
++                    if controller and controller.ordinary_blocked:
++                        controller.external_intervention('native_' + str(migration_type))
+                     dst_instance_actor = self.instances[dst_instance_id]
+-                    asyncio.create_task(
++                    native_task = asyncio.create_task(
+                         asyncio_wait_for_ray_remote_call_with_timeout(
+                             self.instances[src_instance_id].migrate_out,
+-                            dst_instance_actor, self.instance_context[dst_instance_id], migration_type
++                            dst_instance_actor, self.instance_context[dst_instance_id], migration_type,
++                            wait_for_completion=True
+                         )
+                     )
++                    self.__dict__.setdefault('_real_native_tasks', set()).add(native_task)
++                    def native_done(future):
++                        self._real_native_tasks.discard(future)
++                        if future.cancelled() or future.exception() is not None:
++                            self._real_native_fault = True
++                            if getattr(self, '_real_arbiter', None):
++                                self._real_arbiter.external_intervention('native_migration_RPC_uncertain')
++                    native_task.add_done_callback(native_done)
+         # pylint: disable=broad-except
+         except Exception:
+             logger.critical(
+@@ -404,6 +428,8 @@
+ 
+     @ray.method(max_task_retries=MAX_ACTOR_METHOD_RETRIES)
+     def scale_down(self, instance_id: Union[str, Iterable[str]], rebuild_migration_backend: bool = True) -> None:
++        if getattr(self, '_real_arbiter', None):
++            self._real_arbiter.external_intervention('scale_down_or_failover')
+         if isinstance(instance_id, str):
+             instance_id = [instance_id,]
+         instance_ids: List[str] = list(instance_id)
+--- p2_before/llumnix/real_control.py
++++ p2_after/llumnix/real_control.py
+@@ -0,0 +1,170 @@
++"""Duck-typed vLLM-v0 adapters; KV movement stays in MigrationCoordinator."""
++from __future__ import annotations
++
++from copy import deepcopy
++import time
++import uuid
++
++from rl_scheduler.real_bridge import capacity_ok, eligible_pair
++
++
++class ControlledRejection(Exception):pass
++
++
++def instance_state(owner):
++    if not hasattr(owner, '_real_epoch'):
++        owner._real_epoch = uuid.uuid4().hex
++    backend = owner.backend_engine
++    engine = getattr(backend, 'engine', None)
++    schedulers = getattr(engine, 'scheduler', [])
++    if len(schedulers) != 1:
++        raise RuntimeError('real control requires one vLLM v0 scheduler per instance')
++    scheduler = schedulers[0]
++    info = scheduler._get_instance_info([])  # synchronous live queue/block inspection
++    coordinator = owner.migration_coordinator
++    candidates = coordinator.migration_scheduler._get_shortest_running_request(0, float('inf'))
++    candidate = candidates[0] if candidates else None
++    blocks = (len(scheduler.block_manager.get_block_table(candidate.get_seqs()[0]))
++              if candidate is not None else None)
++    status = getattr(owner.unit_status, 'value', owner.unit_status)
++    instance_type = getattr(owner.instance_args.instance_type, 'value', owner.instance_args.instance_type)
++    return {'instance_id': owner.instance_id, 'epoch': owner._real_epoch,
++            'measured_ns': time.monotonic_ns(), 'healthy': str(status).lower()=='healthy',
++            'type': str(instance_type).lower(), 'is_migrating': coordinator.is_migrating(),
++            'has_slot': coordinator.has_migration_slot(), 'total_blocks': info.num_total_gpu_blocks,
++            'free_blocks': info.num_free_gpu_blocks, 'used_blocks': info.num_used_gpu_blocks,
++            'waiting_blocks': info.num_blocks_all_waiting_requests,
++            'running': info.num_running_requests, 'waiting': info.num_waiting_requests,
++            'head_wait_sec': info.waiting_time_first_waiting_request,
++            'candidate_id': str(candidate.request_id) if candidate is not None else None,
++            'candidate_blocks': blocks, 'candidate_length': candidate.request_len if candidate is not None else None,
++            'candidate_stage': str(getattr(candidate.inference_type, 'value', '')).lower() if candidate is not None else None,
++            'candidate_policy': coordinator.migration_scheduler.request_migration_policy,
++            'output_tokens_total': getattr(engine, '_real_output_tokens_total', None),
++            'last_step_ms': getattr(engine.instance_info, 'last_inference_latency', None),
++            'pending_delivery': engine.output_forwarder.thread_forwarder.real_pending_delivery(),
++            'preallocated_requests': len(scheduler.pre_alloc_cache_dict),
++            'paused_requests': len(scheduler.migrating_out_request_last_stage)}
++
++
++async def controlled_migrate(owner, dst_actor, dst_context, migration_type, *,
++                             expected_candidate_id, decision_id, migration_id,
++                             source_epoch, destination_epoch):
++    results = owner.__dict__.setdefault('_real_decision_results', {})
++    if decision_id in results:
++        return deepcopy(results[decision_id])
++    receipt = {'migration_id': migration_id, 'decision_id': decision_id,
++               'terminal_status': None, 'actual_request_id': None, 'copied_blocks': None}
++    results[decision_id] = receipt
++    def reject(reason):
++        receipt.update(terminal_status='rejected', rejection_reason=reason, terminal_ns=time.monotonic_ns())
++        return deepcopy(receipt)
++    coordinator = owner.migration_coordinator
++    if coordinator.enable_engine_migration_interface:
++        return reject('engine_migration_interface_unsupported')
++    if coordinator.migration_scheduler.request_migration_policy != 'SR':
++        return reject('SR_policy_required')
++    if getattr(owner, '_real_control_inflight', None) is not None:
++        return reject('source_busy')
++    owner._real_control_inflight = decision_id
++    guard_installed = False
++    known_terminal = False
++    try:
++        source = instance_state(owner)
++        if source['epoch'] != source_epoch or source['candidate_id'] != expected_candidate_id:
++            return reject('source_epoch_or_SR_candidate_changed')
++        destination = await dst_actor.real_control_state.remote()
++        if destination['epoch'] != destination_epoch:
++            return reject('destination_epoch_changed')
++        valid, reason = eligible_pair(source, destination, time.monotonic_ns())
++        if not valid:
++            return reject(reason)
++        guard = await dst_actor.real_control_reserve.remote(expected_candidate_id, destination_epoch)
++        if guard.get('status') != 'prepared':
++            return reject('destination_not_prepared')
++        guard_installed = True
++        # Destination RPC yielded: inspect SR again immediately before claiming it.
++        source = instance_state(owner)
++        requests = coordinator.migration_scheduler._get_shortest_running_request(0, float('inf'))
++        if source['epoch'] != source_epoch or not requests or str(requests[0].request_id) != expected_candidate_id:
++            raise ControlledRejection('SR_candidate_changed_at_execution')
++        request = requests[0]
++        if source['is_migrating'] or not source['has_slot']:
++            raise ControlledRejection('source_busy_at_execution')
++        request.is_migrating = True
++        coordinator.__dict__.setdefault('_real_uncertain_requests', set()).discard(expected_candidate_id)
++        coordinator.__dict__.setdefault('_real_request_guards', {})[expected_candidate_id] = destination_epoch
++        receipt['migration_start_ns'] = time.monotonic_ns()
++        migrated = await coordinator._migrate_out_one_request(
++            dst_actor, dst_context.instance_id, request, migration_type, migration_id=migration_id)
++        if expected_candidate_id in coordinator._real_uncertain_requests:
++            receipt.update(terminal_status='unknown', error_type='underlying_transfer_RPC_uncertain')
++        else:
++            receipt.update(terminal_status='succeeded' if expected_candidate_id in [str(x) for x in migrated] else 'failed',
++                           actual_request_id=expected_candidate_id,
++                           copied_blocks=sum(request.stage_num_blocks_list),
++                           migration_end_ns=time.monotonic_ns())
++            receipt['terminal_ns']=receipt['migration_end_ns']
++            known_terminal = True
++    except ControlledRejection as exc:
++        reject(str(exc))
++    except BaseException as exc:
++        receipt.update(terminal_status='unknown', error_type=type(exc).__name__)
++    finally:
++        if receipt.get('terminal_status') == 'rejected':
++            known_terminal = True
++        if guard_installed and known_terminal:
++            try:
++                await dst_actor.real_control_unreserve.remote(expected_candidate_id)
++            except Exception:
++                receipt.update(terminal_status='unknown', error_type='destination_guard_release_uncertain')
++                known_terminal = False
++        if known_terminal:
++            owner._real_control_inflight = None
++            coordinator.__dict__.setdefault('_real_request_guards', {}).pop(expected_candidate_id,None)
++        # Unknown leaves both the source fence and Manager slot occupied.
++    return deepcopy(receipt)
++
++
++class ManagerControlMixin:
++    def _real_controller(self):
++        from rl_scheduler.real_bridge import ControlArbiter
++        from llumnix.metrics.causal_events import emit
++        import asyncio
++        if not hasattr(self, '_real_arbiter'):
++            if self.enable_pd_disagg:
++                raise RuntimeError('real control supports non-PD only')
++            async def states():
++                return list(await asyncio.gather(*(actor.real_control_state.remote()
++                                                  for actor in list(self.instances.values()))))
++            async def dispatch(receipt):
++                from llumnix.utils import MigrationType
++                return await self.instances[receipt['src_id']].migrate_out.remote(
++                    self.instances[receipt['dst_id']], self.instance_context[receipt['dst_id']],
++                    MigrationType.NEUTRAL_LOAD_BALANCE,
++                    expected_candidate_id=receipt['expected_candidate_id'],
++                    decision_id=receipt['decision_id'], migration_id=receipt['migration_id'],
++                    source_epoch=receipt['source_epoch'], destination_epoch=receipt['destination_epoch'])
++            async def reconcile(receipt):
++                actor = self.instances.get(receipt['src_id'])
++                return await actor.real_control_result.remote(receipt['decision_id']) if actor else None
++            self._real_arbiter = ControlArbiter(states, dispatch, reconcile=reconcile,
++                native_idle=lambda: not getattr(self, '_real_native_tasks', set()) and not getattr(self, '_real_native_fault', False),
++                event_sink=lambda record: emit('real_control_receipt', record=record))
++        return self._real_arbiter
++
++    async def real_control(self, method, payload):
++        allowed = {'snapshot','acquire_controller','renew_controller','submit_migration',
++                   'query_receipt','release_controller'}
++        if method not in allowed:
++            raise ValueError('unsupported control method')
++        return await getattr(self._real_controller(), method)(**payload)
++
++    async def real_control_flush(self):
++        import asyncio
++        from llumnix.metrics.causal_events import flush
++        instances = await asyncio.gather(*(actor.real_control_flush.remote()
++                                           for actor in list(self.instances.values())))
++        manager = await asyncio.to_thread(flush,5.)
++        manager['pending_delivery'] = 0 if not getattr(self,'_real_native_tasks',set()) else 1
++        return {'manager': manager, 'instances': instances}
+--- p2_before/rl_scheduler/real_bridge.py
++++ p2_after/rl_scheduler/real_bridge.py
+@@ -0,0 +1,350 @@
++"""CPU-only controller protocol and localhost transport for the real v0 cluster.
++
++The Manager owns this arbiter. An accepted decision occupies the slot before
++any await/dispatch; uncertain RPC results retain that slot until reconciliation.
++"""
++from __future__ import annotations
++
++import asyncio
++from copy import deepcopy
++import hashlib
++import json
++import math
++import time
++import uuid
++from urllib.parse import urlparse
++
++PAIRS = tuple((src, dst) for src in range(4) for dst in range(4) if src != dst)
++TERMINALS = frozenset({'succeeded', 'failed', 'rejected'})
++
++
++class CumulativeTokenCounter:
++    """Measured local production, with a transferred request's prefix as baseline."""
++    def __init__(self):self.counts={};self.total=0
++
++    def baseline(self,request_id,count):
++        self.counts[request_id]=max(self.counts.get(request_id,0),int(count))
++
++    def observe(self,request_id,count):
++        previous=self.counts.get(request_id,0)
++        delta=max(0,int(count)-previous)
++        self.counts[request_id]=max(previous,int(count))
++        self.total+=delta
++        return delta
++
++
++def digest(value):
++    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
++
++
++def capacity_ok(destination, blocks):
++    try:
++        total, free = int(destination['total_blocks']), int(destination['free_blocks'])
++        waiting = math.ceil(float(destination['waiting_blocks']))
++        blocks = int(blocks)
++    except (KeyError, TypeError, ValueError, OverflowError):
++        return False
++    return (total > 0 and free >= 0 and waiting >= 0 and blocks > 0
++            and free - waiting - blocks >= max(16, math.ceil(total * .05)))
++
++
++def eligible_pair(source, destination, now_ns, max_age_sec=2.):
++    for state in (source, destination):
++        if (state.get('healthy') is not True or state.get('type') != 'neutral'
++                or state.get('is_migrating') is not False or state.get('has_slot') is not True):
++            return False, 'unhealthy_or_busy'
++        stamp = state.get('measured_ns')
++        if stamp is None or not 0 <= now_ns - stamp <= max_age_sec * 1e9:
++            return False, 'stale_state'
++    if not source.get('candidate_id') or source.get('candidate_stage') != 'decode':
++        return False, 'no_SR_candidate'
++    if source.get('candidate_policy') != 'SR':
++        return False, 'SR_policy_required'
++    if not capacity_ok(destination, source.get('candidate_blocks')):
++        return False, 'insufficient_capacity'
++    return True, None
++
++
++class ControlArbiter:
++    """Single Manager event-loop ownership; explicit lease fencing, no auto takeover.
++
++    state_provider returns freshly measured instance dicts. dispatch must await
++    the existing controlled migrate_out result, not its legacy enqueue-only API.
++    """
++    def __init__(self, state_provider, dispatch, *, reconcile=None, native_idle=lambda: True,
++                 clock=time.monotonic_ns, event_sink=lambda record: None,
++                 lease_sec=30., cooldown_sec=5., max_age_sec=2.):
++        self.state_provider, self.dispatch, self.reconcile = state_provider, dispatch, reconcile
++        self.native_idle, self.clock, self.event_sink = native_idle, clock, event_sink
++        self.lease_sec, self.cooldown_sec, self.max_age_sec = lease_sec, cooldown_sec, max_age_sec
++        self.epoch = uuid.uuid4().hex
++        self.lease = None
++        self.slot = None
++        self.receipts = {}
++        self.fingerprints = {}
++        self.last_terminal_ns = None
++        self.latest = None
++        self.version = 0
++        self.invalid_reasons = []
++        self._lock = asyncio.Lock()
++        self._tasks = set()
++        self.release_requested = False
++
++    @property
++    def ordinary_blocked(self):
++        return self.lease is not None or self.slot is not None
++
++    def external_intervention(self, reason):
++        if self.ordinary_blocked:
++            self.invalid_reasons.append(str(reason))
++            self.event_sink({'event': 'controller_intervention', 'reason': str(reason), 'at_ns': self.clock()})
++
++    def _lease_valid(self, lease_id):
++        return (self.lease is not None and self.lease['lease_id'] == lease_id
++                and self.clock() <= self.lease['expires_ns'] and not self.release_requested)
++
++    def _check_mapping(self, states):
++        mapping = tuple(sorted((s['instance_id'], s['epoch']) for s in states))
++        if len(mapping) != 4 or len({x[0] for x in mapping}) != 4:
++            raise RuntimeError('exactly four independent instances required')
++        if self.lease and mapping != tuple(tuple(x) for x in self.lease['mapping']):
++            self.external_intervention('instance_index_invalidated')
++            raise RuntimeError('instance mapping changed during lease')
++        return mapping
++
++    async def snapshot(self):
++        async with self._lock:
++            states = await self.state_provider()
++            mapping = self._check_mapping(states)
++            self.version += 1
++            now = self.clock()
++            self.latest = {'version': f'{self.epoch}:{self.version}', 'measured_ns': now,
++                           'received_ns': now, 'instances': sorted(states, key=lambda s: s['instance_id']),
++                           'mapping': [list(x) for x in mapping], 'busy': self.slot is not None,
++                           'last_terminal_ns': self.last_terminal_ns,
++                           'lease_expired': self.lease is not None and now > self.lease['expires_ns'],
++                           'invalid_reasons': list(self.invalid_reasons)}
++            return deepcopy(self.latest)
++
++    async def acquire_controller(self, run_id, controller_version, episode_id, mode='active'):
++        if mode not in ('active', 'shadow', 'stay'):
++            raise ValueError('unsupported control mode')
++        async with self._lock:
++            if self.lease is not None or self.slot is not None or not self.native_idle():
++                raise RuntimeError('controller or native migration still owns cluster')
++            states = await self.state_provider()
++            mapping = self._check_mapping(states)
++            if any(s.get('healthy') is not True or s.get('is_migrating') is not False
++                   or s.get('type') != 'neutral' for s in states):
++                raise RuntimeError('cluster unhealthy, non-neutral, or migrating')
++            now = self.clock()
++            self.lease = {'lease_id': f'{self.epoch}-{uuid.uuid4().hex}', 'run_id': run_id,
++                          'episode_id': episode_id, 'controller_version': controller_version,
++                          'mapping': [list(x) for x in mapping], 'expires_ns': now+int(self.lease_sec*1e9),
++                          'mode': mode}
++            self.invalid_reasons = []
++            self.release_requested = False
++            return deepcopy(self.lease)
++
++    async def renew_controller(self, lease_id):
++        async with self._lock:
++            if not self._lease_valid(lease_id):
++                raise RuntimeError('expired or unknown lease; cleanup before takeover')
++            self.lease['expires_ns'] = self.clock()+int(self.lease_sec*1e9)
++            return deepcopy(self.lease)
++
++    async def submit_migration(self, lease_id, decision_id, src_id, dst_id,
++                               expected_candidate_id, snapshot_version):
++        payload = {'lease_id': lease_id, 'decision_id': decision_id, 'src_id': src_id,
++                   'dst_id': dst_id, 'expected_candidate_id': expected_candidate_id,
++                   'snapshot_version': snapshot_version}
++        fingerprint = digest(payload)
++        async with self._lock:
++            if decision_id in self.receipts:
++                if self.fingerprints[decision_id] != fingerprint:
++                    return {'decision_id': decision_id, 'receipt_status': 'conflict',
++                            'rejection_reason': 'decision_id_payload_changed', 'terminal_status': None}
++                return deepcopy(self.receipts[decision_id])
++            receipt = {**payload, 'receipt_status': 'rejected', 'rejection_reason': None,
++                       'migration_id': None, 'terminal_status': 'rejected',
++                       'accepted_ns': None, 'terminal_ns': self.clock()}
++            self.fingerprints[decision_id] = fingerprint
++            self.receipts[decision_id] = receipt
++            def reject(reason):
++                receipt['rejection_reason'] = reason
++                receipt['terminal_ns'] = self.clock()
++                self.event_sink(deepcopy(receipt))
++                return deepcopy(receipt)
++            if not self._lease_valid(lease_id):
++                return reject('lease_invalid')
++            receipt.update({k: self.lease[k] for k in ('run_id', 'episode_id', 'controller_version')})
++            if self.invalid_reasons:
++                return reject('episode_invalid')
++            if self.slot is not None or not self.native_idle():
++                return reject('global_slot_busy')
++            now = self.clock()
++            if self.last_terminal_ns is not None and now-self.last_terminal_ns < self.cooldown_sec*1e9:
++                return reject('cooldown')
++            if not self.latest or self.latest['version'] != snapshot_version:
++                return reject('snapshot_version_changed')
++            if now-self.latest['measured_ns'] > self.max_age_sec*1e9:
++                return reject('stale_snapshot')
++            if src_id == dst_id:
++                return reject('invalid_pair')
++            try:
++                states = await self.state_provider()
++            except Exception as exc:
++                return reject('state_unavailable:'+type(exc).__name__)
++            try:
++                self._check_mapping(states)
++            except RuntimeError:
++                return reject('instance_index_invalidated')
++            by_id = {s['instance_id']: s for s in states}
++            if src_id not in by_id or dst_id not in by_id:
++                return reject('unknown_instance')
++            source, destination = by_id[src_id], by_id[dst_id]
++            if source.get('candidate_id') != expected_candidate_id:
++                return reject('SR_candidate_changed')
++            valid, reason = eligible_pair(source, destination, self.clock(), self.max_age_sec)
++            if not valid:
++                return reject(reason)
++            # Recheck the lease after network reads; expiry is never implicitly extended.
++            if not self._lease_valid(lease_id):
++                return reject('lease_expired_during_validation')
++            if self.lease['mode'] in ('shadow', 'stay'):
++                receipt.update(receipt_status='shadow' if self.lease['mode']=='shadow' else 'stay',
++                               terminal_status=None, terminal_ns=None)
++                self.event_sink(deepcopy(receipt))
++                return deepcopy(receipt)
++            receipt.update(receipt_status='accepted', rejection_reason=None, terminal_status=None,
++                           accepted_ns=self.clock(), terminal_ns=None,
++                           migration_id='real-'+digest([self.epoch, self.lease['run_id'], decision_id]))
++            self.slot = decision_id  # atomic, before the task can run
++            receipt['source_epoch'], receipt['destination_epoch'] = source['epoch'], destination['epoch']
++            task = asyncio.create_task(self._execute(decision_id))
++            self._tasks.add(task)
++            task.add_done_callback(self._tasks.discard)
++            self.event_sink(deepcopy(receipt))
++            return deepcopy(receipt)
++
++    async def _execute(self, decision_id):
++        receipt = self.receipts[decision_id]
++        try:
++            result = await self.dispatch(deepcopy(receipt))
++        except BaseException as exc:
++            # A timeout/connection loss cannot establish whether remote execution ran.
++            result = {'terminal_status': 'unknown', 'error_type': type(exc).__name__}
++        async with self._lock:
++            self._apply_result(decision_id, result)
++
++    def _apply_result(self, decision_id, result):
++        receipt = self.receipts[decision_id]
++        if result.get('migration_id') not in (None, receipt['migration_id']):
++            result = {'terminal_status': 'unknown', 'error_type': 'migration_id_mismatch'}
++        if result.get('terminal_status') == 'succeeded' and result.get('actual_request_id') != receipt['expected_candidate_id']:
++            result = {'terminal_status': 'unknown', 'error_type': 'actual_request_mismatch'}
++        receipt.update({key: deepcopy(value) for key, value in result.items()
++                        if key not in ('decision_id', 'migration_id', 'lease_id', 'src_id', 'dst_id')})
++        if receipt.get('terminal_status') in TERMINALS:
++            receipt['terminal_received_ns'] = self.clock()
++            receipt['terminal_ns'] = result.get('terminal_ns',result.get('migration_end_ns')) or self.clock()
++            if receipt['terminal_ns'] > self.clock():
++                receipt.update(terminal_status='unknown',terminal_ns=None,error_type='future_terminal_time')
++                return
++            self.last_terminal_ns = receipt['terminal_ns']
++            if self.slot == decision_id:
++                self.slot = None
++        else:
++            receipt['terminal_status'] = 'unknown'
++            receipt['terminal_ns'] = None
++        self.event_sink(deepcopy(receipt))
++
++    async def query_receipt(self, lease_id, decision_id):
++        async with self._lock:
++            receipt = self.receipts.get(decision_id)
++            if receipt is None or receipt.get('lease_id') != lease_id:
++                return {'decision_id': decision_id, 'receipt_status': 'unknown', 'terminal_status': None}
++            if receipt.get('terminal_status') == 'unknown' and self.reconcile:
++                try:
++                    result = await self.reconcile(deepcopy(receipt))
++                    if result and result.get('terminal_status') in TERMINALS:
++                        self._apply_result(decision_id, result)
++                except Exception:
++                    pass
++            return deepcopy(receipt)
++
++    async def release_controller(self, lease_id):
++        async with self._lock:
++            if self.lease is None:
++                return {'status': 'released'}
++            if self.lease['lease_id'] != lease_id:
++                raise RuntimeError('lease belongs to another controller')
++            self.release_requested = True
++            if self.slot is not None or not self.native_idle():
++                return {'status': 'draining', 'decision_id': self.slot}
++            states = await self.state_provider()
++            if any(s.get('is_migrating') is not False for s in states):
++                return {'status': 'draining', 'decision_id': self.slot}
++            self.lease = None
++            self.latest = None
++            return {'status': 'released'}
++
++
++class RealBridge:
++    """HTTP transport: single submission, query on uncertainty, never blind retry."""
++    def __init__(self, base_url, session):
++        parsed = urlparse(base_url)
++        if parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1', 'localhost', '::1'):
++            raise ValueError('control transport must be loopback HTTP')
++        self.base_url, self.session = base_url.rstrip('/'), session
++        self.lease = None
++        self.pending = {}
++
++    async def call(self, method, **payload):
++        async with self.session.post(self.base_url+'/real_control/'+method, json=payload) as response:
++            result = await response.json()
++            if response.status >= 500:
++                raise ConnectionError('uncertain control RPC')
++            if response.status != 200:
++                raise RuntimeError(result.get('error', 'control RPC failed'))
++            return result
++
++    async def snapshot(self):
++        result = await self.call('snapshot')
++        result['received_ns'] = time.monotonic_ns()
++        return result
++
++    async def acquire_controller(self, run_id, controller_version, episode_id, mode='active'):
++        self.lease = await self.call('acquire_controller',run_id=run_id,
++                                    controller_version=controller_version,episode_id=episode_id,mode=mode)
++        return self.lease
++
++    async def renew_controller(self):
++        self.lease = await self.call('renew_controller',lease_id=self.lease['lease_id'])
++        return self.lease
++
++    async def submit_migration(self, decision_id, src_id, dst_id, expected_candidate_id, snapshot_version):
++        payload = {'lease_id': self.lease['lease_id'], 'decision_id': decision_id, 'src_id': src_id,
++                   'dst_id': dst_id,'expected_candidate_id': expected_candidate_id,'snapshot_version': snapshot_version}
++        if decision_id in self.pending:
++            if self.pending[decision_id] != payload:
++                raise ValueError('decision ID reused with different payload')
++            return await self.query_receipt(decision_id)
++        self.pending[decision_id] = payload
++        import aiohttp
++        try:
++            return await self.call('submit_migration',**payload)
++        except (asyncio.TimeoutError, ConnectionError, OSError, aiohttp.ClientError):
++            return {'decision_id': decision_id, 'receipt_status': 'unknown', 'terminal_status': None,
++                    'rejection_reason': 'transport_uncertain_query_before_any_new_action'}
++
++    async def query_receipt(self, decision_id):
++        return await self.call('query_receipt',lease_id=self.lease['lease_id'],decision_id=decision_id)
++
++    async def release_controller(self):
++        if not self.lease:
++            return {'status':'released'}
++        result=await self.call('release_controller',lease_id=self.lease['lease_id'])
++        if result['status']=='released':
++            self.lease=None
++        return result
+--- p2_before/rl_scheduler/real_budget.py
++++ p2_after/rl_scheduler/real_budget.py
+@@ -0,0 +1,101 @@
++"""Flocked, fsynced budget clock shared by runner and independent supervisor guard.
++
++The original P0 budget remains immutable input. After first service activation
++wall time includes startup, cleanup, failures and handoff waiting; no restart can
++reset the origin. Monotonic elapsed is used on the same boot to resist wall jumps.
++"""
++from __future__ import annotations
++
++from contextlib import contextmanager
++import fcntl
++import json
++import os
++from pathlib import Path
++import time
++
++
++def atomic_json(path,value):
++    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
++    temporary=path.with_name(path.name+f'.{os.getpid()}.tmp')
++    with temporary.open('w') as stream:
++        json.dump(value,stream,indent=2,allow_nan=False);stream.write('\n');stream.flush();os.fsync(stream.fileno())
++    os.replace(temporary,path)
++    descriptor=os.open(str(path.parent),os.O_RDONLY)
++    try:os.fsync(descriptor)
++    finally:os.close(descriptor)
++
++
++class BudgetExhausted(RuntimeError):pass
++
++
++class BudgetLedger:
++    def __init__(self,run_dir,*,wall=time.time,mono=time.monotonic,boot_id=None):
++        self.run_dir=Path(run_dir);self.path=self.run_dir/'experiment_clock.json'
++        self.wall,self.mono=wall,mono
++        self.boot_id=boot_id or Path('/proc/sys/kernel/random/boot_id').read_text().strip()
++        self.input=json.loads((self.run_dir/'budget.json').read_text())
++
++    @contextmanager
++    def _locked(self):
++        self.run_dir.mkdir(parents=True,exist_ok=True)
++        with (self.run_dir/'experiment_clock.lock').open('a') as lock:
++            fcntl.flock(lock,fcntl.LOCK_EX)
++            if self.path.exists():state=json.loads(self.path.read_text())
++            else:
++                state={'schema':1,'run_id':self.input['run_id'],'first_started_wall':None,
++                       'origin_mono':None,'boot_id':self.boot_id,'last_wall':None,'last_mono':None,
++                       'elapsed_sec':float(self.input['usage']['task_experiment_wall_time_sec']),
++                       'phase':None,'phase_usage':{'P0_P3':0.,'P4':float(self.input['usage']['ppo_training_wall_time_sec']),'P5':0.},
++                       'exhausted':False}
++            if state['run_id']!=self.input['run_id']:raise RuntimeError('budget run ID mismatch')
++            if state['first_started_wall'] is not None:
++                if state['boot_id']==self.boot_id:
++                    delta=max(0.,self.mono()-state['last_mono'],self.wall()-state['last_wall'])
++                else:
++                    delta=max(0.,self.wall()-state['last_wall'])
++                    if self.wall()<state['last_wall']:raise RuntimeError('clock moved backwards across boot')
++                state['elapsed_sec']+=delta
++                if state['phase']:state['phase_usage'][state['phase']]+=delta
++                state['boot_id']=self.boot_id;state['last_wall']=self.wall();state['last_mono']=self.mono()
++            try:
++                yield state
++            finally:
++                atomic_json(self.path,state)
++                fcntl.flock(lock,fcntl.LOCK_UN)
++
++    def _remaining(self,state):
++        caps=self.input['phase_caps_sec']
++        phase_caps={'P0_P3':caps['P0_P3_including_GPU_checks_and_opportunity'],
++                    'P4':caps['P4_PPO_training'],'P5':caps['P5_final_evaluation_reserved']}
++        total=max(0.,self.input['total_experiment_wall_time_sec']-state['elapsed_sec'])
++        result={'total_experiment_wall_time_sec':total}
++        result.update({name+'_sec':max(0.,phase_caps[name]-state['phase_usage'][name]) for name in phase_caps})
++        return result
++
++    def status(self):
++        with self._locked() as state:
++            remaining=self._remaining(state)
++            return {'started':state['first_started_wall'] is not None,'elapsed_sec':state['elapsed_sec'],
++                    'phase_usage':dict(state['phase_usage']),'remaining':remaining,'exhausted':state['exhausted']}
++
++    def activate(self,phase='P0_P3',*,required_sec=60.):
++        if phase not in ('P0_P3','P4','P5'):raise ValueError('unknown phase')
++        with self._locked() as state:
++            remaining=self._remaining(state)
++            if state['exhausted'] or min(remaining['total_experiment_wall_time_sec'],remaining[phase+'_sec'])<required_sec:
++                state['exhausted']=True
++                raise BudgetExhausted('not enough budget including cleanup reserve')
++            if state['first_started_wall'] is None:
++                now=self.wall();state.update(first_started_wall=now,origin_mono=self.mono(),
++                                              last_wall=now,last_mono=self.mono(),boot_id=self.boot_id)
++            state['phase']=phase
++            return self._remaining(state)
++
++    def require(self,required_sec,phase='P0_P3'):
++        status=self.status()
++        if status['exhausted'] or min(status['remaining']['total_experiment_wall_time_sec'],status['remaining'][phase+'_sec'])<required_sec:
++            raise BudgetExhausted('budget reserve insufficient')
++        return status
++
++    def expire(self):
++        with self._locked() as state:state['exhausted']=True
+--- p2_before/rl_scheduler/real_env.py
++++ p2_after/rl_scheduler/real_env.py
+@@ -0,0 +1,213 @@
++"""Finite real-time episode state machine. No PPO or synthetic transitions here."""
++from __future__ import annotations
++
++import asyncio
++from copy import deepcopy
++from dataclasses import dataclass
++import time
++
++from .real_bridge import PAIRS
++from .real_observation import RealObservationBuilder, RealNormalizer, SCHEMA_VERSION
++
++
++@dataclass(frozen=True)
++class RealEnvConfig:
++    arrival_sec: float=120.
++    drain_sec: float=120.
++    decision_interval_sec: float=1.
++    cleanup_sec: float=60.
++    ttft_slo_ms: float=2000.
++    tpot_slo_ms: float=150.
++
++    def __post_init__(self):
++        if self.arrival_sec<=0 or self.drain_sec<0 or self.decision_interval_sec<=0 or not 0<self.cleanup_sec<=60:
++            raise ValueError('invalid finite episode/cleanup horizons')
++
++
++def assert_idle(snapshot,baseline=None):
++    if snapshot.get('busy') or snapshot.get('invalid_reasons'):
++        raise RuntimeError('control slot busy or intervention invalidated episode')
++    current={}
++    for state in snapshot['instances']:
++        if state.get('healthy') is not True or state.get('type')!='neutral':
++            raise RuntimeError('instance unhealthy or unsupported')
++        for name in ('running','waiting','pending_delivery','preallocated_requests','paused_requests'):
++            if state.get(name)!=0:raise RuntimeError('cluster not idle: '+name)
++        if state.get('is_migrating') is not False:
++            raise RuntimeError('migration is not confirmed idle')
++        key=(state['instance_id'],state['epoch'])
++        used=state.get('used_blocks')
++        if not isinstance(used,int) or used<0:raise RuntimeError('idle KV baseline unknown')
++        if baseline is not None and baseline.get(key)!=used:
++            raise RuntimeError('idle KV baseline changed')
++        current[key]=used
++    if len(current)!=4:raise RuntimeError('four idle instances required')
++    return current
++
++
++class RealEnv:
++    """io owns HTTP traffic, event collection, and task ownership; bridge owns control.
++
++    io contract: prepare, begin(start,arrival,deadline), poll, stop_arrivals,
++    cleanup(deadline_ns), flush, sleep. Real events are collected even while a
++    decision RPC runs. finish reconciles before allowing any rollout finalisation.
++    """
++    def __init__(self,bridge,io,budget,*,run_id,episode_id,ledger_factory,
++                 config=RealEnvConfig(),normalizer=None,clock=time.monotonic_ns,
++                 decision_sink=lambda record:None):
++        self.bridge,self.io,self.budget=bridge,io,budget
++        self.run_id,self.episode_id=run_id,episode_id
++        self.ledger_factory,self.config,self.clock=ledger_factory,config,clock
++        self.normalizer=normalizer or RealNormalizer()
++        self.decision_sink=decision_sink
++        self.state='new';self.invalid_reasons=[];self.decisions=[];self.receipts={}
++        self.baseline=None;self.lease=None;self.previous_decision_ns=None
++        self.finalised=False
++
++    async def reset(self,*,mode='active',controller_version='smoke-v1'):
++        if self.state not in ('new','finished'):
++            raise RuntimeError('previous episode has not finished cleanup')
++        if self.invalid_reasons:raise RuntimeError('invalid environment cannot be reused')
++        self.budget.require(self.config.arrival_sec+self.config.drain_sec+self.config.cleanup_sec)
++        await self.io.prepare()
++        snapshot=await self.bridge.snapshot()
++        self.baseline=assert_idle(snapshot,self.baseline)
++        self.lease=await self.bridge.acquire_controller(self.run_id,controller_version,self.episode_id,mode)
++        self.state='resetting'
++        snapshot=await self.bridge.snapshot()
++        if snapshot['mapping']!=self.lease['mapping']:raise RuntimeError('mapping changed during reset')
++        self.start_ns=self.clock()
++        self.arrival_end_ns=self.start_ns+int(self.config.arrival_sec*1e9)
++        self.deadline_ns=self.arrival_end_ns+int(self.config.drain_sec*1e9)
++        self.ledger=self.ledger_factory(self.start_ns,self.arrival_end_ns,self.deadline_ns)
++        self.builder=RealObservationBuilder(snapshot['mapping'],ttft_slo_ms=self.config.ttft_slo_ms,
++                                            tpot_slo_ms=self.config.tpot_slo_ms)
++        self.normalizer_hash=self.normalizer.hash
++        self.state='arrival'
++        await self.io.begin(self.start_ns,self.arrival_end_ns,self.deadline_ns,self.ledger)
++        self.current_observation=await self._observation()
++        return self.current_observation,{'phase':self.state,'baseline_KV_blocks':dict(self.baseline),
++                                          'finalised':False}
++
++    async def _observation(self):
++        path_started=self.clock()
++        await self.io.poll(self.ledger)
++        snapshot=await self.bridge.snapshot()
++        now=self.clock()
++        if snapshot.get('lease_expired') or snapshot.get('invalid_reasons'):
++            raise RuntimeError('controller expired or external intervention')
++        if self.normalizer.hash!=self.normalizer_hash:raise RuntimeError('normalizer changed inside episode')
++        self.snapshot=snapshot
++        raw=self.builder.build(snapshot,now_ns=now,ledger=self.ledger,episode_start_ns=self.start_ns,
++                               arrival_end_ns=self.arrival_end_ns,deadline_ns=self.deadline_ns)
++        raw['decision_path_started_ns']=path_started
++        return {'raw':raw,'normalized':self.normalizer.transform(raw)}
++
++    async def step(self,action,*,policy_version='smoke-v1',old_logp=None,old_value=None):
++        if self.state not in ('arrival','drain'):raise RuntimeError('episode is not stepping')
++        try:
++            self.budget.require(self.config.cleanup_sec)
++            now=self.clock()
++            if now>=self.arrival_end_ns and self.state=='arrival':
++                await self.io.stop_arrivals();self.state='drain'
++            if now>=self.deadline_ns:
++                self.state='deadline'
++                return None,0.,True,False,{'phase':self.state,'finalised':False}
++            await self.bridge.renew_controller()
++            observation=self.current_observation
++            now=self.clock();raw=observation['raw']
++            if type(action) is not int or not 0<=action<=12:raise ValueError('action must be 0..12')
++            decision_id=f'{self.run_id}:{self.episode_id}:{len(self.decisions)}'
++            dt=(now-self.previous_decision_ns)/1e9 if self.previous_decision_ns is not None else (now-self.start_ns)/1e9
++            self.previous_decision_ns=now
++            record={'run_id':self.run_id,'episode_id':self.episode_id,'policy_version':policy_version,
++                    'decision_id':decision_id,'monotonic_time':now,'snapshot_version':self.snapshot['version'],
++                    'instance_index_map':deepcopy(self.snapshot['mapping']),'obs_received_at':raw['obs_received_at'],
++                    'feature_schema':SCHEMA_VERSION,'raw_obs':raw,'normalized_obs':observation['normalized'],
++                    'normalizer_version':self.normalizer.version,'normalizer_hash':self.normalizer_hash,
++                    'action_mask':list(raw['action_mask']),'sampled_action':action,'old_logp':old_logp,
++                    'old_value':old_value,'dt_sec':dt,'src_id':None,'dst_id':None,'candidate_id':None}
++            if action==0:
++                receipt={'receipt_status':'stay','terminal_status':None,'migration_id':None,'rejection_reason':None}
++            else:
++                src,dst=PAIRS[action-1]
++                src_id,dst_id=self.snapshot['mapping'][src][0],self.snapshot['mapping'][dst][0]
++                by_id={s['instance_id']:s for s in self.snapshot['instances']}
++                candidate=by_id[src_id].get('candidate_id')
++                record.update(src_id=src_id,dst_id=dst_id,candidate_id=candidate)
++                if not raw['action_mask'][action]:
++                    receipt={'receipt_status':'rejected','terminal_status':'rejected',
++                             'rejection_reason':'saved_action_mask_invalid','migration_id':None}
++                else:
++                    receipt=await self.bridge.submit_migration(decision_id,src_id,dst_id,candidate,self.snapshot['version'])
++            record.update(receipt)
++            record['cpu_decision_latency_ms']=(self.clock()-raw['decision_path_started_ns'])/1e6
++            self.decisions.append(deepcopy(record));self.decision_sink(deepcopy(record))
++            self.receipts[decision_id]=deepcopy(receipt)
++            # Return the next observation after one real interval. The action above
++            # retains exactly the observation/mask from which it was selected.
++            await self.io.sleep(max(0.,self.config.decision_interval_sec-(self.clock()-now)/1e9))
++            if self.clock()>=self.arrival_end_ns and self.state=='arrival':
++                await self.io.stop_arrivals();self.state='drain'
++            if self.clock()>=self.deadline_ns:
++                self.state='deadline'
++                return None,0.,True,False,{'phase':self.state,'receipt':receipt,'finalised':False}
++            self.current_observation=await self._observation()
++            return self.current_observation,0.,False,False,{'phase':self.state,'receipt':receipt,'finalised':False,'reward_provisional':True}
++        except BaseException as exc:
++            self.invalid_reasons.append(type(exc).__name__+':'+str(exc));self.state='invalid'
++            raise
++
++    async def finish(self):
++        if self.state in ('new','finished'):raise RuntimeError('no active episode to finish')
++        if self.clock()<self.deadline_ns and self.state!='invalid':
++            self.invalid_reasons.append('interrupted_before_finite_deadline');self.state='invalid'
++        await self.io.stop_arrivals()
++        boundary={'score_deadline_ns':self.deadline_ns,'observed_at_ns':self.clock(),
++                  'observed_outstanding_ids':[r['request_id'] for r in self.ledger.observe(self.clock())['requests']
++                                              if r['sent_ns'] is not None and r['client_terminal_ns'] is None]}
++        # Freeze the scoring timestamp before cleanup; final score waits for evidence.
++        cleanup_deadline=self.clock()+int(self.config.cleanup_sec*1e9)
++        try:
++            await asyncio.wait_for(self.io.cleanup(cleanup_deadline,self.ledger),timeout=self.config.cleanup_sec)
++            for decision_id,receipt in list(self.receipts.items()):
++                if receipt.get('receipt_status') in ('accepted','unknown'):
++                    final=await asyncio.wait_for(self.bridge.query_receipt(decision_id),timeout=max(.001,(cleanup_deadline-self.clock())/1e9))
++                    self.receipts[decision_id]=final
++                    if final.get('terminal_status') not in ('succeeded','failed','rejected'):
++                        raise RuntimeError('migration terminal remains unknown')
++            await asyncio.wait_for(self.io.flush(self.ledger),timeout=max(.001,(cleanup_deadline-self.clock())/1e9))
++            snapshot=await asyncio.wait_for(self.bridge.snapshot(),timeout=max(.001,(cleanup_deadline-self.clock())/1e9))
++            assert_idle(snapshot,self.baseline)
++            cleanup_through=min((cp.through_ns for cp in self.ledger.checkpoints.values()),default=0)
++            cleanup_audit=self.ledger.audit(through_ns=cleanup_through,require_cleanup=True)
++            if cleanup_audit['status']!='passed':
++                self.invalid_reasons.extend(cleanup_audit['issues'])
++        except BaseException as exc:
++            self.invalid_reasons.append('cleanup:'+type(exc).__name__+':'+str(exc))
++        finally:
++            try:
++                released=await asyncio.wait_for(self.bridge.release_controller(),timeout=max(.001,(cleanup_deadline-self.clock())/1e9))
++                if released.get('status')!='released':self.invalid_reasons.append('controller_release_unconfirmed')
++            except BaseException as exc:
++                self.invalid_reasons.append('release:'+type(exc).__name__)
++        score=self.ledger.freeze_score()
++        if score['status']!='passed':self.invalid_reasons.extend(score['audit']['issues'])
++        self.finalised=not self.invalid_reasons
++        self.state='finished'
++        return {'status':'passed' if self.finalised else 'incomplete','valid_episode':self.finalised,
++                'finite_terminal':self.finalised,'terminal_value_zero_allowed':self.finalised,
++                'boundary':boundary,'score':score,'decisions':deepcopy(self.decisions),
++                'final_receipts':deepcopy(self.receipts),'invalid_reasons':list(self.invalid_reasons)}
++
++    async def close(self):
++        if self.state=='resetting' and not hasattr(self,'ledger'):
++            self.invalid_reasons.append('reset_interrupted')
++            try:await asyncio.wait_for(self.bridge.release_controller(),timeout=5.)
++            except BaseException:self.invalid_reasons.append('reset_release_unconfirmed')
++            self.state='finished'
++            return {'status':'incomplete','valid_episode':False,'invalid_reasons':self.invalid_reasons}
++        if self.state not in ('new','finished'):
++            self.state='invalid';self.invalid_reasons.append('controller_exit')
++            return await self.finish()
++        return {'status':'closed','valid_episode':self.finalised}
+--- p2_before/rl_scheduler/real_observation.py
++++ p2_after/rl_scheduler/real_observation.py
+@@ -0,0 +1,149 @@
++"""Versioned, measured-only real-cluster observation and frozen normalization."""
++from __future__ import annotations
++
++from collections import deque
++from dataclasses import dataclass
++import math
++from types import MappingProxyType
++
++from .real_bridge import PAIRS, digest, eligible_pair
++
++SCHEMA_VERSION='real-observation-v1'
++INSTANCE_FEATURES=('running','waiting','head_wait_sec','used_fraction','free_fraction',
++                   'candidate_length','candidate_blocks','last_step_ms','state_age_sec',
++                   'tokens_per_sec_5s','waiting_slope_5s','used_fraction_slope_5s')
++GLOBAL_FEATURES=('arrival_phase','drain_phase','remaining_arrival_sec','remaining_total_sec',
++                 'outstanding','overdue_first','output_stalled','client_tokens_per_sec_5s',
++                 'busy','cooldown_remaining_sec','healthy_instances')
++PAIR_FEATURES=('running_difference','used_fraction_difference','destination_available_blocks')
++SCALES={'running':64.,'waiting':64.,'head_wait_sec':2.,'used_fraction':1.,'free_fraction':1.,
++        'candidate_length':2048.,'candidate_blocks':128.,'last_step_ms':100.,'state_age_sec':2.,
++        'tokens_per_sec_5s':128.,'waiting_slope_5s':16.,'used_fraction_slope_5s':1.,
++        'arrival_phase':1.,'drain_phase':1.,'remaining_arrival_sec':120.,'remaining_total_sec':240.,
++        'outstanding':64.,'overdue_first':64.,'output_stalled':64.,'client_tokens_per_sec_5s':512.,
++        'busy':1.,'cooldown_remaining_sec':5.,'healthy_instances':4.,
++        'running_difference':64.,'used_fraction_difference':1.,'destination_available_blocks':128.}
++
++
++def _finite(value):
++    return isinstance(value,(int,float)) and math.isfinite(value)
++
++
++def _pack(values):
++    missing=[not _finite(x) for x in values]
++    return [0. if absent else float(x) for x,absent in zip(values,missing)],missing
++
++
++class RealObservationBuilder:
++    def __init__(self, instance_mapping, *, ttft_slo_ms=2000., tpot_slo_ms=150., max_age_sec=2., cooldown_sec=5.):
++        self.mapping=tuple(tuple(x) for x in instance_mapping)
++        if len(self.mapping)!=4 or len(set(self.mapping))!=4:
++            raise ValueError('four stable instance epochs required')
++        self.ttft_sec=ttft_slo_ms/1000
++        self.gap_sec=max(1.,5*tpot_slo_ms/1000)
++        self.max_age_sec,self.cooldown_sec=max_age_sec,cooldown_sec
++        self.history=deque()
++
++    def build(self,snapshot,*,now_ns,ledger,episode_start_ns,arrival_end_ns,deadline_ns):
++        if tuple(tuple(x) for x in snapshot['mapping'])!=self.mapping:
++            raise RuntimeError('instance mapping invalidated')
++        if snapshot['received_ns']>now_ns:
++            raise ValueError('snapshot was not received by decision time')
++        # Historical decisions are immutable outputs, never recomputed with late data.
++        states={x['instance_id']:x for x in snapshot['instances']}
++        visible=ledger.observe(now_ns)['requests']
++        self.history.append((now_ns,snapshot))
++        while len(self.history)>1 and self.history[1][0]<=now_ns-5_000_000_000:
++            self.history.popleft()
++        old_ns,old_snapshot=self.history[0]
++        old={x['instance_id']:x for x in old_snapshot['instances']}
++        dt=(now_ns-old_ns)/1e9
++        features,missing=[],[]
++        for instance_id,epoch in self.mapping:
++            s=states[instance_id]; total=s.get('total_blocks'); used=s.get('used_blocks'); free=s.get('free_blocks')
++            ratio=(used/total if _finite(used) and _finite(total) and total>0 else None)
++            free_ratio=(free/total if _finite(free) and _finite(total) and total>0 else None)
++            prior=old.get(instance_id,{})
++            def delta(name):
++                a,b=s.get(name),prior.get(name)
++                return (a-b)/dt if dt>0 and _finite(a) and _finite(b) and a>=0 and b>=0 else None
++            throughput=delta('output_tokens_total')
++            if throughput is not None and throughput<0:throughput=None
++            old_ratio=(prior.get('used_blocks')/prior['total_blocks'] if prior.get('total_blocks') and _finite(prior.get('used_blocks')) else None)
++            age=(now_ns-s['measured_ns'])/1e9 if s.get('measured_ns') is not None else None
++            vals=[s.get('running'),s.get('waiting'),s.get('head_wait_sec'),ratio,free_ratio,
++                  s.get('candidate_length'),s.get('candidate_blocks'),s.get('last_step_ms'),age,
++                  throughput,delta('waiting'),(ratio-old_ratio)/dt if dt>0 and ratio is not None and old_ratio is not None else None]
++            row,mask=_pack(vals);features.append(row);missing.append(mask)
++        outstanding=[r for r in visible if r['sent_ns'] is not None and r['client_terminal_ns'] is None]
++        overdue=sum(r['client_first_ns'] is None and now_ns-r['sent_ns']>self.ttft_sec*1e9 for r in outstanding)
++        stalled=sum(r['client_last_ns'] is not None and now_ns-r['client_last_ns']>self.gap_sec*1e9 for r in outstanding)
++        window_sec=min(5.,max(0.,(now_ns-episode_start_ns)/1e9))
++        tokens=sum(n for r in visible for t,n in r['token_increments'] if now_ns-5e9<t<=now_ns)
++        cooldown=max(0.,self.cooldown_sec-(now_ns-snapshot['last_terminal_ns'])/1e9) if snapshot.get('last_terminal_ns') is not None else 0.
++        global_values=[float(now_ns<arrival_end_ns),float(arrival_end_ns<=now_ns<deadline_ns),
++                       max(0.,(arrival_end_ns-now_ns)/1e9),max(0.,(deadline_ns-now_ns)/1e9),
++                       len(outstanding),overdue,stalled,tokens/window_sec if window_sec>0 else None,
++                       float(snapshot['busy']),cooldown,sum(s.get('healthy') is True for s in states.values())]
++        global_features,global_missing=_pack(global_values)
++        pair_features,pair_missing,mask=[],[],[True]
++        for src,dst in PAIRS:
++            a,b=states[self.mapping[src][0]],states[self.mapping[dst][0]]
++            valid,_=eligible_pair(a,b,now_ns,self.max_age_sec)
++            valid=valid and not snapshot['busy'] and cooldown==0 and not snapshot.get('lease_expired') and not snapshot.get('invalid_reasons')
++            mask.append(bool(valid))
++            def difference(name):
++                x,y=a.get(name),b.get(name)
++                return x-y if _finite(x) and _finite(y) else None
++            def used_ratio(s):
++                return s['used_blocks']/s['total_blocks'] if _finite(s.get('used_blocks')) and s.get('total_blocks',0)>0 else None
++            x,y=used_ratio(a),used_ratio(b)
++            avail=(b['free_blocks']-b['waiting_blocks'] if _finite(b.get('free_blocks')) and _finite(b.get('waiting_blocks')) else None)
++            row,missing_row=_pack([difference('running'),x-y if x is not None and y is not None else None,avail])
++            pair_features.append(row);pair_missing.append(missing_row)
++        return {'schema':SCHEMA_VERSION,'instance_feature_names':list(INSTANCE_FEATURES),
++                'global_feature_names':list(GLOBAL_FEATURES),'pair_feature_names':list(PAIR_FEATURES),
++                'instance_mapping':[list(x) for x in self.mapping],
++                'instance_features':features,'instance_missing':missing,
++                'global_features':global_features,'global_missing':global_missing,
++                'pair_features':pair_features,'pair_missing':pair_missing,'action_mask':mask,
++                'snapshot_version':snapshot['version'],'obs_received_at':snapshot['received_ns'],'decision_ns':now_ns}
++
++
++class RealNormalizer:
++    """Named schema-bound scales; immutable within and across rollout/evaluation."""
++    version='real-normalizer-v1'
++    def __setattr__(self,name,value):
++        if getattr(self,'_frozen',False):raise AttributeError('real normalizer is frozen')
++        object.__setattr__(self,name,value)
++    def __init__(self,scales=None):
++        values=dict(SCALES if scales is None else scales)
++        if set(values)!=set(SCALES) or any(not _finite(v) or v<=0 for v in values.values()):
++            raise ValueError('exact feature scale schema with finite positive scales required')
++        self.scales=MappingProxyType(values)
++        self.hash=digest(self.state_dict())
++        self._frozen=True
++
++    def state_dict(self):
++        return {'version':self.version,'schema':SCHEMA_VERSION,'instance_features':list(INSTANCE_FEATURES),
++                'global_features':list(GLOBAL_FEATURES),'pair_features':list(PAIR_FEATURES),'scales':dict(self.scales)}
++
++    @classmethod
++    def from_state_dict(cls,state):
++        candidate=cls(state.get('scales'))
++        if candidate.state_dict()!=state:raise ValueError('normalizer version/schema mismatch')
++        return candidate
++
++    def transform(self,observation):
++        if digest(self.state_dict())!=self.hash:raise ValueError('normalizer state mutated')
++        if observation['schema']!=SCHEMA_VERSION:raise ValueError('wrong observation schema')
++        result={'version':self.version,'schema':SCHEMA_VERSION,'normalizer_hash':self.hash,
++                'action_mask':list(observation['action_mask'])}
++        for group,names in [('instance',INSTANCE_FEATURES),('global',GLOBAL_FEATURES),('pair',PAIR_FEATURES)]:
++            if observation[group+'_feature_names']!=list(names):raise ValueError('feature order mismatch')
++            values=observation[group+'_features'];masks=observation[group+'_missing']
++            def normalize(row,mask):
++                return [0. if absent else value/self.scales[name] for name,value,absent in zip(names,row,mask)]+[float(x) for x in mask]
++            result[group+'_features']=(normalize(values,masks) if group=='global' else
++                                       [normalize(row,mask) for row,mask in zip(values,masks)])
++        return result
+--- p2_before/rl_scheduler/real_runner.py
++++ p2_after/rl_scheduler/real_runner.py
+@@ -0,0 +1,304 @@
++"""Live telemetry/bridge smoke orchestration; imported without starting services.
++
++Only run_live() performs real traffic; callers must verify gates and start the
++owned supervisor service. No opportunity experiment or training exists here.
++"""
++from __future__ import annotations
++
++import asyncio
++from dataclasses import asdict
++import hashlib
++import json
++from pathlib import Path
++import random
++import time
++
++from .real_bridge import RealBridge
++from .real_budget import BudgetLedger, atomic_json
++from .real_client import StreamingRequestCollector
++from .real_env import RealEnv, RealEnvConfig, assert_idle
++from .real_metrics import CausalEventAdapter, Checkpoint, EventCursor, EventJournal, RequestLedger, _percentile
++from .real_bridge import digest
++
++
++def flatten_acks(value):
++    if isinstance(value,dict):
++        if 'source' in value and 'durable' in value:
++            yield value
++        else:
++            for nested in value.values():yield from flatten_acks(nested)
++    elif isinstance(value,list):
++        for nested in value:yield from flatten_acks(nested)
++
++
++def checkpoint(raw):
++    return Checkpoint(source=raw['source'],last_sequence=raw['last_sequence'],through_ns=raw['through_ns'],
++                      received_ns=time.monotonic_ns(),pending_delivery=raw.get('pending_delivery'),durable=raw['durable'])
++
++
++def server_request_id(run_id,episode_id,request_id):
++    return 'real-'+hashlib.sha256(json.dumps((run_id,episode_id,request_id)).encode()).hexdigest()
++
++
++class LiveEpisodeIO:
++    def __init__(self,bridge,session,*,run_id,episode_id,run_dir,trace,sampling,arrival_sec,route_shares=None):
++        self.bridge,self.session=bridge,session
++        self.run_id,self.episode_id=run_id,episode_id
++        self.run_dir=Path(run_dir);self.directory=self.run_dir/'runs'/episode_id
++        self.directory.mkdir(parents=True,exist_ok=False)
++        self.trace,self.sampling,self.arrival_sec=trace,sampling,arrival_sec
++        self.route_shares=route_shares
++        self.journal=EventJournal(self.directory/'client_events.jsonl',run_id,episode_id)
++        self.client=StreamingRequestCollector(self.journal)
++        self.cursor=EventCursor();self.tasks={};self.stop_new=False
++        self.expected_routes={}
++        self.adapter=CausalEventAdapter(run_id,episode_id,
++                    {server_request_id(run_id,episode_id,row['request_id']):row['request_id'] for row in trace})
++        self.checkpoint_history=[]
++
++    async def prepare(self):
++        snapshot=await self.bridge.snapshot()
++        assert_idle(snapshot)
++        self.mapping=snapshot['mapping']
++        raw=await self.bridge.call('flush')
++        # Four instances must provide local + at least one worker acknowledgement.
++        cluster=raw['cluster']
++        if len(cluster['instances'])!=4 or any(not x['workers'] for x in cluster['instances']):
++            raise RuntimeError('incomplete cluster producer inventory')
++        self.acks=list(flatten_acks(raw))
++        if any(x.get('status')!='passed' or not x.get('durable') for x in self.acks):
++            raise RuntimeError('initial producer flush unconfirmed')
++        self.sources=sorted({x['source'] for x in self.acks}|{self.journal.source})
++        self.causal_dir=Path(json.loads((self.run_dir/'service_session.json').read_text())['causal_dir'])
++        atomic_json(self.directory/'initial_flush.json',raw)
++        atomic_json(self.directory/'trace.json',self.trace)
++
++    def ledger(self,start,arrival,deadline):
++        return RequestLedger(self.run_id,self.episode_id,start_ns=start,arrival_end_ns=arrival,
++                             score_deadline_ns=deadline,expected_sources=self.sources,
++                             expected_request_ids=[r['request_id'] for r in self.trace])
++
++    async def begin(self,start_ns,arrival_end_ns,deadline_ns,ledger):
++        self.start_ns,self.arrival_end_ns,self.deadline_ns=start_ns,arrival_end_ns,deadline_ns
++        for row in self.trace:
++            self.journal.record('planned',row['request_id'],scheduled_ns=start_ns+int(row['scheduled_arrival_sec']*1e9))
++        for row in self.trace:
++            self.tasks[row['request_id']]=asyncio.create_task(self._issue(row))
++        await self.poll(ledger)
++
++    async def _issue(self,row):
++        delay=self.start_ns+int(row['scheduled_arrival_sec']*1e9)-time.monotonic_ns()
++        if delay>0:await asyncio.sleep(delay/1e9)
++        if self.stop_new or time.monotonic_ns()>=self.arrival_end_ns:return
++        body={**self.sampling,'prompt':row['prompt'],'max_tokens':row['output_tokens']}
++        if self.route_shares:
++            # Fixed trace-index routing, shared across policies; no future policy input.
++            draw=random.Random(row['route_seed']).random()
++            cumulative=0.;index=3
++            for i,share in enumerate(self.route_shares):
++                cumulative+=share
++                if draw<cumulative:index=i;break
++            body['initial_instance_id']=self.mapping[index][0]
++            self.expected_routes[row['request_id']]=body['initial_instance_id']
++        await self.client.issue(self.session,self.bridge.base_url+'/generate_real_metrics',row['request_id'],body)
++
++    async def poll(self,ledger):
++        cp=self.journal.checkpoint()
++        ledger.poll_events(self.cursor,self.journal.path)
++        ledger.acknowledge(cp)
++        for path in sorted(self.causal_dir.glob('events*.jsonl')):
++            ledger.poll_events(self.cursor,path,adapter=self.adapter)
++        if self.cursor.issues:raise RuntimeError('event cursor integrity failure')
++
++    async def stop_arrivals(self):
++        self.stop_new=True
++        tasks=[]
++        for rid,task in self.tasks.items():
++            if rid not in self.client.sent and not task.done():task.cancel();tasks.append(task)
++        if tasks:await asyncio.gather(*tasks,return_exceptions=True)
++
++    async def cleanup(self,deadline_ns,ledger):
++        await self.stop_arrivals()
++        await self.poll(ledger)
++        unfinished=[rid for rid,task in self.tasks.items() if rid in self.client.sent and not task.done()]
++        # Also abort timed-out/disconnected clients whose backend result is unknown.
++        rows=ledger.observe(time.monotonic_ns())['requests']
++        cleanup_ids=sorted(set(unfinished)|{r['request_id'] for r in rows if r['sent_ns'] is not None and r['outcome'] in ('unknown','timeout',None)})
++        if cleanup_ids:
++            result=await asyncio.wait_for(self.client.cancel(self.session,self.bridge.base_url+'/cancel_real_metrics',cleanup_ids),
++                                          timeout=max(.001,(deadline_ns-time.monotonic_ns())/1e9))
++            atomic_json(self.directory/'cancellation.json',result)
++        pending=[task for task in self.tasks.values() if not task.done()]
++        if pending:
++            await asyncio.wait_for(asyncio.gather(*pending,return_exceptions=True),timeout=max(.001,(deadline_ns-time.monotonic_ns())/1e9))
++        while True:
++            await self.poll(ledger)
++            snapshot=await self.bridge.snapshot()
++            if snapshot.get('invalid_reasons'):raise RuntimeError('external intervention in episode')
++            try:
++                assert_idle(snapshot)
++                break
++            except RuntimeError:
++                if time.monotonic_ns()>=deadline_ns:raise
++                await asyncio.sleep(min(.1,max(0.,(deadline_ns-time.monotonic_ns())/1e9)))
++
++    async def flush(self,ledger):
++        raw=await self.bridge.call('flush')
++        self.checkpoint_history.append(raw)
++        await self.poll(ledger)
++        client_cp=self.journal.checkpoint(pending_delivery=0 if all(task.done() for task in self.tasks.values()) else 1)
++        ledger.poll_events(self.cursor,self.journal.path);ledger.acknowledge(client_cp)
++        acks=list(flatten_acks(raw))
++        if {x['source'] for x in acks}|{client_cp.source}!=set(self.sources):
++            raise RuntimeError('producer set changed inside episode')
++        if any(x.get('status')!='passed' for x in acks):raise RuntimeError('producer flush incomplete')
++        for ack in acks:ledger.acknowledge(checkpoint(ack))
++        atomic_json(self.directory/'flush_history.json',self.checkpoint_history)
++        atomic_json(self.directory/'event_cursor.json',{'offsets':self.cursor.offsets,'identities':self.cursor.identities,'issues':self.cursor.issues})
++
++    async def sleep(self,seconds):await asyncio.sleep(seconds)
++
++    async def close(self):
++        for task in self.tasks.values():
++            if not task.done():task.cancel()
++        if self.tasks:await asyncio.gather(*self.tasks.values(),return_exceptions=True)
++        self.journal.close()
++
++
++def trace_recipe(cfg):
++    return {'smoke':cfg['smoke'],'sampling':cfg['sampling'],'model_path':cfg['service']['model_path'],
++            'max_model_len':cfg['service']['max_model_len']}
++
++
++def verify_trace_manifest(cfg):
++    manifest_path=Path(cfg['smoke_trace_manifest'])
++    manifest=json.loads(manifest_path.read_text())
++    if manifest['recipe_hash']!=digest(trace_recipe(cfg)):raise RuntimeError('frozen smoke recipe changed')
++    for item in manifest['traces'].values():
++        path=manifest_path.parent/item['path']
++        if hashlib.sha256(path.read_bytes()).hexdigest()!=item['sha256']:raise RuntimeError('frozen smoke trace changed')
++    return manifest
++
++
++def make_trace(cfg,case,seed):
++    if cfg.get('smoke_trace_manifest'):
++        manifest=verify_trace_manifest(cfg)
++        item=manifest['traces'][str(seed)]
++        return json.loads((Path(cfg['smoke_trace_manifest']).parent/item['path']).read_text())
++    from disturbance_exp.workload import generate_trace,load_local_tokenizer
++    tokenizer=load_local_tokenizer(cfg['service']['model_path'])
++    if tokenizer is None:raise RuntimeError('existing local tokenizer unavailable')
++    trace_cfg={'experiment':{'seed':seed,'duration_sec':case['arrival_sec']},
++               'workload':{'arrival':'poisson','base_qps':case['qps'],'input_tokens':case['input_tokens'],
++                           'output_tokens':case['output_tokens'],'max_model_len':cfg['service']['max_model_len']},
++               'limits':{'max_requests':case['max_requests']}}
++    return [{**asdict(request),'route_seed':seed*1000000+index} for index,request in enumerate(generate_trace(trace_cfg,tokenizer))]
++
++
++def decision_action(observation,mode):
++    if mode=='stay' or observation is None:return 0
++    raw=observation['raw'];mask=raw['action_mask'];features=raw['pair_features']
++    legal=[i for i in range(1,13) if mask[i]]
++    if not legal:return 0
++    # Smoke probe selects a legal high-to-low measured running-pressure pair.
++    return max(legal,key=lambda i:(features[i-1][0],features[i-1][1],-i))
++
++
++async def run_episode(cfg,case,*,bridge,session,run_dir,episode_id,mode,seed,monitor=True):
++    run_dir=Path(run_dir);run_id=json.loads((run_dir/'budget.json').read_text())['run_id']
++    trace=make_trace(cfg,case,seed)
++    io=LiveEpisodeIO(bridge,session,run_id=run_id,episode_id=episode_id,run_dir=run_dir,trace=trace,
++                     sampling=cfg['sampling'],arrival_sec=case['arrival_sec'],route_shares=case.get('route_shares'))
++    records=[]
++    env=RealEnv(bridge,io,BudgetLedger(run_dir),run_id=run_id,episode_id=episode_id,ledger_factory=io.ledger,
++                config=RealEnvConfig(arrival_sec=case['arrival_sec'],drain_sec=case['drain_sec']),decision_sink=records.append)
++    result=None
++    try:
++        observation,_=await env.reset(mode=mode)
++        while env.state in ('arrival','drain'):
++            if monitor:
++                action=decision_action(observation,mode)
++                observation,_,done,_,_=await env.step(action)
++                if done:break
++            else:
++                # Overhead OFF retains only lifecycle/lease health and the same client metrics.
++                await bridge.renew_controller()
++                await io.sleep(min(10.,max(0.,(env.deadline_ns-time.monotonic_ns())/1e9)))
++                await io.poll(env.ledger)
++                if time.monotonic_ns()>=env.arrival_end_ns:await io.stop_arrivals();env.state='drain'
++                if time.monotonic_ns()>=env.deadline_ns:env.state='deadline'
++        result=await env.finish()
++        raw_events=[event for event in env.ledger.events.values() if env.start_ns<=event.occurred_ns<=env.deadline_ns]
++        result['actual_migration_attempts']=sum(e.data.get('event')=='migration_attempt_started' for e in raw_events)
++        observed_routes={e.request_id:e.data.get('instance_id') for e in raw_events if e.data.get('event')=='real_initial_route'}
++        if io.route_shares and observed_routes!=io.expected_routes:
++            result['status']='incomplete';result['valid_episode']=False
++            result['invalid_reasons'].append('explicit_initial_route_not_verified')
++        result['route_audit']={'expected':io.expected_routes,'observed':observed_routes}
++        through=min((cp.through_ns for cp in env.ledger.checkpoints.values()),default=0)
++        env.ledger.export(io.directory,cleanup_through_ns=through)
++        atomic_json(io.directory/'episode.json',result)
++        (io.directory/'decisions.jsonl').write_text(''.join(json.dumps(row,allow_nan=False)+'\n' for row in records))
++        (io.directory/'migrations.jsonl').write_text(''.join(json.dumps({'decision_id':key,**value},allow_nan=False)+'\n'
++                                                                 for key,value in env.receipts.items() if value.get('migration_id')))
++        return result
++    finally:
++        if result is None:
++            try:
++                invalid=await env.close();atomic_json(io.directory/'interrupted.json',invalid)
++            except BaseException as exc:atomic_json(io.directory/'interrupted.json',{'status':'incomplete','reason':type(exc).__name__})
++        await io.close()
++
++
++async def run_live(cfg,*,run_dir,stage,mode,invocation_id):
++    import aiohttp
++    run_dir=Path(run_dir)
++    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10.),connector=aiohttp.TCPConnector(limit=4096)) as control_session, \
++               aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=360.),connector=aiohttp.TCPConnector(limit=4096)) as traffic_session:
++        bridge=RealBridge(cfg['service']['base_url'],control_session)
++        if stage=='telemetry':cases=[('telemetry',cfg['smoke']['telemetry'],'stay',True)]
++        elif mode=='overhead':cases=[(f'overhead_{i}',cfg['smoke']['overhead'],'stay' if not enabled else 'shadow',enabled)
++                                    for i,enabled in enumerate((False,True,True,False))]
++        else:cases=[(mode,cfg['smoke'][mode],mode,True)]
++        results=[]
++        for label,case,control_mode,monitor in cases:
++            seed=case['seed']
++            result=await run_episode(cfg,case,bridge=bridge,session=traffic_session,run_dir=run_dir,
++                                     episode_id=invocation_id+'_'+label,mode=control_mode,seed=seed,monitor=monitor)
++            results.append({'label':label,'result':result})
++            if result['status']!='passed':break
++        status=all(row['result']['status']=='passed' for row in results) and len(results)==len(cases)
++        checks={'episodes_reconciled':bool(status)}
++        if stage=='telemetry':
++            checks['low_load_normal_completion']=all(row['result']['score']['fixed']['completed']>0
++                and row['result']['score']['fixed']['completed']==row['result']['score']['fixed']['offered']
++                for row in results)
++        if stage=='bridge' and mode in ('shadow','active'):
++            latencies=sorted(d['cpu_decision_latency_ms'] for row in results for d in row['result']['decisions'])
++            p95=_percentile(latencies,.95)
++            checks['CPU_decision_path_P95_below_100ms']=p95 is not None and p95<100.
++        else:p95=None
++        if stage=='bridge' and mode=='shadow':
++            checks['zero_actual_migration']=all(not receipt.get('migration_id') for row in results
++                for receipt in row['result']['final_receipts'].values())
++            checks['zero_coordinator_migration_attempts']=all(row['result']['actual_migration_attempts']==0 for row in results)
++        if stage=='bridge' and mode=='active':
++            receipts=[receipt for row in results for receipt in row['result']['final_receipts'].values() if receipt.get('migration_id')]
++            checks['at_least_10_terminals']=sum(r.get('terminal_status') in ('succeeded','failed','rejected') for r in receipts)>=10
++            checks['at_least_5_successes']=sum(r.get('terminal_status')=='succeeded' for r in receipts)>=5
++        if stage=='bridge' and mode=='overhead' and len(results)==4:
++            fixed=[row['result']['score']['fixed'] for row in results]
++            pairs=[(fixed[0],fixed[1]),(fixed[3],fixed[2])]
++            deltas=[]
++            for off,on in pairs:
++                tps=off['client_token_throughput_tps'];ttft=off['ttft_p95_ms']
++                deltas.append({'throughput_degradation':1-on['client_token_throughput_tps']/tps if tps>0 else None,
++                               'TTFT_P95_degradation':on['ttft_p95_ms']/ttft-1 if ttft and on['ttft_p95_ms'] is not None else None})
++            checks['paired_overhead_within_thresholds']=all(d['throughput_degradation'] is not None and d['TTFT_P95_degradation'] is not None
++                and d['throughput_degradation']<=.05 and d['TTFT_P95_degradation']<=.10 for d in deltas)
++        else:deltas=[]
++        report={'stage':stage,'mode':mode,'status':'passed' if all(checks.values()) else 'incomplete',
++                'checks':checks,'results':results,'cpu_decision_path_p95_ms':p95,
++                'overhead_pairs':deltas,'independent_research_evaluation':False}
++        atomic_json(run_dir/'smoke_runs'/invocation_id/'result.json',report)
++        return report
+--- p2_before/rl_scheduler/real_service.py
++++ p2_after/rl_scheduler/real_service.py
+@@ -0,0 +1,267 @@
++"""Supervisor-managed private serving and independent persistent budget watchdog.
++
++Preparing these files is CPU-only. install/start are invoked only by a later
++explicit live runner, after gate and ownership checks. No global ray stop/pkill.
++"""
++from __future__ import annotations
++
++import argparse
++from contextlib import contextmanager
++import fcntl
++import json
++import os
++from pathlib import Path
++import signal
++import socket
++import subprocess
++import sys
++import time
++
++from .real_budget import BudgetLedger, atomic_json
++
++PROTECTED={'caddy','instance_portal','tunnel_manager','jupyter','cron','tensorboard','syncthing','pyworker'}
++
++
++def process_identity(pid):
++    import psutil
++    try:
++        p=psutil.Process(pid)
++        return {'pid':p.pid,'created':p.create_time()}
++    except psutil.NoSuchProcess:return None
++
++
++def identity_alive(record):
++    if not record:return False
++    return process_identity(record['pid'])==record
++
++
++class OwnedProcesses:
++    def __init__(self,path):self.path=Path(path)
++
++    @contextmanager
++    def _locked(self):
++        self.path.parent.mkdir(parents=True,exist_ok=True)
++        with self.path.with_suffix('.lock').open('a') as lock:
++            fcntl.flock(lock,fcntl.LOCK_EX)
++            data=json.loads(self.path.read_text()) if self.path.exists() else {'processes':[]}
++            try:yield data
++            finally:
++                atomic_json(self.path,data)
++                fcntl.flock(lock,fcntl.LOCK_UN)
++
++    def register(self,pid,role):
++        identity=process_identity(pid)
++        if identity is None:raise RuntimeError('owned process disappeared')
++        with self._locked() as data:
++            record={'identity':identity,'role':role}
++            if record not in data['processes']:data['processes'].append(record)
++
++    def capture_children(self):
++        import psutil
++        with self._locked() as data:
++            additions=[]
++            for record in data['processes']:
++                if identity_alive(record['identity']):
++                    try:
++                        for child in psutil.Process(record['identity']['pid']).children(recursive=True):
++                            identity=process_identity(child.pid)
++                            if identity:additions.append({'identity':identity,'role':'descendant'})
++                    except psutil.NoSuchProcess:pass
++            by_identity={(r['identity']['pid'],r['identity']['created']):r for r in data['processes']+additions}
++            data['processes']=list(by_identity.values())
++        return data
++
++    def stop(self,timeout=20.):
++        import psutil
++        data=self.capture_children();owned=[]
++        for record in data['processes']:
++            identity=record['identity']
++            if identity_alive(identity) and identity['pid']!=os.getpid():
++                proc=psutil.Process(identity['pid'])
++                if proc.name() in ('supervisord','sshd','caddy'):
++                    raise RuntimeError('protected management process in ownership ledger')
++                owned.append(proc)
++                try:proc.terminate()
++                except psutil.NoSuchProcess:pass
++        _,alive=psutil.wait_procs(owned,timeout=timeout)
++        for proc in alive:
++            identity=next((r['identity'] for r in data['processes'] if r['identity']['pid']==proc.pid),None)
++            if identity_alive(identity):
++                try:proc.kill()
++                except psutil.NoSuchProcess:pass
++        _,alive=psutil.wait_procs(alive,timeout=2.)
++        if alive:raise RuntimeError('owned process cleanup not confirmed')
++
++
++def service_names(run_id):
++    import hashlib
++    suffix=hashlib.sha256(run_id.encode()).hexdigest()[:10]
++    return 'real_ppo_'+suffix, 'real_ppo_guard_'+suffix
++
++
++class ManagedService:
++    def __init__(self,root,run_dir,config_path,*,command_runner=subprocess.run,supervisor_dir='/etc/supervisor/conf.d'):
++        self.root,self.run_dir,self.config_path=Path(root),Path(run_dir),Path(config_path)
++        self.run=command_runner
++        self.supervisor_dir=Path(supervisor_dir)
++        self.run_id=json.loads((self.run_dir/'budget.json').read_text())['run_id']
++        self.server_name,self.guard_name=service_names(self.run_id)
++        self.owner=OwnedProcesses(self.run_dir/'owned_processes.json')
++
++    def prepare(self):
++        directory=self.run_dir/'services';directory.mkdir(parents=True,exist_ok=True)
++        files=[]
++        for name,role in [(self.server_name,'server'),(self.guard_name,'watchdog')]:
++            argv=[str(self.root/'.venv/bin/python'),'-m','rl_scheduler.real_service','--role',role,
++                  '--root',str(self.root),'--run-dir',str(self.run_dir),'--config',str(self.config_path)]
++            import shlex
++            wrapper=directory/(name+'.sh')
++            wrapper.write_text('#!/bin/bash\nset -e\n. /opt/supervisor-scripts/utils/logging.sh\n. /opt/supervisor-scripts/utils/environment.sh\ncd '+shlex.quote(str(self.root))+'\nexec '+shlex.join(argv)+'\n')
++            wrapper.chmod(0o755)
++            conf=directory/(name+'.conf')
++            conf.write_text(f'''[program:{name}]
++environment=PROC_NAME="%(program_name)s"
++command={wrapper}
++autostart=false
++autorestart=false
++stopasgroup=true
++killasgroup=true
++stopsignal=TERM
++stopwaitsecs=60
++stdout_logfile=/dev/stdout
++redirect_stderr=true
++stdout_events_enabled=true
++stdout_logfile_maxbytes=0
++''')
++            files.extend([str(wrapper),str(conf)])
++        return files
++
++    def _supervisor(self,*argv,check=True,timeout_sec=65.):
++        if any(name in PROTECTED for name in argv):raise RuntimeError('protected supervisor service')
++        return self.run(['supervisorctl',*argv],check=check,capture_output=True,text=True,timeout=timeout_sec)
++
++    def start(self):
++        # Do not adopt any existing cluster. Foreign Ray and GPU processes are blockers.
++        import psutil
++        if any(p.info['name'] in ('raylet','gcs_server') for p in psutil.process_iter(['name'])):
++            raise RuntimeError('foreign or unclean Ray cluster; refuse to adopt/stop')
++        gpu=self.run(['nvidia-smi','--query-compute-apps=pid','--format=csv,noheader'],
++                     check=True,capture_output=True,text=True,timeout=5.)
++        if gpu.stdout.strip():raise RuntimeError('GPU already used by another process')
++        self.prepare()
++        for name in (self.server_name,self.guard_name):
++            source=self.run_dir/'services'/(name+'.conf');target=self.supervisor_dir/source.name
++            if target.exists() and target.read_bytes()!=source.read_bytes():raise RuntimeError('conflicting supervisor owner')
++            target.write_bytes(source.read_bytes())
++        self._supervisor('reread');self._supervisor('update',self.server_name,self.guard_name)
++        self._supervisor('start',self.guard_name)
++        try:self._supervisor('start',self.server_name)
++        except BaseException:
++            self.stop();raise
++
++    def stop(self):
++        # Names derive exclusively from this run ID; never touch management/foreign names.
++        self._supervisor('stop',self.server_name,check=False)
++        self.owner.stop(timeout=15.)
++        self._supervisor('stop',self.guard_name,check=False)
++
++    def assert_running_owned(self):
++        if not self.owner.path.exists():raise RuntimeError('no owned service ledger')
++        records=json.loads(self.owner.path.read_text())['processes']
++        if not any(r['role']=='owned_api' and identity_alive(r['identity']) for r in records):
++            raise RuntimeError('no living API process owned by this run')
++
++
++def _read_config(path):
++    import yaml
++    return yaml.safe_load(Path(path).read_text())
++
++
++def run_server(args):
++    import psutil
++    cfg=_read_config(args.config)
++    run_dir=Path(args.run_dir)
++    budget=BudgetLedger(run_dir)
++    budget.activate('P0_P3',required_sec=cfg['service']['startup_timeout_sec']+60)
++    owner=OwnedProcesses(run_dir/'owned_processes.json')
++    stopping=False
++    def stop(signum,frame):
++        nonlocal stopping
++        stopping=True
++    signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
++    # Exclusion is held for the entire service lifetime, preventing two task clusters.
++    lock=(run_dir.parent/'.real_ppo_cluster.lock').open('a')
++    fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
++    ray_attempted=False
++    try:
++        if any(p.info['name'] in ('raylet','gcs_server') for p in psutil.process_iter(['name'])):
++            raise RuntimeError('Ray was already running before this owned service')
++        ray_dir=Path(cfg['service']['ray_temp_dir'])
++        env=os.environ.copy();env.update(cfg['service']['env'])
++        env['PATH']=str(Path(args.root)/'.venv/bin')+':'+env.get('PATH','')
++        causal_dir=run_dir/'causal_events'/('service_'+str(time.time_ns()))
++        causal_dir.mkdir(parents=True,exist_ok=False)
++        env['LLUMNIX_CAUSAL_TRACE_DIR']=str(causal_dir)
++        atomic_json(run_dir/'service_session.json',{'run_id':budget.input['run_id'],
++                    'causal_dir':str(causal_dir),'ray_temp_dir':str(ray_dir),'started_wall':time.time()})
++        ray_cmd=[str(Path(args.root)/'.venv/bin/ray'),'start','--head','--node-ip-address=127.0.0.1',
++                 '--port='+str(cfg['service']['ray_port']),'--temp-dir='+str(ray_dir),
++                 '--num-gpus=4','--num-cpus='+str(cfg['service']['ray_num_cpus']),
++                 '--include-dashboard=false','--disable-usage-stats']
++        ray_attempted=True
++        subprocess.run(ray_cmd,env=env,check=True,timeout=60.)
++        # Ray daemons detach; bind ownership only to process command lines bearing this session path.
++        for proc in psutil.process_iter(['pid','name','cmdline']):
++            if proc.info['name'] in ('raylet','gcs_server') and any(str(ray_dir) in str(x) for x in proc.info['cmdline'] or []):
++                owner.register(proc.pid,'owned_ray_head')
++        if not owner.path.exists():raise RuntimeError('could not establish owned Ray daemon identities')
++        if stopping:raise RuntimeError('service startup interrupted')
++        budget.require(60.)
++        child=subprocess.Popen(cfg['service']['server_argv'],env=env,cwd=args.root)
++        owner.register(child.pid,'owned_api')
++        while child.poll() is None and not stopping:
++            owner.capture_children()
++            status=budget.status()
++            if min(status['remaining']['total_experiment_wall_time_sec'],status['remaining']['P0_P3_sec'])<=60:
++                stopping=True;budget.expire()
++            time.sleep(.25)
++    finally:
++        # A failed/timeout ray-start may have detached partial daemons too.
++        ray_dir=Path(cfg['service']['ray_temp_dir'])
++        if ray_attempted:
++            for proc in psutil.process_iter(['pid','name','cmdline']):
++                if proc.info['name'] in ('raylet','gcs_server') and any(str(ray_dir) in str(x) for x in proc.info['cmdline'] or []):
++                    owner.register(proc.pid,'owned_ray_head')
++        owner.stop(timeout=20.)
++        fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
++
++
++def run_watchdog(args):
++    budget=BudgetLedger(args.run_dir)
++    service=ManagedService(args.root,args.run_dir,args.config)
++    running=True
++    def stop(signum,frame):
++        nonlocal running
++        running=False
++    signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
++    while running:
++        status=budget.status()
++        if status['started'] and (status['exhausted'] or min(status['remaining']['total_experiment_wall_time_sec'],status['remaining']['P0_P3_sec'])<=60):
++            budget.expire()
++            try:
++                service._supervisor('stop',service.server_name,check=False,timeout_sec=40.)
++            except subprocess.TimeoutExpired:
++                pass
++            service.owner.stop(timeout=10.)
++            break
++        time.sleep(.25)
++
++
++def main():
++    parser=argparse.ArgumentParser();parser.add_argument('--role',choices=['server','watchdog'],required=True)
++    for name in ('root','run-dir','config'):parser.add_argument('--'+name,required=True)
++    args=parser.parse_args()
++    return run_server(args) if args.role=='server' else run_watchdog(args)
++
++
++if __name__=='__main__':main()
+--- p2_before/rl_scheduler/tests/test_real_bridge.py
++++ p2_after/rl_scheduler/tests/test_real_bridge.py
+@@ -0,0 +1,277 @@
++"""CPU concurrency, ownership, runtime-adapter and control transport checks."""
++import ast
++import asyncio
++from copy import deepcopy
++import importlib.util
++import json
++from pathlib import Path
++import threading
++import time
++from types import SimpleNamespace
++import unittest
++from unittest.mock import patch
++
++from rl_scheduler.real_bridge import ControlArbiter, RealBridge, PAIRS, capacity_ok, CumulativeTokenCounter
++
++ROOT=Path(__file__).resolve().parents[2]
++
++
++def load_file(name,path):
++    spec=importlib.util.spec_from_file_location(name,ROOT/path)
++    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
++
++
++def extract_method(path,class_name,method_name,namespace):
++    tree=ast.parse((ROOT/path).read_text())
++    cls=next(node for node in tree.body if isinstance(node,ast.ClassDef) and node.name==class_name)
++    method=next(node for node in cls.body if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name==method_name)
++    method.decorator_list=[]
++    unit=ast.Module(body=[ast.ImportFrom(module='__future__',names=[ast.alias(name='annotations')],level=0),method],type_ignores=[])
++    ast.fix_missing_locations(unit);exec(compile(unit,str(ROOT/path),'exec'),namespace)
++    return namespace[method_name]
++
++
++class Clock:
++    def __init__(self):self.now=100_000_000_000
++    def __call__(self):return self.now
++    def advance(self,seconds):self.now+=int(seconds*1e9)
++
++
++def states(clock):
++    return [{'instance_id':str(i),'epoch':'e'+str(i),'measured_ns':clock(),
++             'healthy':True,'type':'neutral','is_migrating':False,'has_slot':True,
++             'total_blocks':1000,'free_blocks':900,'used_blocks':100,'waiting_blocks':0,
++             'candidate_id':'request-'+str(i),'candidate_blocks':20,'candidate_length':128,
++             'candidate_stage':'decode','candidate_policy':'SR','running':1,'waiting':0,
++             'head_wait_sec':0.,'pending_delivery':0,'preallocated_requests':0,'paused_requests':0,
++             'output_tokens_total':0,'last_step_ms':10.} for i in range(4)]
++
++
++class Harness:
++    def __init__(self,mode='active'):
++        self.clock=Clock();self.states=states(self.clock);self.calls=[]
++        self.started=asyncio.Event();self.finish=asyncio.Event();self.mode=mode
++        async def provider():return deepcopy(self.states)
++        async def dispatch(receipt):
++            self.calls.append(receipt);self.started.set();await self.finish.wait()
++            return {'terminal_status':'succeeded','migration_id':receipt['migration_id'],
++                    'actual_request_id':receipt['expected_candidate_id'],'copied_blocks':20}
++        self.arbiter=ControlArbiter(provider,dispatch,clock=self.clock)
++
++    async def ready(self):
++        self.lease=await self.arbiter.acquire_controller('run','policy','ep',self.mode)
++        self.snapshot=await self.arbiter.snapshot();return self
++
++    async def submit(self,decision_id='d',**overrides):
++        args=dict(lease_id=self.lease['lease_id'],decision_id=decision_id,src_id='0',dst_id='1',
++                  expected_candidate_id='request-0',snapshot_version=self.snapshot['version'])
++        args.update(overrides);return await self.arbiter.submit_migration(**args)
++
++    async def complete(self):
++        self.finish.set();await asyncio.sleep(0);await asyncio.sleep(0)
++
++
++class ArbiterTests(unittest.IsolatedAsyncioTestCase):
++    async def test_instance_production_counter_deduplicates_and_excludes_migrated_prefix(self):
++        counter=CumulativeTokenCounter()
++        self.assertEqual(counter.observe('r',5),5)
++        self.assertEqual(counter.observe('r',3),0)
++        self.assertEqual(counter.observe('r',5),0)
++        self.assertEqual(counter.observe('r',6),1)
++        counter.baseline('migrated',100)
++        self.assertEqual(counter.observe('migrated',101),1)
++        self.assertEqual(counter.total,7)
++    async def test_atomic_global_slot_under_race(self):
++        h=await Harness().ready()
++        receipts=await asyncio.gather(*(h.submit(str(i)) for i in range(32)))
++        self.assertEqual(sum(r['receipt_status']=='accepted' for r in receipts),1)
++        self.assertEqual(len(h.calls),1)
++        self.assertTrue(h.arbiter.ordinary_blocked)
++        await h.complete()
++
++    async def test_idempotent_duplicate_and_changed_payload(self):
++        h=await Harness().ready()
++        receipts=await asyncio.gather(*(h.submit() for _ in range(16)))
++        self.assertEqual(len({r['migration_id'] for r in receipts}),1)
++        self.assertEqual(len(h.calls),1)
++        changed=await h.submit(dst_id='2')
++        self.assertEqual(changed['receipt_status'],'conflict')
++        await h.complete()
++        repeated=await h.submit();self.assertEqual(repeated['terminal_status'],'succeeded')
++        self.assertEqual(len(h.calls),1)
++
++    async def test_candidate_capacity_stale_version_and_index_rejections(self):
++        for case in ('candidate','capacity','stale','version','index'):
++            with self.subTest(case=case):
++                h=await Harness().ready()
++                if case=='candidate':h.states[0]['candidate_id']='different'
++                if case=='capacity':h.states[1]['free_blocks']=69 # 20 + reserve50 leaves one block short
++                if case=='stale':h.clock.advance(3)
++                if case=='version':await h.arbiter.snapshot()
++                if case=='index':h.states[0]['epoch']='rebuilt'
++                result=await h.submit()
++                self.assertEqual(result['receipt_status'],'rejected')
++                self.assertFalse(h.calls)
++
++    async def test_missing_state_does_not_produce_execution(self):
++        h=await Harness().ready();h.states[1]['healthy']=None
++        result=await h.submit();self.assertEqual(result['receipt_status'],'rejected')
++        self.assertFalse(h.calls)
++
++    async def test_shadow_and_stay_never_dispatch(self):
++        for mode in ('shadow','stay'):
++            h=await Harness(mode).ready();receipt=await h.submit()
++            self.assertEqual(receipt['receipt_status'],mode)
++            self.assertIsNone(receipt['migration_id']);self.assertFalse(h.calls)
++
++    async def test_cooldown_begins_after_terminal_not_start(self):
++        h=await Harness().ready();await h.submit();h.clock.advance(10)
++        self.assertIsNotNone(h.arbiter.slot)
++        await h.complete()
++        h.states=states(h.clock);h.snapshot=await h.arbiter.snapshot()
++        receipt=await h.submit('too_early');self.assertEqual(receipt['rejection_reason'],'cooldown')
++        h.clock.advance(5);h.states=states(h.clock);h.snapshot=await h.arbiter.snapshot()
++        receipt=await h.submit('after_cooldown');self.assertEqual(receipt['receipt_status'],'accepted')
++        await h.complete()
++
++    async def test_timeout_retains_slot_reconciles_by_same_decision(self):
++        h=await Harness().ready()
++        async def uncertain(receipt):h.calls.append(receipt);raise asyncio.TimeoutError()
++        h.arbiter.dispatch=uncertain
++        await h.submit();await asyncio.sleep(0);await asyncio.sleep(0)
++        self.assertEqual((await h.arbiter.query_receipt(h.lease['lease_id'],'d'))['terminal_status'],'unknown')
++        self.assertEqual(h.arbiter.slot,'d')
++        self.assertEqual((await h.submit('new'))['rejection_reason'],'global_slot_busy')
++        self.assertEqual((await h.submit())['terminal_status'],'unknown')
++        self.assertEqual(len(h.calls),1)
++        async def reconcile(receipt):return {'terminal_status':'succeeded','migration_id':receipt['migration_id'],'actual_request_id':'request-0'}
++        h.arbiter.reconcile=reconcile
++        self.assertEqual((await h.arbiter.query_receipt(h.lease['lease_id'],'d'))['terminal_status'],'succeeded')
++        self.assertIsNone(h.arbiter.slot)
++
++    async def test_exit_expiry_and_native_intervention_do_not_auto_unlock(self):
++        h=await Harness().ready();await h.submit()
++        self.assertEqual((await h.arbiter.release_controller(h.lease['lease_id']))['status'],'draining')
++        h.clock.advance(100)
++        with self.assertRaises(RuntimeError):await h.arbiter.acquire_controller('other','v','ep')
++        self.assertTrue(h.arbiter.ordinary_blocked)
++        await h.complete()
++        self.assertEqual((await h.arbiter.release_controller(h.lease['lease_id']))['status'],'released')
++        self.assertFalse(h.arbiter.ordinary_blocked)
++        h=await Harness().ready();h.arbiter.external_intervention('PRE_STOP_MIGRATION')
++        self.assertEqual((await h.submit())['rejection_reason'],'episode_invalid')
++
++    async def test_wrong_executed_candidate_is_unknown(self):
++        h=await Harness().ready()
++        async def wrong(receipt):return {'terminal_status':'succeeded','actual_request_id':'another'}
++        h.arbiter.dispatch=wrong;await h.submit();await asyncio.sleep(0);await asyncio.sleep(0)
++        result=await h.arbiter.query_receipt(h.lease['lease_id'],'d')
++        self.assertEqual(result['terminal_status'],'unknown');self.assertEqual(h.arbiter.slot,'d')
++
++    async def test_transport_requeries_uncertain_id_instead_of_resubmit(self):
++        bridge=RealBridge('http://127.0.0.1:1',None);bridge.lease={'lease_id':'lease'};calls=[]
++        async def rpc(method,**payload):
++            calls.append(method)
++            if method=='submit_migration':raise asyncio.TimeoutError()
++            return {'receipt_status':'accepted','terminal_status':None}
++        bridge.call=rpc
++        first=await bridge.submit_migration('d','a','b','request','v')
++        self.assertEqual(first['receipt_status'],'unknown')
++        await bridge.submit_migration('d','a','b','request','v')
++        self.assertEqual(calls,['submit_migration','query_receipt'])
++        with self.assertRaises(ValueError):RealBridge('http://example.com',None)
++
++
++class RuntimeAdapterTests(unittest.IsolatedAsyncioTestCase):
++    async def test_source_revalidates_after_destination_RPC(self):
++        module=load_file('_real_control_adapter','llumnix/real_control.py');clock=Clock()
++        src,dst=states(clock)[:2];request=SimpleNamespace(request_id='request-0',is_migrating=False,stage_num_blocks_list=[20])
++        candidates=[request];calls=[]
++        scheduler=SimpleNamespace(request_migration_policy='SR',_get_shortest_running_request=lambda *args:candidates)
++        async def migrate(*args,**kwargs):calls.append(args);return ['request-0']
++        coordinator=SimpleNamespace(enable_engine_migration_interface=False,migration_scheduler=scheduler,_migrate_out_one_request=migrate)
++        owner=SimpleNamespace(migration_coordinator=coordinator)
++        async def getstate():return deepcopy(dst)
++        async def reserve(*args):candidates[:]=[SimpleNamespace(request_id='new_SR')];src['candidate_id']='new_SR';return {'status':'prepared'}
++        async def unreserve(*args):return {'status':'released'}
++        actor=SimpleNamespace(real_control_state=SimpleNamespace(remote=getstate),real_control_reserve=SimpleNamespace(remote=reserve),real_control_unreserve=SimpleNamespace(remote=unreserve))
++        with patch.object(module,'instance_state',lambda owner:deepcopy(src)),patch.object(module.time,'monotonic_ns',clock):
++            result=await module.controlled_migrate(owner,actor,SimpleNamespace(instance_id='1'),None,
++                expected_candidate_id='request-0',decision_id='d',migration_id='m',source_epoch='e0',destination_epoch='e1')
++        self.assertEqual(result['terminal_status'],'rejected');self.assertFalse(calls)
++        self.assertIsNone(owner._real_control_inflight)
++
++    async def test_actual_controlled_migration_path_passes_exact_candidate_and_id(self):
++        module=load_file('_real_control_success','llumnix/real_control.py');clock=Clock();src,dst=states(clock)[:2]
++        request=SimpleNamespace(request_id='request-0',is_migrating=False,stage_num_blocks_list=[7,13]);calls=[]
++        async def migrate(*args,**kwargs):calls.append((args,kwargs));return ['request-0']
++        scheduler=SimpleNamespace(request_migration_policy='SR',_get_shortest_running_request=lambda *args:[request])
++        coordinator=SimpleNamespace(enable_engine_migration_interface=False,migration_scheduler=scheduler,_migrate_out_one_request=migrate)
++        owner=SimpleNamespace(migration_coordinator=coordinator)
++        async def getstate():return deepcopy(dst)
++        async def reserve(*args):return {'status':'prepared'}
++        async def unreserve(*args):return {'status':'released'}
++        actor=SimpleNamespace(real_control_state=SimpleNamespace(remote=getstate),real_control_reserve=SimpleNamespace(remote=reserve),real_control_unreserve=SimpleNamespace(remote=unreserve))
++        with patch.object(module,'instance_state',lambda owner:deepcopy(src)),patch.object(module.time,'monotonic_ns',clock):
++            kwargs=dict(expected_candidate_id='request-0',decision_id='d',migration_id='m',source_epoch='e0',destination_epoch='e1')
++            result=await module.controlled_migrate(owner,actor,SimpleNamespace(instance_id='1'),None,**kwargs)
++            repeated=await module.controlled_migrate(owner,actor,SimpleNamespace(instance_id='1'),None,**kwargs)
++        self.assertEqual(result['terminal_status'],'succeeded');self.assertEqual(result['actual_request_id'],'request-0')
++        self.assertEqual(result['copied_blocks'],20);self.assertEqual(repeated,result)
++        self.assertEqual(len(calls),1);self.assertEqual(calls[0][1]['migration_id'],'m')
++
++    async def test_migration_scheduler_suppresses_only_ordinary_paths(self):
++        native=SimpleNamespace(PRE_STOP_MIGRATION='prestop',NEUTRAL_LOAD_BALANCE='ordinary')
++        method=extract_method('llumnix/global_scheduler/migration_scheduler.py','MigrationScheduler','push_migrations',{'MigrationType':native})
++        obj=SimpleNamespace(enable_pre_stop_migration=True,enable_pd=False,
++                            unit_failover_pipeline='failover_filter',unit_failover_policy='failover_policy')
++        obj._pair_migration=lambda *args:[('broken','healthy')]
++        self.assertEqual(method(obj,{},allow_routine=False),[('prestop',[('broken','healthy')])])
++        obj._pair_migration=lambda *args:[]
++        self.assertEqual(method(obj,{},allow_routine=False),[])
++
++    async def test_destination_capacity_guard_rechecks_actual_allocator(self):
++        response=lambda **kw:SimpleNamespace(**kw)
++        method=extract_method('llumnix/llumlet/migration_coordinator.py','MigrationCoordinator','_pre_alloc_cache',
++                              {'MigrationResponse':response})
++        info=SimpleNamespace(num_total_gpu_blocks=1000,num_free_gpu_blocks=60,num_blocks_all_waiting_requests=0)
++        allocation=[];freed=[]
++        backend=SimpleNamespace(engine=SimpleNamespace(scheduler=[SimpleNamespace(_get_instance_info=lambda items:info)]),
++                                pre_alloc_cache=lambda *args:allocation.append(args) or response(success=True))
++        obj=SimpleNamespace(_real_capacity_guards={'r'},backend_engine=backend,free_pre_alloc_cache=lambda rid:freed.append(rid))
++        result=method(obj,'r',None,0.,20,[],True)
++        self.assertFalse(result.success);self.assertEqual(allocation,[]);self.assertEqual(freed,['r'])
++        info.num_free_gpu_blocks=70
++        self.assertTrue(method(obj,'r',None,0.,20,[],True).success)
++        self.assertEqual(len(allocation),1)
++
++    async def test_pending_delivery_counts_queued_and_inflight_batches(self):
++        method=extract_method('llumnix/backends/output_forwarder.py','ThreadOutputForwarder','put_nowait_to_servers',
++                              {'asyncio':asyncio,'_record_output_forwarder_stage':lambda *args:None})
++        from concurrent.futures import Future
++        future=Future();obj=SimpleNamespace(_real_pending_lock=threading.Lock(),_real_pending=0,_real_delivery_error=False,
++            add_trace_timeline=lambda *args,**kwargs:None,forwarder_loop=None,_put_nowait_to_servers=lambda *args:'placeholder')
++        with patch.object(asyncio,'run_coroutine_threadsafe',return_value=future):method(obj,{}, {})
++        self.assertEqual(obj._real_pending,1)
++        future.set_result(None);self.assertEqual(obj._real_pending,0)
++        future=Future()
++        with patch.object(asyncio,'run_coroutine_threadsafe',return_value=future):method(obj,{}, {})
++        future.set_exception(RuntimeError('delivery failed'))
++        self.assertTrue(obj._real_delivery_error)
++
++    async def test_loopback_only_control_endpoint_and_forwarding(self):
++        from fastapi import FastAPI
++        import httpx
++        module=load_file('_real_control_http','llumnix/entrypoints/vllm/real_control_api.py')
++        calls=[]
++        async def rpc(method,payload):calls.append((method,payload));return {'ok':True}
++        client=SimpleNamespace(manager=SimpleNamespace(real_control=SimpleNamespace(remote=rpc)))
++        app=FastAPI();module.install_real_control_routes(app,lambda:client,{},lambda timeout:{})
++        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app,client=('8.8.8.8',123)),base_url='http://test') as http:
++            self.assertEqual((await http.post('/real_control/snapshot',json={})).status_code,403)
++        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app,client=('127.0.0.1',123)),base_url='http://test') as http:
++            self.assertEqual((await http.post('/real_control/snapshot',json={})).json(),{'ok':True})
++        self.assertEqual(calls,[('snapshot',{})])
++
++
++if __name__=='__main__':unittest.main()
+--- p2_before/rl_scheduler/tests/test_real_env.py
++++ p2_after/rl_scheduler/tests/test_real_env.py
+@@ -0,0 +1,213 @@
++"""Finite episode, measured observation, persistent budget and owned cleanup tests."""
++import asyncio
++from copy import deepcopy
++import importlib.util
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++from rl_scheduler.real_bridge import digest
++from rl_scheduler.real_budget import BudgetLedger,BudgetExhausted,atomic_json
++from rl_scheduler.real_env import RealEnv,RealEnvConfig,assert_idle
++from rl_scheduler.real_metrics import RequestLedger,Checkpoint
++from rl_scheduler.real_observation import RealObservationBuilder,RealNormalizer,SCHEMA_VERSION
++from rl_scheduler.real_service import OwnedProcesses,ManagedService,process_identity,identity_alive
++from rl_scheduler.tests.test_real_bridge import Clock,states,ROOT
++
++
++def budget_file(directory):
++    atomic_json(Path(directory)/'budget.json',{'run_id':'run','usage':{'task_experiment_wall_time_sec':0,'ppo_training_wall_time_sec':0},
++        'total_experiment_wall_time_sec':28800,'phase_caps_sec':{'P0_P3_including_GPU_checks_and_opportunity':7200,'P4_PPO_training':7200,'P5_final_evaluation_reserved':14400}})
++
++
++def snapshot(clock):
++    values=states(clock)
++    for s in values:s.update(running=0,waiting=0)
++    return {'version':'v1','measured_ns':clock(),'received_ns':clock(),'mapping':[[s['instance_id'],s['epoch']] for s in values],
++            'instances':values,'busy':False,'last_terminal_ns':None,'lease_expired':False,'invalid_reasons':[]}
++
++
++class FakeBridge:
++    def __init__(self,clock):self.clock=clock;self.value=snapshot(clock);self.released=False;self.actions=[]
++    async def snapshot(self):
++        value=deepcopy(self.value);value['received_ns']=self.clock();value['measured_ns']=self.clock()
++        for s in value['instances']:s['measured_ns']=self.clock()
++        return value
++    async def acquire_controller(self,*args):return {'lease_id':'lease','mapping':self.value['mapping']}
++    async def renew_controller(self):return {}
++    async def submit_migration(self,*args):
++        self.actions.append(args);self.value['instances'][0]['running']=3
++        return {'receipt_status':'rejected','terminal_status':'rejected','rejection_reason':'candidate_changed','migration_id':None}
++    async def query_receipt(self,*args):return {'receipt_status':'accepted','terminal_status':'unknown'}
++    async def release_controller(self):self.released=True;return {'status':'released'}
++
++
++class FakeIO:
++    def __init__(self,clock,bridge):self.clock,self.bridge=clock,bridge;self.stopped=0;self.cleaned=0;self.hang=False
++    async def prepare(self):pass
++    async def begin(self,*args):pass
++    async def poll(self,ledger):pass
++    async def stop_arrivals(self):self.stopped+=1
++    async def sleep(self,seconds):self.clock.advance(seconds)
++    async def cleanup(self,deadline,ledger):
++        self.cleaned+=1
++        if self.hang:await asyncio.Future()
++        for s in self.bridge.value['instances']:s['running']=0
++    async def flush(self,ledger):ledger.acknowledge(Checkpoint('s',0,self.clock(),self.clock(),0,True))
++
++
++def environment(*,cleanup_sec=60.):
++    clock=Clock();bridge=FakeBridge(clock);io=FakeIO(clock,bridge)
++    factory=lambda start,arrival,deadline:RequestLedger('run','ep',start_ns=start,arrival_end_ns=arrival,
++        score_deadline_ns=deadline,expected_sources=['s'],expected_request_ids=[])
++    budget=type('Budget',(),{'require':lambda self,required:None})()
++    env=RealEnv(bridge,io,budget,run_id='run',episode_id='ep',ledger_factory=factory,
++                config=RealEnvConfig(arrival_sec=2.,drain_sec=2.,cleanup_sec=cleanup_sec),clock=clock)
++    return env,clock,bridge,io
++
++
++class EnvironmentTests(unittest.IsolatedAsyncioTestCase):
++    async def test_idle_KV_baseline_can_be_nonzero_but_cannot_drift(self):
++        clock=Clock();s=snapshot(clock)
++        baseline=assert_idle(s);self.assertEqual(set(baseline.values()),{100})
++        s['instances'][0]['used_blocks']=101
++        with self.assertRaises(RuntimeError):assert_idle(s,baseline)
++        s['instances'][0]['used_blocks']=100;s['instances'][0]['pending_delivery']=1
++        with self.assertRaises(RuntimeError):assert_idle(s,baseline)
++
++    async def test_finite_phases_dt_and_completed_cleanup(self):
++        env,clock,bridge,io=environment();obs,_=await env.reset()
++        for _ in range(4):_,_,done,_,_=await env.step(0,old_logp=0.,old_value=1.)
++        self.assertTrue(done);self.assertEqual(env.state,'deadline')
++        self.assertEqual([d['dt_sec'] for d in env.decisions],[0.,1.,1.,1.])
++        result=await env.finish()
++        self.assertEqual(result['status'],'passed');self.assertTrue(result['terminal_value_zero_allowed'])
++        self.assertTrue(bridge.released);self.assertEqual(io.cleaned,1)
++        self.assertEqual(result['boundary']['score_deadline_ns'],104_000_000_000)
++
++    async def test_saved_observation_and_rejected_sample_are_not_rewritten(self):
++        env,clock,bridge,io=environment();observation,_=await env.reset();original=deepcopy(observation)
++        await env.step(1,policy_version='p',old_logp=-.7,old_value=.2)
++        row=env.decisions[0]
++        self.assertEqual(row['raw_obs'],original['raw'])
++        self.assertEqual(row['normalized_obs'],original['normalized'])
++        self.assertEqual(row['sampled_action'],1);self.assertEqual(row['old_logp'],-.7)
++        self.assertEqual(row['rejection_reason'],'candidate_changed')
++        self.assertEqual(row['raw_obs']['instance_features'][0][0],0.)
++        self.assertEqual(env.current_observation['raw']['instance_features'][0][0],3.)
++        await env.close()
++
++    async def test_delayed_callback_does_not_create_catchup_transitions(self):
++        env,clock,bridge,io=environment();await env.reset()
++        await env.step(0);clock.advance(1.5);await env.step(0)
++        self.assertEqual(len(env.decisions),2);self.assertEqual(env.decisions[1]['dt_sec'],2.5)
++        await env.close()
++
++    async def test_cleanup_timeout_and_controller_exit_are_invalid(self):
++        env,clock,bridge,io=environment(cleanup_sec=.01);await env.reset();clock.advance(4);io.hang=True
++        result=await env.finish()
++        self.assertEqual(result['status'],'incomplete');self.assertFalse(result['finite_terminal'])
++        self.assertTrue(any('TimeoutError' in issue for issue in result['invalid_reasons']))
++        self.assertTrue(bridge.released)
++        env,clock,bridge,io=environment();await env.reset();result=await env.close()
++        self.assertFalse(result['valid_episode']);self.assertIn('controller_exit',result['invalid_reasons'])
++
++    async def test_index_invalidation_and_disconnection_abort_episode(self):
++        env,clock,bridge,io=environment();await env.reset();bridge.value['mapping'][0][1]='rebuilt'
++        with self.assertRaises(RuntimeError):await env.step(0)
++        result=await env.close();self.assertEqual(result['status'],'incomplete')
++        env,clock,bridge,io=environment();await env.reset()
++        async def disconnected():raise ConnectionError('lost')
++        bridge.renew_controller=disconnected
++        with self.assertRaises(ConnectionError):await env.step(0)
++        result=await env.close();self.assertFalse(result['valid_episode'])
++
++
++class ObservationTests(unittest.TestCase):
++    def test_versioned_named_normalizer_frozen_and_missing_mask(self):
++        clock=Clock();s=snapshot(clock);s['instances'][0]['candidate_blocks']=None;s['instances'][0]['last_step_ms']=None
++        ledger=RequestLedger('run','ep',start_ns=clock(),arrival_end_ns=clock()+2_000_000_000,
++                             score_deadline_ns=clock()+4_000_000_000,expected_sources=['s'],expected_request_ids=[])
++        builder=RealObservationBuilder(s['mapping']);raw=builder.build(s,now_ns=clock(),ledger=ledger,
++            episode_start_ns=clock(),arrival_end_ns=clock()+2_000_000_000,deadline_ns=clock()+4_000_000_000)
++        normalizer=RealNormalizer();value=normalizer.transform(raw)
++        self.assertTrue(raw['instance_missing'][0][6]);self.assertTrue(raw['instance_missing'][0][7])
++        self.assertFalse(any(raw['action_mask'][1:4]))
++        self.assertEqual(RealNormalizer.from_state_dict(normalizer.state_dict()).transform(raw),value)
++        with self.assertRaises(TypeError):normalizer.scales['running']=4
++        with self.assertRaises(AttributeError):normalizer.scales={'running':4}
++        raw['instance_feature_names'].reverse()
++        with self.assertRaises(ValueError):normalizer.transform(raw)
++        self.assertFalse(any('predicted' in name or 'future' in name or 'migration_ms' in name for name in normalizer.scales))
++
++    def test_history_rates_and_state_age_use_received_information(self):
++        clock=Clock();s=snapshot(clock);builder=RealObservationBuilder(s['mapping'])
++        ledger=RequestLedger('run','ep',start_ns=clock(),arrival_end_ns=clock()+10_000_000_000,
++                             score_deadline_ns=clock()+20_000_000_000,expected_sources=['s'],expected_request_ids=[])
++        def build(value):return builder.build(value,now_ns=clock(),ledger=ledger,episode_start_ns=100_000_000_000,
++                                               arrival_end_ns=110_000_000_000,deadline_ns=120_000_000_000)
++        first=build(s);self.assertTrue(first['instance_missing'][0][9])
++        clock.advance(5);s=snapshot(clock);s['instances'][0]['output_tokens_total']=50;s['instances'][0]['waiting']=10
++        raw=build(s);self.assertEqual(raw['instance_features'][0][9],10.);self.assertEqual(raw['instance_features'][0][10],2.)
++        s['received_ns']=clock()+1
++        with self.assertRaises(ValueError):build(s)
++
++
++class BudgetAndServiceTests(unittest.TestCase):
++    def test_persistent_budget_phase_caps_restart_and_wall_jump(self):
++        with tempfile.TemporaryDirectory() as directory:
++            budget_file(directory);clock=Clock();wall=[1000.]
++            ledger=BudgetLedger(directory,wall=lambda:wall[0],mono=lambda:clock()/1e9,boot_id='boot')
++            self.assertFalse(ledger.status()['started']);ledger.activate()
++            clock.advance(100);wall[0]+=100
++            second=BudgetLedger(directory,wall=lambda:wall[0],mono=lambda:clock()/1e9,boot_id='boot')
++            self.assertEqual(second.status()['elapsed_sec'],100.)
++            wall[0]-=50;clock.advance(20)
++            self.assertEqual(second.status()['elapsed_sec'],120.)
++            second.activate('P4');clock.advance(7200);wall[0]+=7200
++            with self.assertRaises(BudgetExhausted):second.require(60,'P4')
++            with self.assertRaises(BudgetExhausted):second.activate('P4')
++
++    def test_budget_cross_process_origin_is_not_reset(self):
++        with tempfile.TemporaryDirectory() as directory:
++            budget_file(directory);ledger=BudgetLedger(directory);ledger.activate();before=json.loads(ledger.path.read_text())
++            code='from rl_scheduler.real_budget import BudgetLedger; import sys; b=BudgetLedger(sys.argv[1]); b.activate(); print(b.status()["started"])'
++            result=subprocess.run([sys.executable,'-c',code,directory],cwd=ROOT,capture_output=True,text=True,check=True)
++            self.assertEqual(result.stdout.strip(),'True')
++            after=json.loads(ledger.path.read_text())
++            self.assertEqual(after['first_started_wall'],before['first_started_wall']);self.assertGreaterEqual(after['elapsed_sec'],before['elapsed_sec'])
++
++    def test_owned_cleanup_preserves_unregistered_process(self):
++        with tempfile.TemporaryDirectory() as directory:
++            owned=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'])
++            foreign=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'])
++            try:
++                ledger=OwnedProcesses(Path(directory)/'owned.json');ledger.register(owned.pid,'test_owned')
++                ledger.stop(timeout=.5)
++                owned.wait(timeout=2)
++                self.assertIsNone(foreign.poll())
++            finally:
++                for child in (owned,foreign):
++                    if child.poll() is None:child.terminate()
++                    child.wait(timeout=2)
++
++    def test_supervisor_preparation_never_starts_service_and_uses_private_managed_wrapper(self):
++        with tempfile.TemporaryDirectory() as directory:
++            budget_file(directory);calls=[]
++            service=ManagedService(ROOT,directory,ROOT/'rl_scheduler/configs/real_pilot.yaml',command_runner=lambda *a,**k:calls.append(a))
++            paths=service.prepare();self.assertEqual(len(paths),4);self.assertFalse(calls)
++            self.assertIn('autostart=false',Path(paths[1]).read_text())
++            self.assertIn('stdout_logfile=/dev/stdout',Path(paths[1]).read_text())
++            with self.assertRaises(RuntimeError):service._supervisor('stop','caddy')
++
++    def test_unimplemented_CLI_stage_is_rejected_even_dry_run(self):
++        result=subprocess.run([sys.executable,'benchmark/run_real_ppo.py','--config','rl_scheduler/configs/real_pilot.yaml',
++                               '--stage','train','--output-dir','/tmp/unused-real-ppo','--dry-run'],cwd=ROOT,capture_output=True,text=True)
++        self.assertEqual(result.returncode,2);self.assertIn('stage not implemented',result.stderr)
++
++
++if __name__=='__main__':unittest.main()
+--- p2_before/rl_scheduler/tests/test_real_runner.py
++++ p2_after/rl_scheduler/tests/test_real_runner.py
+@@ -0,0 +1,156 @@
++"""CPU end-to-end traffic/ledger/control fixture. No Ray or model imports."""
++import asyncio
++from dataclasses import asdict
++import json
++import os
++from pathlib import Path
++import tempfile
++import time
++import unittest
++from types import SimpleNamespace
++from unittest.mock import patch
++
++from rl_scheduler.real_bridge import RealBridge,ControlArbiter
++from rl_scheduler.real_budget import atomic_json
++from rl_scheduler.real_env import RealEnv,RealEnvConfig
++from rl_scheduler.real_runner import LiveEpisodeIO,server_request_id
++from rl_scheduler.tests.test_real_bridge import Clock,states,load_file,extract_method
++from rl_scheduler.tests.test_real_env import budget_file,ROOT
++
++
++class Producer:
++    def __init__(self,directory,source):
++        self.source,self.sequence=source,0
++        self.stream=(Path(directory)/('events_'+source+'.jsonl')).open('wb')
++    def emit(self,event,**data):
++        self.sequence+=1
++        payload={'stream_id':self.source,'event_sequence':self.sequence,'event':event,
++                 'monotonic_ns':time.monotonic_ns(),**data}
++        self.stream.write((json.dumps(payload)+'\n').encode());self.stream.flush()
++    def checkpoint(self):
++        self.stream.flush();os.fsync(self.stream.fileno());now=time.monotonic_ns()
++        return {'status':'passed','source':self.source,'last_sequence':self.sequence,
++                'through_ns':now,'received_ns':now,'pending_delivery':0,'durable':True}
++
++
++class LiveFixtureTests(unittest.IsolatedAsyncioTestCase):
++    async def test_existing_trace_generator_receives_required_arrival_contract(self):
++        from rl_scheduler.real_runner import make_trace
++        class Tokenizer:
++            def get_vocab(self):return {'a':1}
++            def get_vocab_size(self):return 2
++            def decode(self,ids,**kwargs):return ' '.join('a' for x in ids)
++            def encode(self,text,**kwargs):return [1]*len(text.split())
++        cfg={'service':{'model_path':'unused','max_model_len':2112}}
++        case={'arrival_sec':20,'qps':.2,'input_tokens':16,'output_tokens':4,'max_requests':20}
++        with patch('disturbance_exp.workload.load_local_tokenizer',return_value=Tokenizer()):
++            rows=make_trace(cfg,case,6101)
++        self.assertGreater(len(rows),1)
++        self.assertTrue(all(row['input_tokens']+row['output_tokens']<=2112 for row in rows))
++
++    async def test_complete_CPU_HTTP_episode_through_real_env_IO_and_ledger(self):
++        from aiohttp import web,ClientSession,ClientTimeout
++        from aiohttp.test_utils import TestServer
++        with tempfile.TemporaryDirectory() as directory:
++            run_dir=Path(directory);causal=run_dir/'causal';causal.mkdir();budget_file(run_dir)
++            atomic_json(run_dir/'service_session.json',{'causal_dir':str(causal)})
++            producers={name:Producer(causal,name) for name in ('api','manager',*[f'local{i}' for i in range(4)],*[f'worker{i}' for i in range(4)])}
++            current=states(Clock())
++            for s in current:s.update(running=0,used_blocks=0,free_blocks=1000)
++            async def provider():
++                now=time.monotonic_ns()
++                return [dict(s,measured_ns=now) for s in current]
++            async def dispatch(receipt):raise AssertionError('Stay test must not dispatch migration')
++            core=ControlArbiter(provider,dispatch)
++            async def control(request):
++                method=request.match_info['method'];body=await request.json()
++                if method=='flush':
++                    return web.json_response({'api':producers['api'].checkpoint(),'cluster':{
++                        'manager':producers['manager'].checkpoint(),'instances':[{
++                            'local':producers[f'local{i}'].checkpoint(),'workers':[producers[f'worker{i}'].checkpoint()]} for i in range(4)]}})
++                return web.json_response(await getattr(core,method)(**body))
++            async def generate(request):
++                body=await request.json();rid=body['request_id'];sid=server_request_id('run','ep',rid)
++                def emit(kind,**data):
++                    producers['api'].emit('real_metrics_event',metric_kind=kind,run_id='run',episode_id='ep',
++                                           request_id=rid,server_request_id=sid,data=data)
++                def frame(kind,**data):return (json.dumps({'run_id':'run','episode_id':'ep','request_id':rid,
++                    'server_request_id':sid,'kind':kind,**data})+'\0').encode()
++                response=web.StreamResponse();await response.prepare(request)
++                emit('accepted');await response.write(frame('accepted'))
++                producers['local0'].emit('engine_request_output',request_id=sid,instance_id='0',output_tokens=1)
++                emit('api_first');await response.write(frame('output',cumulative_tokens=1,text='a'))
++                await asyncio.sleep(.001)
++                await response.write(frame('output',cumulative_tokens=4,text='abcd'))
++                emit('server_terminal',outcome='success');await response.write(frame('terminal',outcome='success'))
++                return response
++            app=web.Application();app.router.add_post('/real_control/{method}',control);app.router.add_post('/generate_real_metrics',generate)
++            io=None;env=None
++            try:
++                async with TestServer(app) as server,ClientSession(timeout=ClientTimeout(total=2)) as session:
++                    bridge=RealBridge(str(server.make_url('')).rstrip('/'),session)
++                    trace=[{'request_id':'r0','scheduled_arrival_sec':0.,'prompt':'test','output_tokens':4},
++                           {'request_id':'r1','scheduled_arrival_sec':.03,'prompt':'test','output_tokens':4}]
++                    io=LiveEpisodeIO(bridge,session,run_id='run',episode_id='ep',run_dir=run_dir,trace=trace,
++                                     sampling={'n':1},arrival_sec=.1)
++                    budget=SimpleNamespace(require=lambda required:None)
++                    env=RealEnv(bridge,io,budget,run_id='run',episode_id='ep',ledger_factory=io.ledger,
++                        config=RealEnvConfig(arrival_sec=.1,drain_sec=.1,decision_interval_sec=.02,cleanup_sec=1.))
++                    await env.reset(mode='stay')
++                    done=False
++                    while not done:_,_,done,_,_=await env.step(0)
++                    result=await env.finish()
++                    self.assertEqual(result['status'],'passed',result['invalid_reasons'])
++                    self.assertEqual(result['score']['fixed']['completed'],2)
++                    self.assertEqual(result['score']['fixed']['client_output_tokens'],8)
++                    self.assertEqual(result['score']['fixed']['slo_goodput_rps'],10.)
++                    self.assertEqual(len(env.ledger.sources),11)
++                    self.assertTrue((io.directory/'flush_history.json').exists())
++            finally:
++                if io:await io.close()
++                for producer in producers.values():producer.stream.close()
++
++    async def test_backend_prepare_fence_is_checked_after_destination_rebuild(self):
++        result_type=lambda **kw:SimpleNamespace(**kw)
++        method=extract_method('llumnix/llumlet/migration_coordinator.py','MigrationCoordinator','pre_alloc_cache',
++                              {'MigrationResponse':result_type})
++        called=[];obj=SimpleNamespace(_real_capacity_guards={},has_migration_slot=lambda:True,
++                                     _pre_alloc_cache=lambda *args:called.append(args) or result_type(success=True))
++        result=method(obj,'r',None,0,20,[],True,real_expected_epoch='old_epoch')
++        self.assertFalse(result.success);self.assertFalse(called)
++        obj._real_capacity_guards['r']='old_epoch'
++        self.assertTrue(method(obj,'r',None,0,20,[],True,real_expected_epoch='old_epoch').success)
++        # No extra arguments retains the legacy contract.
++        self.assertTrue(method(obj,'legacy',None,0,20,[],True).success)
++
++    async def test_guard_release_failure_keeps_unknown_source_fence(self):
++        module=load_file('_guard_release_failure','llumnix/real_control.py');clock=Clock();src,dst=states(clock)[:2]
++        request=SimpleNamespace(request_id='request-0',is_migrating=False,stage_num_blocks_list=[])
++        candidates=[request]
++        coordinator=SimpleNamespace(enable_engine_migration_interface=False,
++            migration_scheduler=SimpleNamespace(request_migration_policy='SR',_get_shortest_running_request=lambda *args:candidates))
++        owner=SimpleNamespace(migration_coordinator=coordinator)
++        async def target_state():return dict(dst)
++        async def prepare(*args):candidates.clear();return {'status':'prepared'}
++        async def release(*args):raise ConnectionError('lost destination')
++        actor=SimpleNamespace(real_control_state=SimpleNamespace(remote=target_state),real_control_reserve=SimpleNamespace(remote=prepare),
++                              real_control_unreserve=SimpleNamespace(remote=release))
++        with patch.object(module,'instance_state',lambda owner:dict(src)),patch.object(module.time,'monotonic_ns',clock):
++            result=await module.controlled_migrate(owner,actor,SimpleNamespace(instance_id='1'),None,
++                expected_candidate_id='request-0',decision_id='d',migration_id='m',source_epoch='e0',destination_epoch='e1')
++        self.assertEqual(result['terminal_status'],'unknown');self.assertEqual(owner._real_control_inflight,'d')
++
++    async def test_budget_watchdog_expires_and_stops_only_run_service(self):
++        import rl_scheduler.real_service as module
++        calls=[]
++        budget=SimpleNamespace(status=lambda:{'started':True,'exhausted':False,
++            'remaining':{'total_experiment_wall_time_sec':59.,'P0_P3_sec':59.}},expire=lambda:calls.append('expired'))
++        service=SimpleNamespace(server_name='owned_task',_supervisor=lambda *a,**k:calls.append(a),
++                                owner=SimpleNamespace(stop=lambda **kw:calls.append('owned_cleanup')))
++        with patch.object(module,'BudgetLedger',return_value=budget),patch.object(module,'ManagedService',return_value=service), \
++             patch.object(module.signal,'signal'):
++            module.run_watchdog(SimpleNamespace(run_dir='x',root='x',config='x'))
++        self.assertEqual(calls,['expired',('stop','owned_task'),'owned_cleanup'])
++
++
++if __name__=='__main__':unittest.main()
