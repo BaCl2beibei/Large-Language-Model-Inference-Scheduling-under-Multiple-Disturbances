@@ -63,7 +63,7 @@ def protocol(run_dir, runtime_config):
             'censoring':'first-output, terminal-outstanding and offered-not-sent fractions reported separately',
             'zero_denominators':'null + incomplete; no infinite relative gain'},
         'gate':{'min_paired_relative_gain':.10,'min_winning_seeds':2,'max_error_rate_increase_pp':1.,
-            'healthy_scene_required':True,'zero_Stay_goodput':'report absolute delta; never relative-pass',
+            'healthy_probe_selection_required':True,'zero_Stay_goodput':'report absolute delta; never relative-pass',
             'majority_zero_scenes':'incomplete if >=2 of 2 scenes both policies have zero mean goodput'},
         'reward':{'weights':{'good':1.,'hold':.2,'first':.5,'gap':.2,'attempt':.02,'bad':.2,'tail':2.},
             'C_ref':None,'N_ref':None,'scale_status':'unmeasured',
@@ -163,6 +163,8 @@ def paired_gate(episodes,spec):
         return {'status':'incomplete','reason':'full 12-run paired matrix missing or duplicated','pairs':[]}
     if any(e.get('status')!='passed' for e in episodes):
         return {'status':'incomplete','reason':'invalid episode retained; request/action/cleanup audit failed','pairs':[]}
+    if any(e['metrics'].get('offered',0)<=0 or e['metrics'].get('nonmanual_error_rate') is None for e in episodes):
+        return {'status':'incomplete','reason':'zero offered denominator; report null rates','pairs':[]}
     by_key={key:row for key,row in zip(keys,episodes)};pairs=[];scenes={}
     for scene in ('A','B'):
         rows=[]

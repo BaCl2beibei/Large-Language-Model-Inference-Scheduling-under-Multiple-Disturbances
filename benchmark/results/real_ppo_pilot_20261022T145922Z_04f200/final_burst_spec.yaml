@@ -1,0 +1,28 @@
+seeds:
+- 5101
+- 5102
+- 5103
+not_for_training_or_selection: true
+base_qps: selected scene A QPS, determined only by opportunity probes
+arrival_sec: 120
+drain_sec: 120
+routing: native dispatcher
+rate_segments:
+- - 0
+  - 30
+  - 1
+- - 30
+  - 45
+  - 3
+- - 45
+  - 90
+  - 1
+- - 90
+  - 105
+  - 3
+- - 105
+  - 120
+  - 1
+profiles: same frozen nine-profile distribution and prompt pool
+generation_rule: same Poisson generator; freeze/hash traces after load selection,
+  before any final policy evaluation

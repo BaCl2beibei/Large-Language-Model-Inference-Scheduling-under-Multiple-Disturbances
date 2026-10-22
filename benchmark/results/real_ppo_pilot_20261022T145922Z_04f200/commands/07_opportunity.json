@@ -1,0 +1,78 @@
+{
+  "schema": "real-opportunity-commands-v1",
+  "status": "CPU_prepared_not_executed",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "source_hashes": {
+    "benchmark/run_real_opportunity.py": "3503807aac176a8fe4cecbb18f56e1421f1fc89aa8802fd1428b5be2800a629b",
+    "rl_scheduler/real_reward.py": "1d39ee44fd29239ba210bda3adadacb64ed16a7e861358dbb11fe2dd620666d4",
+    "rl_scheduler/real_opportunity.py": "3207d9e8b524841beb3391999d5004a449b5fe8705352ed562f062a907025c8c",
+    "rl_scheduler/real_opportunity_runner.py": "27965cdf53e8401430e39175d9911026de2771930c07f1bcadb4e9bfbbf9a2a6"
+  },
+  "source_hash": "846c5b77155b8c5b5cb9dea323b3dd9e80a744bfd218f409c41c6ebcc56638f0",
+  "protocol_hash": "c67cc232ade23385a810bc6f2b1758c422410b3455fe6a81a122778d0ac74e8c",
+  "commands": [
+    {
+      "label": "frozen_probe_selection_and_12_pairs",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_opportunity.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--opportunity-spec",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml",
+        "--stage",
+        "opportunity",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "07_opportunity_2101_2102_2103"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "validation_argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_opportunity.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--opportunity-spec",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml",
+        "--stage",
+        "opportunity",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "07_opportunity_2101_2102_2103",
+        "--dry-run"
+      ],
+      "GPU_execution_status": "not_run",
+      "config_sha256": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+      "protocol_sha256": "d2c39a4d87b869076b8cbc2b99f7578c2b8f1e6e011144570dc32c8f2c8d97cd",
+      "expected_max_episodes": 18,
+      "estimated_max_sec": 5760,
+      "validation_exit_code": null
+    }
+  ],
+  "adaptive_selection_rule": {
+    "A": "lower median of healthy normal probe QPS (sorted ascending)",
+    "B": "largest healthy skew probe QPS with waiting>0 in at least half of last-third arrival samples",
+    "missing_healthy_or_queued_scene": "stop incomplete; do not tune workload or thresholds"
+  },
+  "planned_total_max_sec": 5760,
+  "automatic_retries": false,
+  "stop_on_failed_or_incomplete_audit": true,
+  "user_override": "05 skipped explicitly; no live verification claim",
+  "budget_snapshot_readonly": {
+    "remaining": {
+      "total_experiment_wall_time_sec": 25995.593980832375,
+      "P0_P3_sec": 4395.593980832375,
+      "P4_sec": 7200.0,
+      "P5_sec": 14400.0
+    },
+    "exhausted": false,
+    "read_only": true,
+    "as_of_wall": 1792692818.4704952
+  }
+}
