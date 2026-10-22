@@ -328,6 +328,12 @@ class MigrationCoordinator:
                 self.backend_engine.pop_migrating_out_request_last_stage(migrate_out_request)
                 status = MigrationStatus.ABORTED_DST
         else: # ABORTED_SRC or ABORTED_DST
+            if status == MigrationStatus.ABORTED_SRC:
+                discard_reservation = getattr(
+                    self.backend_engine, "discard_migrating_out_request_last_stage", None
+                )
+                if discard_reservation is not None:
+                    discard_reservation(migrate_out_request)
             migrate_out_request.reset_migration_states_src()
             migrate_out_request.reset_llumnix_status()
             # If src instance aborts itself, dst instance should free the pre allocated cache in pre_alloc_cache.
@@ -431,7 +437,14 @@ class MigrationCoordinator:
             migration_status = MigrationStatus.FINISHED
             found = await self.backend_engine.remove_running_request(migrate_out_request.request_id)
             # Request coule be finished by previous or current step.
-            if not found or migrate_out_request.finished:
+            if not found:
+                return MigrationStatus.ABORTED_SRC
+            if migrate_out_request.finished:
+                discard_reservation = getattr(
+                    self.backend_engine, "discard_migrating_out_request_last_stage", None
+                )
+                if discard_reservation is not None:
+                    discard_reservation(migrate_out_request)
                 return MigrationStatus.ABORTED_SRC
             self.backend_engine.add_migrating_out_request_last_stage(migrate_out_request)
             src_blocks = incremental_blocks[:]

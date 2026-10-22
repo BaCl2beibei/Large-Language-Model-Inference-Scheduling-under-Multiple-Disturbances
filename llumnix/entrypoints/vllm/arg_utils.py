@@ -85,6 +85,14 @@ def add_engine_cli_args(parser: "ArgumentParser") -> "Namespace":
 
     return parser
 
+
+def _force_eager(engine_args: AsyncEngineArgs) -> AsyncEngineArgs:
+    """Keep CUDA graph capture disabled for every Llumnix vLLM v0 launch."""
+    if not engine_args.enforce_eager:
+        logger.info("Forcing enforce_eager=True; CUDA graph capture is disabled")
+    engine_args.enforce_eager = True
+    return engine_args
+
 def detect_unsupported_engine_feature(engine_args: EngineArgs) -> None:
     unsupported_feature = None
     if engine_args.pipeline_parallel_size > 1:
@@ -136,9 +144,9 @@ def get_args(llumnix_config: LlumnixConfig, launch_mode: LaunchMode, parser: Llu
     if manager_args.load_registered_service:
         engine_args_list = load_registered_engine_args(manager_args)
         # NOTE(s5u13b): hack to post init llumnix args and check args.
-        engine_args = engine_args_list[0]
+        engine_args = _force_eager(engine_args_list[0])
     else:
-        engine_args = AsyncEngineArgs.from_cli_args(cli_args)
+        engine_args = _force_eager(AsyncEngineArgs.from_cli_args(cli_args))
     post_init_llumnix_args(engine_args, instance_args, manager_args, entrypoints_args, BackendType.VLLM, launch_mode, parser)
 
     # backend related check args
@@ -153,7 +161,7 @@ def get_args(llumnix_config: LlumnixConfig, launch_mode: LaunchMode, parser: Llu
     return entrypoints_args, manager_args, instance_args, engine_args
 
 def get_engine_args(cli_args: "Namespace") -> AsyncEngineArgs:
-    engine_args = AsyncEngineArgs.from_cli_args(cli_args)
+    engine_args = _force_eager(AsyncEngineArgs.from_cli_args(cli_args))
     check_engine_args(engine_args)
     logger.info("engine_args: {}".format(engine_args))
 

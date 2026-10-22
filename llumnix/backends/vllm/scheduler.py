@@ -88,6 +88,50 @@ class SchedulerLlumnix(Scheduler):
                 cnt += 1
         return cnt
 
+    def _get_sr_migration_candidate(self):
+        """Return a read-only snapshot of the request SR would currently pick.
+
+        Keep the eligibility and ordering rules aligned with
+        LocalMigrationScheduler._filter_running_queue() and
+        _get_shortest_running_request(). The block count comes from this
+        request's own block table; num_blocks_last_running_request is not a
+        valid substitute because SR may select a different request.
+        """
+        candidates = [
+            request for request in self.running
+            if request.llumnix_status == RequestStatus.RUNNING
+            and request.inference_type == RequestInferenceType.DECODE
+            and request.request_len > 0
+            and not request.is_migrating
+        ]
+        if not candidates:
+            return {}
+
+        request = min(candidates, key=lambda item: item.request_len)
+        try:
+            seqs = request.get_seqs()
+            if not seqs:
+                raise IndexError("SR candidate has no sequence")
+            seq = seqs[0]
+            block_count = len(self.block_manager.get_block_table(seq))
+        except Exception as exc:
+            # Telemetry must not interrupt the vLLM scheduling step. Mark an
+            # incomplete snapshot invalid so any future consumer stays safe.
+            logger.debug("Could not inspect SR candidate %s KV blocks: %s", request.request_id, exc)
+            return {
+                "migration_candidate_request_id": str(request.request_id),
+                "migration_candidate_valid": False,
+                "migration_candidate_timestamp": time.time(),
+            }
+
+        return {
+            "migration_candidate_request_id": str(request.request_id),
+            "migration_candidate_kv_blocks": int(block_count),
+            "migration_candidate_stage": request.inference_type.value,
+            "migration_candidate_valid": block_count > 0,
+            "migration_candidate_timestamp": time.time(),
+        }
+
     def get_running_queue(self) -> Deque[SequenceGroupLlumnix]:
         return self.running
 
@@ -108,6 +152,11 @@ class SchedulerLlumnix(Scheduler):
             if seq_group.request_id == request_id:
                 self.running.remove(seq_group)
                 seq_group.set_llumnix_status(RequestStatus.RUNNING_MIGRATING)
+                # Keep the slot reserved until the migration commits or aborts.
+                # Migration can yield back to the engine loop after this removal;
+                # without a reservation, a prefill may occupy the slot and a
+                # failed migration can then restore this request above max_num_seqs.
+                self.migrating_out_request_last_stage[request_id] = seq_group
                 return True
         return False
 
@@ -127,6 +176,9 @@ class SchedulerLlumnix(Scheduler):
         assert request_id in self.migrating_out_request_last_stage, \
             f"the request id {request_id} of migrating out request in last stage should exist in migrating out request last stage"
         self.migrating_out_request_last_stage.pop(request_id)
+
+    def discard_migrating_out_request_last_stage(self, request_id: str) -> None:
+        self.migrating_out_request_last_stage.pop(request_id, None)
 
     def pre_alloc_cache(self,
                         request_id: str,
@@ -238,6 +290,7 @@ class SchedulerLlumnix(Scheduler):
             waiting_time_first_waiting_request=waiting_time_first_waiting_request,
             num_blocks_all_waiting_requests=num_blocks_all_waiting_requests,
             num_miss_tokens_all_waiting_requests=num_miss_tokens_all_waiting_requests,
+            **self._get_sr_migration_candidate(),
         )
         for seq_group in scheduled_seq_groups:
             instance_info.running_seq_lens.extend([seq.get_len() for seq in seq_group.get_seqs()])
@@ -258,6 +311,25 @@ class SchedulerLlumnix(Scheduler):
         for seq_group in self.waiting:
             seq_group.try_schedule_times += 1
         return seq_group_metadata_list, scheduler_outputs, allow_async_output_proc
+
+    def _schedule(self):
+        # A running request removed for its final migration stage still owns a
+        # scheduler slot until the migration outcome is known. Hold those slots
+        # back from new prefills and swapped-in requests so an abort can safely
+        # restore the request without exceeding max_num_seqs.
+        configured_max_num_seqs = self.scheduler_config.max_num_seqs
+        reserved_num_seqs = sum(
+            request.get_max_num_running_seqs()
+            for request in self.migrating_out_request_last_stage.values()
+        )
+        if reserved_num_seqs == 0:
+            return super()._schedule()
+
+        self.scheduler_config.max_num_seqs = max(0, configured_max_num_seqs - reserved_num_seqs)
+        try:
+            return super()._schedule()
+        finally:
+            self.scheduler_config.max_num_seqs = configured_max_num_seqs
 
     def _schedule_running(self, *args, **kwargs):
         # pylint: disable=access-member-before-definition

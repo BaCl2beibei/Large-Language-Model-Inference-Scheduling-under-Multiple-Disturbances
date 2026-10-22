@@ -138,6 +138,10 @@ def generate_trace(cfg: dict, tokenizer=None) -> list[TraceRequest]:
     profile_mix = work.get("profile_mix")
     profiles = profile_mix or [{"name": "default", "input_tokens": int(work["input_tokens"]), "output_tokens": output_default, "weight": 1}]
     weights = [float(p.get("weight", 1)) for p in profiles]
+    profile_cycle = bool(work.get("profile_cycle", False))
+    profile_cycle_order = []
+    configured_prompt = work.get("prompt")
+    configured_prompt_cache: dict[tuple[str, int], tuple[str, int]] = {}
 
     dataset_prompts: list[str] = []
     dataset = work.get("dataset")
@@ -148,15 +152,26 @@ def generate_trace(cfg: dict, tokenizer=None) -> list[TraceRequest]:
     qps_index, qps = 0, float(work["base_qps"])
     t, trace = 0.0, []
     for index in range(max_requests):
-        profile = rng.choices(profiles, weights=weights, k=1)[0]
+        if profile_cycle:
+            if index % len(profiles) == 0:
+                profile_cycle_order = list(profiles)
+                rng.shuffle(profile_cycle_order)
+            profile = profile_cycle_order[index % len(profiles)]
+        else:
+            profile = rng.choices(profiles, weights=weights, k=1)[0]
         output_tokens = min(int(profile.get("output_tokens", output_default)), model_limit - 1)
         input_budget = min(int(profile.get("input_tokens", work["input_tokens"])), model_limit - output_tokens)
         if dataset_prompts:
             prompt = dataset_prompts[rng.randrange(len(dataset_prompts))]
             prompt, input_tokens = _truncate(prompt, input_budget, tokenizer)
             request_type = str(profile.get("name", "sharegpt"))
-        elif work.get("prompt"):
-            prompt, input_tokens = _truncate(str(work["prompt"]), input_budget, tokenizer)
+        elif configured_prompt:
+            cache_key = (str(configured_prompt), input_budget)
+            if cache_key not in configured_prompt_cache:
+                configured_prompt_cache[cache_key] = _truncate(
+                    str(configured_prompt), input_budget, tokenizer
+                )
+            prompt, input_tokens = configured_prompt_cache[cache_key]
             request_type = str(profile.get("name", "configured_prompt"))
         else:
             prompt, input_tokens = _make_prompt(tokenizer, input_budget, int(exp["seed"]) + index)

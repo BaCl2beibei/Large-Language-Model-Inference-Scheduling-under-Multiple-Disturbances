@@ -232,6 +232,8 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
                                       instance_info.num_seqs,
                                       sum(instance_info.running_seq_lens),
                                       self.model_executor.last_inference_latency)
+        inference_latency = self.model_executor.last_inference_latency
+        instance_info.last_inference_latency = float(inference_latency) if inference_latency is not None else None
         seq_groups = self.scheduler[0].running
         if seq_groups:
             tot_blocks = []
@@ -298,6 +300,7 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
             instance_info.step_id = self.instance_info.step_id
             instance_info.timestamp = self.instance_info.timestamp
             instance_info.profiling_data = self.instance_info.profiling_data
+            instance_info.last_inference_latency = self.instance_info.last_inference_latency
             instance_info.num_blocks_last_running_request = self.instance_info.num_blocks_last_running_request
         if self.instance_info is None:
             instance_info.instance_id = self.instance_id
@@ -544,6 +547,9 @@ class BackendVLLM(BackendBaseInterface, BackendMigrationInterface):
 
     def pop_migrating_out_request_last_stage(self, backend_request: LlumnixRequest) -> None:
         return self.engine.scheduler[0].pop_migrating_out_request_last_stage(backend_request.request_id)
+
+    def discard_migrating_out_request_last_stage(self, backend_request: LlumnixRequest) -> None:
+        return self.engine.scheduler[0].discard_migrating_out_request_last_stage(backend_request.request_id)
 
     def pre_alloc_cache(self, *args, **kwargs) -> MigrationResponse:
         return self.engine.scheduler[0].pre_alloc_cache(*args, **kwargs)

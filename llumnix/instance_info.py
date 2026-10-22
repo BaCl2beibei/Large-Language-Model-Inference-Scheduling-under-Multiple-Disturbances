@@ -13,7 +13,7 @@
 
 import copy
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from llumnix.logging.logger import init_logger
 from llumnix.load_computation import (
@@ -67,6 +67,16 @@ class InstanceInfo:
     num_blocks_all_waiting_requests: int = 0
     num_blocks_last_running_request: int = 0
     num_miss_tokens_all_waiting_requests: int = 0
+
+    # Read-only snapshot of the request selected by LocalMigrationScheduler's
+    # SR policy. This is intentionally separate from
+    # num_blocks_last_running_request, which describes the last running queue
+    # entry and may not be the request selected by SR.
+    migration_candidate_request_id: Optional[str] = None
+    migration_candidate_kv_blocks: Optional[int] = None
+    migration_candidate_stage: Optional[str] = None
+    migration_candidate_valid: bool = False
+    migration_candidate_timestamp: Optional[float] = None
 
     # cache state
     num_cached_request_ids: int = 0

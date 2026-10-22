@@ -49,7 +49,7 @@ CURRENT_CLUSTER_OWNED = False
 MODEL = ROOT / "model" / "Qwen" / "Qwen2-0.5B"
 BASE_URL = "http://127.0.0.1:8080"
 MODEL_MAX_LEN = 2048
-MAX_NUM_SEQS = 64
+MAX_NUM_SEQS = 128
 GPU_MEMORY_UTIL = 0.65
 SERVER_PORT = 8080
 RAY_PORT = 6379
@@ -68,6 +68,7 @@ PROFILE_MIX = [
     {"name": "medium", "input_tokens": 128, "output_tokens": 96, "weight": 0.50},
     {"name": "long", "input_tokens": 256, "output_tokens": 128, "weight": 0.25},
 ]
+PROFILE_CYCLE = False
 PROBE_QPS = [0.5, 1.0, 2.0, 3.0, 4.0, 6.0]
 PROBE_SEC = 20.0
 PROBE_DRAIN_SEC = 180.0
@@ -149,6 +150,7 @@ def trace_config(seed: int, duration: float, qps: float, max_requests: int = 100
             "arrival": "poisson", "base_qps": float(qps), "input_tokens": 128,
             "output_tokens": 96, "max_model_len": MODEL_MAX_LEN,
             "tokenizer": str(MODEL), "prompt": profile_prompt(), "profile_mix": PROFILE_MIX,
+            "profile_cycle": PROFILE_CYCLE,
         },
         "limits": {"max_requests": int(max_requests)},
         "events": [],
@@ -394,9 +396,10 @@ async def sample_gpu_metrics(context: dict, rows: list[dict], stop: asyncio.Even
 
 
 def make_request_row(ctx: dict, req, phase: str) -> dict:
+    request_id = f"{ctx.get('run_id', 'run')}_{phase}_{req.request_id}"
     return {
         "experiment_id": "baseline_4gpu", **ctx, "phase": phase,
-        "request_id": req.request_id, "request_type": req.request_type,
+        "request_id": request_id, "request_type": req.request_type,
         "server_request_id": None,
         "scheduled_arrival_sec": req.scheduled_arrival_sec,
         "expected_input_tokens": req.input_tokens, "server_input_tokens": None,
@@ -442,6 +445,7 @@ async def execute_trace(trace, ctx: dict, phase: str, duration: float, drain_sec
         body = {
             "prompt": req.prompt, "n": 1, "best_of": 1, "temperature": 0.0,
             "top_k": 1, "max_tokens": req.output_tokens, "ignore_eos": True, "stream": False,
+            "request_id": row["request_id"],
         }
         try:
             async with session.post(f"{BASE_URL}/generate_benchmark", json=body) as response:
@@ -487,10 +491,41 @@ async def execute_trace(trace, ctx: dict, phase: str, duration: float, drain_sec
         await asyncio.sleep(duration)
         ctx["phase"] = "drain"
         done, pending = await asyncio.wait(tasks, timeout=drain_sec)
+        abort_failure = None
         if pending:
-            for task in pending:
-                task.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
+            pending_ids = [rows[i]["request_id"] for i, task in enumerate(tasks)
+                           if task in pending and rows[i]["actual_send_sec"] is not None]
+            if pending_ids:
+                try:
+                    # High-QPS phases can leave a large tail of active requests;
+                    # allow the server-side batch abort barrier up to 15 minutes.
+                    abort_timeout = aiohttp.ClientTimeout(total=900.0, connect=30.0, sock_connect=30.0)
+                    abort_connector = aiohttp.TCPConnector(limit=4, limit_per_host=4)
+                    async with aiohttp.ClientSession(timeout=abort_timeout,
+                                                     connector=abort_connector) as abort_session:
+                        async with abort_session.post(f"{BASE_URL}/abort_benchmark",
+                                                      json={"request_ids": pending_ids}) as response:
+                            abort_result = await response.json(content_type=None)
+                            if response.status != 200 or abort_result.get("unresolved_request_ids"):
+                                abort_failure = (
+                                    f"server abort barrier failed: status={response.status}, "
+                                    f"active={abort_result.get('active_request_count')}, "
+                                    f"unresolved={len(abort_result.get('unresolved_request_ids', []))}"
+                                )
+                except Exception as exc:
+                    abort_failure = f"server abort barrier request failed: {type(exc).__name__}: {exc}"
+            barrier_passed = abort_failure is None
+            done_after_abort, pending = await asyncio.wait(pending, timeout=3.0 if barrier_passed else 30.0)
+            if pending:
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+                if not barrier_passed:
+                    abort_failure = abort_failure or (
+                        f"{len(pending)} client request handlers remained active after abort failure"
+                    )
+            if abort_failure:
+                raise RuntimeError(abort_failure)
     for row in rows:
         if row["actual_send_sec"] is None:
             row["error_type"] = row["error_type"] or "not_sent"
@@ -556,7 +591,7 @@ def server_command(mode: str, config_path: Path, log_base: Path) -> tuple[list[s
         "--migration-backend", "rayrpc", "--max-model-len", str(MODEL_MAX_LEN),
         "--max-num-seqs", str(MAX_NUM_SEQS), "--gpu-memory-utilization", str(GPU_MEMORY_UTIL),
         "--dtype", "half", "--log-instance-info", "--log-filename", str(log_base),
-        "--server-log-level", "info",
+        "--server-log-level", "info", "--enforce-eager",
     ]
     env = os.environ.copy()
     env["PATH"] = f"{ROOT / '.venv' / 'bin'}:{env.get('PATH', '')}"

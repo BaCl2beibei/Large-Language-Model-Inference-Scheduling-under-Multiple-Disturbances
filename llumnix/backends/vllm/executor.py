@@ -350,9 +350,14 @@ class LlumnixRayGPUExecutor(RayGPUExecutorAsync):
         return (worker_module_name, worker_class_name, worker_class_fn)
 
     async def execute_model_async(self, execute_model_req: ExecuteModelRequest) -> List[SamplerOutput]:
-        t0 = time.time()
+        # Measure the complete executor iteration, including waiting for the
+        # Ray worker result. This is the service-time signal consumed by the
+        # calibration pipeline; do not synchronize CUDA separately here.
+        t0 = time.perf_counter()
         if not self.use_ray_spmd_worker:
-            return await super().execute_model_async(execute_model_req)
+            request_outputs = await super().execute_model_async(execute_model_req)
+            self.last_inference_latency = (time.perf_counter() - t0) * 1000
+            return request_outputs
 
         # pylint: disable=access-member-before-definition
         if self.forward_dag is None:
@@ -363,8 +368,7 @@ class LlumnixRayGPUExecutor(RayGPUExecutorAsync):
         outputs = await dag_future[0]
         request_outputs = self.output_decoder.decode(outputs)
 
-        t1 = time.time()
-        self.last_inference_latency = (t1 - t0) * 1000
+        self.last_inference_latency = (time.perf_counter() - t0) * 1000
         return request_outputs
 
     # _check_ray_adag_installation in vllm-v0.6.3.post1 requires ray version == 2.35.
