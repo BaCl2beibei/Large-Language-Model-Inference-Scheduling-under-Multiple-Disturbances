@@ -1,0 +1,145 @@
+[
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_reward",
+      "rl_scheduler.tests.test_real_opportunity",
+      "-v"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "test_count": 25,
+    "log": "p3_evidence/tests_initial.log",
+    "evidence": "executed earlier in this step; not redundantly rerun by packaging"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_opportunity.OrchestrationTests.test_actual_episode_over_CPU_HTTP_reconciles_normal_and_skew_routes",
+      "-v"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "test_count": 1,
+    "log": "p3_evidence/test_HTTP_episode.log",
+    "evidence": "executed earlier in this step; not redundantly rerun by packaging"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-m",
+      "unittest",
+      "rl_scheduler.tests.test_real_reward",
+      "rl_scheduler.tests.test_real_opportunity",
+      "rl_scheduler.tests.test_real_metrics",
+      "rl_scheduler.tests.test_real_runner.LiveFixtureTests.test_complete_CPU_HTTP_episode_through_real_env_IO_and_ledger",
+      "-v"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "test_count": 58,
+    "log": "p3_evidence/tests_final.log",
+    "evidence": "executed earlier in this step; not redundantly rerun by packaging"
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "-c",
+      "import pathlib,sys; [compile(pathlib.Path(p).read_text(),p,\"exec\") for p in sys.argv[1:]]; print(\"Compiled\",len(sys.argv)-1,\"sources without bytecode writes\")",
+      "benchmark/run_real_opportunity.py",
+      "rl_scheduler/real_reward.py",
+      "rl_scheduler/real_opportunity.py",
+      "rl_scheduler/real_opportunity_runner.py",
+      "rl_scheduler/tests/test_real_reward.py",
+      "rl_scheduler/tests/test_real_opportunity.py",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/p3_evidence/prepare_protocol.py",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/p3_evidence/finalize_p3.py"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "p3_evidence/compile.log",
+    "required": true
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "p3_evidence/diff_check.log",
+    "required": true
+  },
+  {
+    "argv": [
+      "nvidia-smi",
+      "--query-compute-apps=pid,process_name,used_memory",
+      "--format=csv,noheader"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "p3_evidence/gpu_inventory.log",
+    "required": true
+  },
+  {
+    "argv": [
+      "supervisorctl",
+      "status"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 3,
+    "log": "p3_evidence/supervisor_inventory.log",
+    "required": false
+  },
+  {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_opportunity.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--opportunity-spec",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml",
+      "--stage",
+      "opportunity",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "07_opportunity_2101_2102_2103",
+      "--dry-run"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "p3_evidence/dry_run_final.log",
+    "required": true
+  }
+]

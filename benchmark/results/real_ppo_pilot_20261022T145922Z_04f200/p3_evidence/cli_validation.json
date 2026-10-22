@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "actual_dry_run": {
+    "argv": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_opportunity.py",
+      "--config",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+      "--opportunity-spec",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml",
+      "--stage",
+      "opportunity",
+      "--output-dir",
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+      "--manage-services",
+      "--invocation-id",
+      "07_opportunity_2101_2102_2103",
+      "--dry-run"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "log": "p3_evidence/dry_run_final.log",
+    "required": true
+  },
+  "dry_run_intent": {
+    "stage": "opportunity",
+    "dry_run": true,
+    "GPU_will_start": false,
+    "ready_for_live": false,
+    "blocked_reasons": [
+      "persistent P0-P3/total budget insufficient for complete 5760 second maximum"
+    ],
+    "estimated_max_sec": 5760,
+    "episodes": {
+      "probes": 6,
+      "paired_opportunity": 12
+    },
+    "protocol_hash": "57dd82d5a458f3ff8289f3f2fd1b8abfa62ff7bfb65b5068d5b3fd04eefab9db",
+    "runtime_config_hash": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+    "dependency_hashes": {
+      "gates/p1_offline_portfix_02.json": "67e260bdc8ebc399f5cade2b565d761f915156f2800e9c89d721a771dd9c7ff9",
+      "gates/p2_offline_portfix_02.json": "8172791d79c2133de38d87a40ccac6fa923012913ff74610c8d2199afa20294d",
+      "reviews/bridge_review.json": "9b9687696172818acefd3f8e6a6b13e006036277ab23a837d542fa318ccb89f2",
+      "p3_evidence/user_override_06.json": "15b1d5ec7b1e030177fc8c7f4e322f8cf583fb89762fbc4b8559edb9b0644bfe"
+    },
+    "remaining_budget": {
+      "total_experiment_wall_time_sec": 25157.128154246428,
+      "P0_P3_sec": 3557.1281542464276,
+      "P4_sec": 7200.0,
+      "P5_sec": 14400.0
+    },
+    "prior_smoke": "skipped_by_user_not_verified",
+    "C_ref": null,
+    "N_ref": null,
+    "PPO_implemented": false
+  },
+  "live_plan_only": {
+    "status": "blocked_before_service_or_budget_write",
+    "reason": "P3 preparation gate: gate evidence changed: p3_evidence/commands.json; persistent P0-P3/total budget insufficient for complete 5760 second maximum"
+  },
+  "GPU_execution": "not_run"
+}

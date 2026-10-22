@@ -1,0 +1,1183 @@
+--- /dev/null
++++ p3_after/benchmark/run_real_opportunity.py
+@@ -0,0 +1,139 @@
++#!/usr/bin/env python3
++"""P3-only CLI, isolated from hash-bound P1/P2 smoke implementation."""
++from __future__ import annotations
++
++import argparse
++import asyncio
++from datetime import datetime,timezone
++import hashlib
++import importlib.util
++import json
++from pathlib import Path
++import sys
++
++ROOT=Path(__file__).resolve().parents[1]
++if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
++from rl_scheduler.real_budget import BudgetLedger,atomic_json
++from rl_scheduler.real_bridge import digest
++from rl_scheduler.real_opportunity import maximum_duration,readonly_budget,load_frozen_trace
++
++
++def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def smoke_cli():
++    spec=importlib.util.spec_from_file_location('real_smoke_gate_validation',ROOT/'benchmark/run_real_ppo.py')
++    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
++    return module
++
++
++def parse_args(argv=None):
++    p=argparse.ArgumentParser(description=__doc__)
++    p.add_argument('--config',type=Path,required=True)
++    p.add_argument('--opportunity-spec',type=Path,required=True)
++    p.add_argument('--output-dir',type=Path,required=True)
++    p.add_argument('--stage',choices=['opportunity'],required=True)
++    p.add_argument('--invocation-id',required=True)
++    p.add_argument('--dry-run',action='store_true')
++    p.add_argument('--manage-services',action='store_true')
++    return p.parse_args(argv)
++
++
++def validate_inputs(args,spec,runtime,*,require_ready=True):
++    run=args.output_dir.resolve();pointer=json.loads((ROOT/'rl_scheduler/runs/real_ppo_handoff/active_run.json').read_text())
++    if Path(pointer['run_dir']).resolve()!=run or Path(spec['run_dir']).resolve()!=run:raise ValueError('active run/spec directory mismatch')
++    if args.opportunity_spec.resolve()!=run/'opportunity_spec.yaml':raise ValueError('unregistered opportunity protocol')
++    if args.config.resolve()!=Path(spec['runtime_config']).resolve() or args.config.resolve()!=ROOT/'rl_scheduler/configs/real_pilot.yaml':
++        raise ValueError('unregistered runtime configuration')
++    if spec['schema']!='real-opportunity-v1' or runtime['schema_version']!='real-pilot-v1':raise ValueError('wrong protocol schema')
++    validator=smoke_cli();dependencies={}
++    for name in [*pointer['offline_gates'].values(),'reviews/bridge_review.json']:
++        validator.validate_gate(run/name,run);dependencies[name]=sha(run/name)
++    review=json.loads((run/'reviews/bridge_review.json').read_text())
++    for name,value in review.get('dependency_hashes',{}).items():
++        if sha(ROOT/name)!=value:raise RuntimeError('review runtime dependency changed: '+name)
++    waiver=spec['prerequisite_exception']
++    if waiver.get('05_smoke')=='skipped_by_user':
++        decision=json.loads((run/'p3_evidence/user_override_06.json').read_text())
++        if (decision.get('user_instruction')!='跳过smoke，直接执行06_sol_p3_prepare.md'
++                or decision.get('smoke_skipped') is not True or decision.get('run_id')!=pointer['run_id']):
++            raise RuntimeError('missing explicit user prerequisite exception')
++        dependencies['p3_evidence/user_override_06.json']=sha(run/'p3_evidence/user_override_06.json')
++    else:
++        for name in ('gates/p1_live.json','gates/p2_live.json'):
++            validator.validate_gate(run/name,run);dependencies[name]=sha(run/name)
++    for qps,seed in zip(spec['probe']['qps'],spec['probe']['seeds']):load_frozen_trace(run,spec,seed=seed,qps=qps,phase='probe')
++    for qps in spec['probe']['qps']:
++        for seed in spec['opportunity']['seeds']:load_frozen_trace(run,spec,seed=seed,qps=qps,phase='opportunity')
++    if require_ready:
++        gate=validator.validate_gate(run/'gates/p3_ready.json',run)
++        if gate.get('stage')!='P3_CPU_preparation' or gate.get('dependency_hashes')!=dependencies:
++            raise RuntimeError('P3 ready dependency hash mismatch')
++    return dependencies
++
++
++def plan(args,spec,runtime):
++    dependencies=validate_inputs(args,spec,runtime,require_ready=False)
++    reasons=[];validator=smoke_cli();gate=args.output_dir/'gates/p3_ready.json'
++    try:
++        value=validator.validate_gate(gate,args.output_dir)
++        if value.get('stage')!='P3_CPU_preparation' or value.get('dependency_hashes')!=dependencies:
++            raise RuntimeError('P3 ready dependency hash mismatch')
++    except (OSError,ValueError,RuntimeError,KeyError) as exc:reasons.append('P3 preparation gate: '+str(exc))
++    if not args.manage_services:reasons.append('opportunity requires owned managed service and automatic teardown')
++    maximum=maximum_duration(spec,runtime);budget=readonly_budget(args.output_dir)
++    if budget['exhausted'] or min(budget['remaining']['total_experiment_wall_time_sec'],budget['remaining']['P0_P3_sec'])<maximum:
++        reasons.append('persistent P0-P3/total budget insufficient for complete '+str(maximum)+' second maximum')
++    if (args.output_dir/'opportunity_runs'/args.invocation_id).exists():reasons.append('invocation already attempted; no automatic retry or overwrite')
++    if reasons and not args.dry_run:raise RuntimeError('; '.join(reasons))
++    return {'stage':'opportunity','dry_run':args.dry_run,'GPU_will_start':bool(not args.dry_run and not reasons),
++        'ready_for_live':not reasons,'blocked_reasons':reasons,'estimated_max_sec':maximum,
++        'episodes':{'probes':6,'paired_opportunity':12},'protocol_hash':digest(spec),'runtime_config_hash':sha(args.config),
++        'dependency_hashes':dependencies,'remaining_budget':budget['remaining'],
++        'prior_smoke':'skipped_by_user_not_verified','C_ref':None,'N_ref':None,'PPO_implemented':False}
++
++
++def main(argv=None):
++    args=parse_args(argv)
++    try:
++        import yaml
++        spec=yaml.safe_load(args.opportunity_spec.read_text());runtime=yaml.safe_load(args.config.read_text())
++        intent=plan(args,spec,runtime)
++        if args.dry_run:print(json.dumps(intent,indent=2));return 0
++        from rl_scheduler.real_service import ManagedService
++        from rl_scheduler.real_opportunity_runner import run_opportunity
++        folder=args.output_dir/'opportunity_runs'/args.invocation_id;folder.mkdir(parents=True,exist_ok=False)
++        atomic_json(folder/'intent.json',intent)
++        service=ManagedService(ROOT,args.output_dir,args.config.resolve());started=False
++        try:
++            # Existing guard and owner ledger enforce the original cumulative budget.
++            BudgetLedger(args.output_dir).require(intent['estimated_max_sec'])
++            started=True;service.start()
++            asyncio.run(smoke_cli().wait_ready(runtime,BudgetLedger(args.output_dir)))
++            result=asyncio.run(run_opportunity(spec,runtime,run_dir=args.output_dir,invocation_id=args.invocation_id))
++        except BaseException as exc:
++            atomic_json(folder/'failure.json',{'status':'incomplete','reason':type(exc).__name__+':'+str(exc)})
++            raise
++        finally:
++            if started:service.stop()
++        # Revalidate code/protocol/dependencies before publishing an aggregate gate.
++        dependencies=validate_inputs(args,spec,runtime)
++        if dependencies!=intent['dependency_hashes']:raise RuntimeError('P3 dependencies changed during run')
++        ready=json.loads((args.output_dir/'gates/p3_ready.json').read_text())
++        report={**result,'stage':'P3_opportunity','scope':'exploratory Stay/Balanced comparison, not PPO proof',
++            'source_hashes':ready['source_hashes'],'source_hash':ready['source_hash'],
++            'config_hashes':ready['config_hashes'],'config_hash':ready['config_hash'],
++            'dependency_hashes':dependencies,'checks':[{'name':'paired_opportunity','status':result['status']},
++                {'name':'owned_cleanup','status':'passed'}],
++            'evidence_hashes':{str(p.relative_to(args.output_dir)):sha(p) for p in folder.rglob('*') if p.is_file()},
++            'remaining_budget':readonly_budget(args.output_dir)['remaining'],'prior_smoke':'skipped_by_user_unverified'}
++        destination=args.output_dir/'opportunity_gate.json'
++        if destination.exists():raise RuntimeError('existing opportunity result; preserve attempt')
++        atomic_json(destination,report)
++        print(json.dumps({'status':report['status'],'gate':str(destination)}))
++        return 0 if report['status']=='passed' else 1
++    except (OSError,ValueError,RuntimeError,KeyError) as exc:
++        print(json.dumps({'status':'incomplete','reason':str(exc)}),file=sys.stderr);return 2
++
++
++if __name__=='__main__':raise SystemExit(main())
+--- /dev/null
++++ p3_after/rl_scheduler/real_reward.py
+@@ -0,0 +1,156 @@
++"""Auditable finite-episode rewards from complete client events, without clipping.
++
++Reconstruction is offline after score + cleanup audits. It never mutates saved
++observations/actions/logp or treats a chunk as a token. Scales must be measured
++from preregistered healthy Stay opportunity runs before rewards can be used.
++"""
++from __future__ import annotations
++
++from dataclasses import asdict, dataclass
++import math
++
++from .real_metrics import NS, _overlap
++
++
++@dataclass(frozen=True)
++class RewardWeights:
++    good: float = 1.
++    hold: float = .2
++    first: float = .5
++    gap: float = .2
++    attempt: float = .02
++    bad: float = .2
++    tail: float = 2.
++
++    def __post_init__(self):
++        if any(not math.isfinite(v) or v < 0 for v in asdict(self).values()):
++            raise ValueError('finite nonnegative reward weights required')
++
++
++@dataclass(frozen=True)
++class RewardScales:
++    C_ref: float
++    N_ref: float
++    provenance: str
++
++    def __post_init__(self):
++        if not self.provenance or any(not math.isfinite(v) or v < 1 for v in (self.C_ref, self.N_ref)):
++            raise ValueError('measured scales with floor 1 and provenance required')
++
++
++def terminal_good(row, ttft_ms=2000., tpot_ms=150.):
++    return (row['outcome']=='success' and row['actual_output_tokens']>0
++            and row['ttft_ms'] is not None and row['ttft_ms']<=ttft_ms
++            and (row['actual_output_tokens']==1 or row['tpot_ms'] is not None and row['tpot_ms']<=tpot_ms))
++
++
++def reconstruct_rewards(ledger, edges_ns, migrations, *, scales, cleanup_through_ns,
++                        valid_episode, weights=RewardWeights()):
++    """Partition events into [lo,hi), with the final deadline included once.
++
++    migrations contains one reconciled record per non-Stay decision. attempt_ns
++    is the original coordinator's start, never a submit/receipt timestamp.
++    A known terminal after the scoring deadline stays outside scoring.
++    """
++    if not valid_episode:
++        raise ValueError('invalid episodes cannot receive finalised training rewards')
++    if scales is None:
++        raise ValueError('C_ref/N_ref unmeasured; retain raw events until opportunity scales exist')
++    if ledger.audit()['status']!='passed' or ledger.audit(through_ns=cleanup_through_ns,require_cleanup=True)['status']!='passed':
++        raise ValueError('complete scoring and cleanup audits required')
++    edges=list(edges_ns)
++    if (len(edges)<2 or edges[0]!=ledger.start_ns or edges[-1]!=ledger.deadline_ns
++            or any(type(t) is not int for t in edges) or any(a>=b for a,b in zip(edges,edges[1:]))):
++        raise ValueError('strict partition of the finite scoring interval required')
++    ids=set();migration_ids=set()
++    for record in migrations:
++        if not record.get('decision_id') or record['decision_id'] in ids:
++            raise ValueError('duplicate or missing decision identity')
++        ids.add(record['decision_id'])
++        if record.get('terminal_status') not in ('succeeded','failed','rejected','aborted') or type(record.get('terminal_ns')) is not int:
++            raise ValueError('unknown migration terminal cannot be scored')
++        if record['terminal_ns']<ledger.start_ns:raise ValueError('foreign pre-episode terminal')
++        stamp=record.get('attempt_ns');mid=record.get('migration_id')
++        if stamp is not None:
++            if type(stamp) is not int or stamp<ledger.start_ns or not mid or mid in migration_ids or stamp>record['terminal_ns']:
++                raise ValueError('invalid or duplicate original migration attempt')
++            migration_ids.add(mid)
++        if record['terminal_status']=='succeeded' and stamp is None:
++            raise ValueError('success without original coordinator start')
++    rows,problems=ledger._rows(occurred_by_ns=ledger.deadline_ns)
++    if problems:raise ValueError('request ledger inconsistent')
++    gap_ns=round(max(1.,5*ledger.tpot_slo_ms/1000)*NS)
++    result=[]
++    for index,(lo,hi) in enumerate(zip(edges,edges[1:])):
++        final=index==len(edges)-2
++        def inside(t):return t is not None and lo<=t and (t<=hi if final else t<hi)
++        raw=dict(good=0,hold=0.,first=0.,gap=0.,attempt=0,bad=0,tail=0)
++        for row in rows:
++            sent,terminal=row['sent_ns'],row['client_terminal_ns']
++            if sent is None:continue
++            end=min(terminal if terminal is not None else ledger.deadline_ns,ledger.deadline_ns)
++            raw['hold']+=_overlap(sent,end,lo,hi)
++            first=row['client_first_ns']
++            raw['first']+=_overlap(sent+round(ledger.ttft_slo_ms*1e6),min(first if first is not None else end,end),lo,hi)
++            times=[t for t,n in row['token_increments'] if t<=end and n>0]
++            for a,b in zip(times,times[1:]+[end]):raw['gap']+=_overlap(a+gap_ns,b,lo,hi)
++            raw['good']+=int(inside(terminal) and terminal_good(row,ledger.ttft_slo_ms,ledger.tpot_slo_ms))
++            if final:raw['tail']+=int(sent<=ledger.deadline_ns and (terminal is None or terminal>ledger.deadline_ns))
++        for record in migrations:
++            raw['attempt']+=int(inside(record.get('attempt_ns')))
++            raw['bad']+=int(record['terminal_status'] in ('failed','rejected','aborted') and inside(record['terminal_ns']))
++        normalized={key:value/(scales.C_ref if key=='good' else scales.N_ref if key in ('hold','first','gap','tail') else 1.)
++                    for key,value in raw.items()}
++        weighted={key:normalized[key]*getattr(weights,key)*(1 if key=='good' else -1) for key in raw}
++        reward=math.fsum(weighted.values())
++        if not math.isfinite(reward):raise ValueError('nonfinite reward')
++        result.append({'start_ns':lo,'end_ns':hi,'dt_sec':(hi-lo)/NS,'final_finite_terminal':final,
++                       'raw':raw,'normalized':normalized,'weighted':weighted,'reward':reward,
++                       'scales':asdict(scales),'weights':asdict(weights),'clipped':False,
++                       'gap_is_stall_proxy_not_exact_ITL':True})
++    return result
++
++
++def fit_reference_scales(episodes, *, healthy):
++    """Pooled means over healthy Stay opportunity runs only, never probe/dev/final."""
++    eligible=[]
++    for episode in episodes:
++        if episode.get('phase')!='opportunity' or episode.get('policy')!='Stay':continue
++        if episode.get('status')!='passed':raise ValueError('invalid Stay evidence cannot be silently omitted')
++        if healthy(episode):eligible.append(episode)
++    if not eligible:raise ValueError('no measured healthy Stay opportunity data for C_ref/N_ref')
++    for episode in eligible:
++        m=episode['metrics']
++        if (any(not math.isfinite(m[key]) or m[key]<0 for key in ('completed','outstanding_request_seconds','duration_sec'))
++                or m['duration_sec']<=0):raise ValueError('invalid measured reference metrics')
++    duration=sum(e['metrics']['duration_sec'] for e in eligible)
++    if duration<=0:raise ValueError('nonpositive reference duration')
++    c=sum(e['metrics']['completed'] for e in eligible)/duration
++    n=sum(e['metrics']['outstanding_request_seconds'] for e in eligible)/duration
++    provenance=','.join(e['episode_id'] for e in eligible)
++    return RewardScales(max(1.,c),max(1.,n),provenance),{
++        'status':'measured_from_healthy_Stay_opportunity','raw_C_ref_rps':c,'raw_N_ref':n,
++        'episode_ids':[e['episode_id'] for e in eligible],'duration_sec':duration,
++        'excluded_unhealthy_Stay_ids':[e['episode_id'] for e in episodes
++            if e.get('phase')=='opportunity' and e.get('policy')=='Stay' and not healthy(e)]}
++
++
++def reward_scale_diagnostics(episodes):
++    """Report component concentration and reward/primary disagreements; never retune."""
++    totals={};pairs={}
++    for episode in episodes:
++        rows=episode.get('reward_windows',[])
++        sums={key:math.fsum(abs(row['weighted'][key]) for row in rows) for key in asdict(RewardWeights())}
++        overall=math.fsum(sums.values())
++        totals[episode['episode_id']]={'absolute_component_sums':sums,
++            'largest_fraction':max(sums.values())/overall if overall else None}
++        pairs.setdefault((episode['scene'],episode['seed']),{})[episode['policy']]=episode
++    disagreements=[]
++    for (scene,seed),pair in pairs.items():
++        if set(pair)!= {'Stay','Balanced'}:continue
++        def reward(e):return math.fsum(w['reward'] for w in e.get('reward_windows',[]))
++        dr=reward(pair['Balanced'])-reward(pair['Stay'])
++        dg=pair['Balanced']['metrics']['slo_goodput_rps']-pair['Stay']['metrics']['slo_goodput_rps']
++        if dr>0 and dg<0:disagreements.append({'scene':scene,'seed':seed,'reward_delta':dr,'goodput_delta':dg})
++    return {'component_audit':totals,'reward_improves_while_primary_declines':disagreements,
++            'automatic_weight_revision':False}
+--- /dev/null
++++ p3_after/rl_scheduler/real_opportunity.py
+@@ -0,0 +1,260 @@
++"""P3 protocol, frozen traces, constrained Balanced, and paired gate (CPU pure)."""
++from __future__ import annotations
++
++from copy import deepcopy
++from decimal import Decimal
++import hashlib
++import json
++import math
++from pathlib import Path
++import random
++import time
++
++from .real_bridge import PAIRS, digest
++from .real_budget import BudgetLedger
++
++
++SEEDS=(2101,2102,2103)
++PROBE_SEEDS=(7101,7102,7103)
++FINAL_SEEDS=(5101,5102,5103)
++
++
++def protocol(run_dir, runtime_config):
++    """Freeze choices before observing new traffic; all scales remain unmeasured."""
++    return {
++        'schema':'real-opportunity-v1','run_dir':str(Path(run_dir).resolve()),
++        'runtime_config':str(Path(runtime_config).resolve()),
++        'scope':'06 CPU preparation; 07 runs only on separate user instruction and sufficient budget',
++        'prerequisite_exception':{'user_instruction':'跳过smoke，直接执行06_sol_p3_prepare.md',
++            '05_smoke':'skipped_by_user','P1_P2_live_status':'not_verified',
++            'reason':'Explicit user override of the 06 live prerequisite; no synthetic passed live gate',
++            'inherited_for_opportunity_protocol':True,'GPU_started_in_06':False},
++        'horizons':{'arrival_sec':120,'drain_sec':120,'cleanup_sec':60,'decision_interval_sec':1},
++        'probe':{'qps':[3,6,9],'seeds':list(PROBE_SEEDS),'scenes':['A','B'],
++            'arrival_sec':30,'drain_sec':60,'policy':'Stay','runs':6,
++            'order':'qps ascending, A then B; no automatic retry or escalation beyond 9'},
++        'health':{'min_completion_rate':.99,'max_nonmanual_error_rate':.01,
++            'max_first_output_censored_fraction':.01,'max_send_lateness_p95_ms':1000.,
++            'require_all_offered_sent':True,'require_passed_score_cleanup_route_action_audits':True},
++        'selection':{'A':'lower median of healthy normal probe QPS (sorted ascending)',
++            'B':'largest healthy skew probe QPS with waiting>0 in at least half of last-third arrival samples',
++            'missing_healthy_or_queued_scene':'stop incomplete; do not tune workload or thresholds'},
++        'scenes':{'A':{'routing':'native load dispatcher'},
++                  'B':{'routing':'fixed trace route seed into stable instance indices','route_shares':[.7,.1,.1,.1]}},
++        'opportunity':{'seeds':list(SEEDS),'policies':['Stay','Balanced'],'runs':12,
++            'pair_order':'scene A then B, seeds ascending; policy order alternates by scene_index+seed_index',
++            'paired_trace_identical':True,'same_sampling_and_finite_window':True,'reuse_service':True},
++        'workload':{'arrival':'piecewise Poisson with one initial request at t=0',
++            'input_budgets':[256,512,1048],'output_budgets':[256,512,1048],
++            'profile_mix':'all 9 Cartesian combinations equally likely',
++            'max_requests':4096,'max_tokens_are_budgets_not_realized_lengths':True,
++            'prompt_pool_seed':8300,'route_seed':'seed*1000000+request_index',
++            'separate_profile_rng_offset':100000},
++        'balanced':{'version':'constrained-Balanced-remaining-capacity-SR-v1',
++            'load':'(free_blocks-waiting_blocks)/(running+waiting), +inf only for measured empty queue',
++            'threshold':9000.,'source_load_at_most_threshold':True,'destination_load_at_least_threshold':True,
++            'pairing':'busiest sources (ascending numeric capacity/request) with least busy destinations, stable ID ties',
++            'move':'exact observed SR candidate; after-load uses its actual block count and one running request',
++            'predicate':'source_after < destination_after and 0 < abs(after_difference) < abs(before_difference)',
++            'relation_to_native':'native remaining_steps threshold direction and Balanced sorting/predicate; actual SR blocks replace stale last-queue estimate; native killed-request override is not exposed and is not reproduced',
++            'control':'same lease, one global migration, terminal cooldown 5s, reserve max(16,ceil(5% total)), freshness <=2s'},
++        'slos':{'ttft_ms':2000.,'tpot_ms':150.,'single_token':'TTFT only; TPOT N/A'},
++        'metrics':{'primary':'SLO-goodput over fixed 240s','completion_denominator':'all offered',
++            'errors':'timeout/service_error client terminals by deadline; unknown invalid, manual cancel excluded',
++            'censoring':'first-output, terminal-outstanding and offered-not-sent fractions reported separately',
++            'zero_denominators':'null + incomplete; no infinite relative gain'},
++        'gate':{'min_paired_relative_gain':.10,'min_winning_seeds':2,'max_error_rate_increase_pp':1.,
++            'healthy_probe_selection_required':True,'zero_Stay_goodput':'report absolute delta; never relative-pass',
++            'majority_zero_scenes':'incomplete if >=2 of 2 scenes both policies have zero mean goodput'},
++        'reward':{'weights':{'good':1.,'hold':.2,'first':.5,'gap':.2,'attempt':.02,'bad':.2,'tail':2.},
++            'C_ref':None,'N_ref':None,'scale_status':'unmeasured',
++            'scale_rule':'pooled completed/seconds and outstanding-request-seconds/seconds from healthy Stay opportunity only; each floor 1',
++            'gap_limit':'max(1s,5*tpot_slo)','window_partition':'left-closed right-open; final deadline included once',
++            'weight_revisions_before_training_max':1,'automatic_weight_revision':False},
++        'final_burst':{'seeds':list(FINAL_SEEDS),'not_for_training_or_selection':True,
++            'base_qps':'selected scene A QPS, determined only by opportunity probes',
++            'arrival_sec':120,'drain_sec':120,'routing':'native dispatcher',
++            'rate_segments':[[0,30,1],[30,45,3],[45,90,1],[90,105,3],[105,120,1]],
++            'profiles':'same frozen nine-profile distribution and prompt pool',
++            'generation_rule':'same Poisson generator; freeze/hash traces after load selection, before any final policy evaluation'},
++        'stop_rules':['first request/action/route/cleanup audit failure stops all later runs',
++            'unknown migration terminal is invalid, not failed/cancelled',
++            'no performance-based reruns, discarded seeds, workload changes or automatic retry',
++            'reserve complete probe+12-run maximum before service activation'],
++    }
++
++
++def episode_schedule(spec, selected):
++    rows=[]
++    for scene_index,scene in enumerate(('A','B')):
++        for seed_index,seed in enumerate(spec['opportunity']['seeds']):
++            policies=('Stay','Balanced') if (scene_index+seed_index)%2==0 else ('Balanced','Stay')
++            for policy in policies:
++                rows.append({'phase':'opportunity','scene':scene,'seed':seed,'policy':policy,'qps':selected[scene]})
++    return rows
++
++
++def balanced_action(observation, snapshot, *, threshold=9000.):
++    if observation is None:return 0
++    raw=observation['raw']
++    if raw['snapshot_version']!=snapshot['version']:raise ValueError('policy must use the saved decision snapshot')
++    states={s['instance_id']:s for s in snapshot['instances']};mapping=snapshot['mapping']
++    def load(s, delta=0, blocks=0):
++        fields=[s.get(k) for k in ('free_blocks','waiting_blocks','running','waiting')]
++        if any(not isinstance(v,(int,float)) or not math.isfinite(v) or v<0 for v in fields):return None
++        free,waiting_blocks,running,waiting=fields;n=running+waiting+delta
++        return (free-waiting_blocks-blocks)/n if n>0 else math.inf if n==0 else None
++    loads={key:load(state) for key,state in states.items()}
++    sources=sorted((key for key in states if loads[key] is not None and loads[key]<=threshold),key=lambda key:(loads[key],key))
++    dests=sorted((key for key in states if loads[key] is not None and loads[key]>=threshold),key=lambda key:(-loads[key],key))
++    indices={entry[0]:i for i,entry in enumerate(mapping)}
++    for src,dst in zip(sources,dests):
++        if src==dst:continue
++        action=PAIRS.index((indices[src],indices[dst]))+1
++        if not raw['action_mask'][action]:continue
++        blocks=states[src].get('candidate_blocks')
++        if type(blocks) is not int or blocks<1:continue
++        a=load(states[src],-1,-blocks);b=load(states[dst],1,blocks)
++        if a is not None and b is not None and a<b and 0<abs(a-b)<abs(loads[src]-loads[dst]):return action
++    return 0
++
++
++def metric_summary(ledger):
++    score=ledger.freeze_score()
++    if score['status']!='passed':raise ValueError('score audit did not pass')
++    metrics=deepcopy(score['fixed']);rows,_=ledger._rows(occurred_by_ns=ledger.deadline_ns)
++    offered=metrics['offered']
++    errors=sum(r['outcome'] in ('timeout','service_error') and r['client_terminal_ns'] is not None
++               and r['client_terminal_ns']<=ledger.deadline_ns for r in rows)
++    metrics.update(nonmanual_errors=errors,nonmanual_error_rate=errors/offered if offered else None,
++        first_output_censored_fraction=metrics['first_output_censored']/offered if offered else None,
++        terminal_censored_fraction=len(metrics['outstanding_ids'])/offered if offered else None,
++        offered_not_sent_fraction=(offered-metrics['sent'])/offered if offered else None)
++    return metrics
++
++
++def healthy(row,spec):
++    m=row['metrics'];h=spec['health']
++    return (row.get('status')=='passed' and m['offered']>0
++            and m['sent']==m['offered'] and m['completion_rate'] is not None and m['completion_rate']>=h['min_completion_rate']
++            and m['nonmanual_error_rate'] is not None and m['nonmanual_error_rate']<=h['max_nonmanual_error_rate']
++            and m['first_output_censored_fraction'] is not None
++            and m['first_output_censored_fraction']<=h['max_first_output_censored_fraction']
++            and row.get('send_lateness_p95_ms') is not None and row['send_lateness_p95_ms']<=h['max_send_lateness_p95_ms'])
++
++
++def select_loads(probes,spec):
++    required={(scene,qps,seed) for scene in ('A','B') for qps,seed in zip(spec['probe']['qps'],spec['probe']['seeds'])}
++    keys=[(row['scene'],row['qps'],row['seed']) for row in probes]
++    if len(keys)!=len(set(keys)) or set(keys)!=required:raise ValueError('full frozen probe inventory required')
++    if any(row.get('phase')!='probe' or row.get('policy')!='Stay' or row.get('status')!='passed' for row in probes):
++        raise ValueError('invalid probe evidence; stop before selecting loads')
++    a=sorted(r['qps'] for r in probes if r['scene']=='A' and healthy(r,spec))
++    b=sorted(r['qps'] for r in probes if r['scene']=='B' and healthy(r,spec)
++             and r.get('queue_last_third_samples',0)>0 and r.get('queue_last_third_positive',0)/r['queue_last_third_samples']>=.5)
++    if not a or not b:return {'status':'incomplete','reason':'no healthy normal or healthy persistently queued skew probe','selected':None}
++    return {'status':'passed','selected':{'A':a[(len(a)-1)//2],'B':b[-1]},
++            'healthy_normal_qps':a,'healthy_queued_skew_qps':b,'rule':spec['selection']}
++
++
++def paired_gate(episodes,spec):
++    required={(scene,seed,policy) for scene in ('A','B') for seed in spec['opportunity']['seeds'] for policy in ('Stay','Balanced')}
++    keys=[(e['scene'],e['seed'],e['policy']) for e in episodes]
++    if set(keys)!=required or len(keys)!=len(set(keys)):
++        return {'status':'incomplete','reason':'full 12-run paired matrix missing or duplicated','pairs':[]}
++    if any(e.get('status')!='passed' for e in episodes):
++        return {'status':'incomplete','reason':'invalid episode retained; request/action/cleanup audit failed','pairs':[]}
++    if any(e['metrics'].get('offered',0)<=0 or e['metrics'].get('nonmanual_error_rate') is None for e in episodes):
++        return {'status':'incomplete','reason':'zero offered denominator; report null rates','pairs':[]}
++    by_key={key:row for key,row in zip(keys,episodes)};pairs=[];scenes={}
++    for scene in ('A','B'):
++        rows=[]
++        for seed in spec['opportunity']['seeds']:
++            a,b=(by_key[scene,seed,p] for p in ('Stay','Balanced'))
++            if (a['trace_hash']!=b['trace_hash'] or a['external_case_hash']!=b['external_case_hash']
++                    or a['metrics']['duration_sec']!=240 or b['metrics']['duration_sec']!=240
++                    or a['metrics']['offered']!=b['metrics']['offered'] or a['mapping']!=b['mapping']):
++                return {'status':'incomplete','reason':'pair trace/routing/profile/window/mapping mismatch','pairs':pairs}
++            ga,gb=a['metrics']['slo_goodput_rps'],b['metrics']['slo_goodput_rps']
++            ea,eb=a['metrics']['nonmanual_error_rate'],b['metrics']['nonmanual_error_rate']
++            relative=(gb-ga)/ga if ga>0 else None
++            # Use integer counts when present to avoid threshold changes caused
++            # by subtracting rounded rates; Decimal fallback supports CPU fixtures.
++            error_delta=(Decimal(b['metrics']['nonmanual_errors']-a['metrics']['nonmanual_errors'])*100/Decimal(a['metrics']['offered'])
++                         if 'nonmanual_errors' in a['metrics'] and 'nonmanual_errors' in b['metrics']
++                         else (Decimal(str(eb))-Decimal(str(ea)))*100 if ea is not None and eb is not None else None)
++            error_pp=float(error_delta) if error_delta is not None else None
++            error_ok=error_delta is not None and error_delta<=Decimal(str(spec['gate']['max_error_rate_increase_pp']))
++            ga_exact=Decimal(a['metrics']['slo_completed']) if 'slo_completed' in a['metrics'] else Decimal(str(ga))
++            gb_exact=Decimal(b['metrics']['slo_completed']) if 'slo_completed' in b['metrics'] else Decimal(str(gb))
++            gain_ok=ga_exact>0 and gb_exact>=ga_exact*(1+Decimal(str(spec['gate']['min_paired_relative_gain'])))
++            win=relative is not None and gain_ok and error_ok
++            row={'scene':scene,'seed':seed,'Stay_goodput_rps':ga,'Balanced_goodput_rps':gb,
++                 'absolute_goodput_delta':gb-ga,'relative_gain':relative,'error_rate_delta_pp':error_pp,
++                 'error_guard_passed':error_ok,'winning_pair':win,
++                 'Stay_completion_rate':a['metrics']['completion_rate'],'Balanced_completion_rate':b['metrics']['completion_rate'],
++                 'Stay_first_censored_fraction':a['metrics']['first_output_censored_fraction'],
++                 'Balanced_first_censored_fraction':b['metrics']['first_output_censored_fraction'],
++                 'Stay_terminal_censored_fraction':a['metrics']['terminal_censored_fraction'],
++                 'Balanced_terminal_censored_fraction':b['metrics']['terminal_censored_fraction']}
++            rows.append(row);pairs.append(row)
++        scenes[scene]={'winning_seeds':sum(r['winning_pair'] for r in rows),
++            'error_guard_all_seeds':all(r['error_guard_passed'] for r in rows),
++            'both_mean_goodput_zero':all(r['Stay_goodput_rps']==r['Balanced_goodput_rps']==0 for r in rows)}
++        scenes[scene]['passed']=(scenes[scene]['winning_seeds']>=spec['gate']['min_winning_seeds'] and scenes[scene]['error_guard_all_seeds'])
++    all_zero=sum(s['both_mean_goodput_zero'] for s in scenes.values())>=2
++    passed=any(s['passed'] for s in scenes.values()) and not all_zero
++    return {'status':'passed' if passed else 'incomplete' if all_zero else 'failed',
++            'reason':'paired exploratory gate only; not PPO effect proof' if passed else 'no qualifying paired opportunity evidence',
++            'pairs':pairs,'scenes':scenes,'zero_denominator_auto_pass':False,'PPO_training_authorized':False}
++
++
++def maximum_duration(spec,runtime):
++    p=spec['probe'];h=spec['horizons']
++    return (runtime['service']['startup_timeout_sec']+60
++        +p['runs']*(p['arrival_sec']+p['drain_sec']+h['cleanup_sec'])
++        +spec['opportunity']['runs']*(h['arrival_sec']+h['drain_sec']+h['cleanup_sec']))
++
++
++def readonly_budget(run_dir):
++    ledger=BudgetLedger(run_dir);state=json.loads(ledger.path.read_text())
++    if state['first_started_wall'] is not None:
++        delta=max(0.,time.time()-state['last_wall'])
++        if state['boot_id']==ledger.boot_id:delta=max(delta,time.monotonic()-state['last_mono'])
++        state['elapsed_sec']+=delta
++        if state['phase']:state['phase_usage'][state['phase']]+=delta
++    return {'remaining':ledger._remaining(state),'exhausted':state['exhausted'],'read_only':True,'as_of_wall':time.time()}
++
++
++def make_trace(spec, *, seed,qps,duration,bursty=False):
++    """Generate small prompt-reference manifests; materialisation uses frozen pool."""
++    arrivals=random.Random(seed);profiles=random.Random(seed+spec['workload']['separate_profile_rng_offset'])
++    segments=spec['final_burst']['rate_segments'] if bursty else [[0,duration,1]]
++    times=[0.]
++    for lo,hi,multiplier in segments:
++        at=lo+arrivals.expovariate(qps*multiplier)
++        while at<hi:
++            times.append(at);at+=arrivals.expovariate(qps*multiplier)
++    if len(times)>spec['workload']['max_requests']:raise ValueError('trace cap reached; do not silently truncate offered arrivals')
++    rows=[];mix=[(i,o) for i in spec['workload']['input_budgets'] for o in spec['workload']['output_budgets']]
++    for index,at in enumerate(times):
++        inp,out=profiles.choice(mix)
++        rows.append({'request_id':f'r{index+1:05d}','scheduled_arrival_sec':round(at,9),
++            'request_type':f'in{inp}_out{out}','prompt_key':str(inp),'input_budget':inp,'output_tokens':out,
++            'route_seed':seed*1000000+index})
++    return rows
++
++
++def load_frozen_trace(run_dir,spec,*,seed,qps,phase):
++    directory=Path(run_dir)/'traces/opportunity07'
++    manifest=json.loads((directory/'manifest.json').read_text())
++    if manifest['protocol_hash']!=digest(spec):raise ValueError('trace protocol changed')
++    pool=json.loads((directory/'prompt_pool.json').read_text())
++    if digest(pool)!=manifest['prompt_pool_hash']:raise ValueError('frozen prompt pool changed')
++    key=f'{phase}_q{qps}_seed{seed}';item=manifest['traces'][key]
++    path=directory/item['path'];raw=path.read_bytes()
++    if hashlib.sha256(raw).hexdigest()!=item['sha256']:raise ValueError('frozen trace changed')
++    rows=json.loads(raw)
++    expected=make_trace(spec,seed=seed,qps=qps,duration=spec['probe']['arrival_sec'] if phase=='probe' else spec['horizons']['arrival_sec'])
++    if rows!=expected:raise ValueError('trace disagrees with preregistered generator')
++    return [{**r,'prompt':pool[r['prompt_key']]['prompt'],'input_tokens':pool[r['prompt_key']]['input_tokens']} for r in rows]
+--- /dev/null
++++ p3_after/rl_scheduler/real_opportunity_runner.py
+@@ -0,0 +1,190 @@
++"""Sequential real P3 episodes over existing audited bridge/IO. No PPO or simulation.
++
++Importing this module starts nothing. Only run_opportunity() sends traffic; the
++CLI verifies the frozen protocol/gates/budget and owns service cleanup first.
++"""
++from __future__ import annotations
++
++import asyncio
++from dataclasses import asdict
++import json
++import math
++from pathlib import Path
++import time
++
++from .real_bridge import RealBridge, digest
++from .real_budget import BudgetLedger, atomic_json
++from .real_env import RealEnv, RealEnvConfig
++from .real_metrics import _percentile
++from .real_runner import LiveEpisodeIO
++from .real_opportunity import (balanced_action, episode_schedule, healthy, load_frozen_trace,
++                               metric_summary, paired_gate, select_loads)
++from .real_reward import RewardWeights, fit_reference_scales, reconstruct_rewards, reward_scale_diagnostics
++
++
++def reconcile_migrations(decisions,receipts,events):
++    starts={}
++    for event in events:
++        if event.data.get('event')=='migration_attempt_started':
++            mid=event.data.get('migration_id')
++            if not mid or mid in starts:raise ValueError('uncorrelated or duplicate original coordinator start')
++            starts[mid]=event.occurred_ns
++    records=[];claimed=set()
++    for decision in decisions:
++        if decision['sampled_action']==0:continue
++        receipt=receipts[decision['decision_id']]
++        mid=receipt.get('migration_id');terminal=receipt.get('terminal_status')
++        if receipt.get('receipt_status') in ('shadow','stay'):
++            raise ValueError('opportunity Balanced must execute under active control')
++        if terminal not in ('succeeded','failed','rejected'):
++            raise ValueError('unknown non-Stay terminal')
++        if mid in starts:claimed.add(mid)
++        if terminal=='succeeded' and mid not in starts:raise ValueError('success without measured coordinator attempt')
++        terminal_ns=receipt.get('terminal_ns')
++        if terminal_ns is None and receipt.get('receipt_status')=='rejected' and mid is None:
++            terminal_ns=decision['monotonic_time']  # explicit local saved-mask rejection
++        if type(terminal_ns) is not int:raise ValueError('missing actual migration terminal timestamp')
++        records.append({'decision_id':decision['decision_id'],'migration_id':mid,
++            'attempt_ns':starts.get(mid),'terminal_ns':terminal_ns,'terminal_status':terminal,
++            'actual_request_id':receipt.get('actual_request_id'),'rejection_reason':receipt.get('rejection_reason')})
++    if set(starts)!=claimed:raise ValueError('unclaimed migration, including unexpected native migration')
++    return records
++
++
++def route_audit(io,ledger,events,mapping):
++    admitted={};declared={};valid_ids={row[0] for row in mapping}
++    for event in events:
++        if event.data.get('event')=='request_engine_admitted' and event.request_id:
++            admitted.setdefault(event.request_id,[]).append(event.data['instance_id'])
++        if event.data.get('event')=='real_initial_route' and event.request_id:
++            declared.setdefault(event.request_id,[]).append(event.data['instance_id'])
++    rows,_=ledger._rows();sent={r['request_id'] for r in rows if r['sent_ns'] is not None}
++    correct=set(admitted)==sent and all(len(values)==1 and values[0] in valid_ids for values in admitted.values())
++    observed={key:values[0] for key,values in admitted.items() if len(values)==1}
++    if io.route_shares:
++        correct=(correct and observed==io.expected_routes
++                 and declared=={key:[value] for key,value in io.expected_routes.items()})
++    return {'status':'passed' if correct else 'incomplete','rule':'fixed skew' if io.route_shares else 'native dispatcher',
++            'observed_initial_routes':observed,'expected_fixed_routes':dict(io.expected_routes),
++            'missing_admission_ids':sorted(sent-set(admitted)),'ambiguous_admission_ids':sorted(k for k,v in admitted.items() if len(v)!=1)}
++
++
++async def run_episode(spec,runtime,case,*,bridge,session,run_dir,episode_id,budget,session_mapping=None):
++    run_dir=Path(run_dir);run_id=json.loads((run_dir/'budget.json').read_text())['run_id']
++    h=spec['probe'] if case['phase']=='probe' else spec['horizons']
++    trace=load_frozen_trace(run_dir,spec,seed=case['seed'],qps=case['qps'],phase=case['phase'])
++    shares=spec['scenes'][case['scene']].get('route_shares')
++    io=LiveEpisodeIO(bridge,session,run_id=run_id,episode_id=episode_id,run_dir=run_dir,trace=trace,
++                     sampling=runtime['sampling'],arrival_sec=h['arrival_sec'],route_shares=shares)
++    samples=[];decisions=[];payload=None
++    def decision_sink(record):
++        import os
++        decisions.append(record)
++        with (io.directory/'decisions.jsonl').open('a') as stream:
++            stream.write(json.dumps(record,allow_nan=False)+'\n');stream.flush();os.fsync(stream.fileno())
++    env=RealEnv(bridge,io,budget,run_id=run_id,episode_id=episode_id,ledger_factory=io.ledger,
++        config=RealEnvConfig(arrival_sec=h['arrival_sec'],drain_sec=h['drain_sec'],cleanup_sec=spec['horizons']['cleanup_sec'],
++            decision_interval_sec=spec['horizons']['decision_interval_sec'],ttft_slo_ms=spec['slos']['ttft_ms'],tpot_slo_ms=spec['slos']['tpot_ms']),
++        decision_sink=decision_sink)
++    try:
++        observation,_=await env.reset(mode='stay' if case['policy']=='Stay' else 'active',controller_version='opportunity-fixed-v1')
++        if session_mapping is not None and io.mapping!=session_mapping:raise RuntimeError('instance epoch mapping changed across paired runs')
++        while env.state in ('arrival','drain'):
++            samples.append({'observed_ns':time.monotonic_ns(),'measured':env.snapshot['instances']})
++            action=0 if case['policy']=='Stay' else balanced_action(observation,env.snapshot,threshold=spec['balanced']['threshold'])
++            observation,_,done,_,_=await env.step(action,policy_version=case['policy']+'-fixed-v1')
++            if done:break
++        result=await env.finish()
++        through=min((cp.through_ns for cp in env.ledger.checkpoints.values()),default=0)
++        evidence=list(e for e in env.ledger.events.values() if env.start_ns<=e.occurred_ns<=through)
++        migrations=reconcile_migrations(decisions,env.receipts,evidence)
++        routes=route_audit(io,env.ledger,evidence,io.mapping)
++        if routes['status']!='passed':raise RuntimeError('actual initial routing not reconciled')
++        exported=env.ledger.export(io.directory,cleanup_through_ns=through)
++        if result['status']!='passed' or set(exported.values())!={'passed'}:raise RuntimeError('episode score or cleanup not reconciled')
++        if case['policy']=='Stay' and migrations:raise RuntimeError('Stay executed migration')
++        metrics=metric_summary(env.ledger)
++        rows,_=env.ledger._rows()
++        late=[r['send_lateness_ms'] for r in rows if r['send_lateness_ms'] is not None]
++        last_third=[s for s in samples if env.start_ns+int(h['arrival_sec']*2/3*1e9)<=s['observed_ns']<env.arrival_end_ns]
++        edges=[env.start_ns]+[r['monotonic_time'] for r in decisions[1:] if r['monotonic_time']<env.deadline_ns]+[env.deadline_ns]
++        row={**case,'episode_id':episode_id,'status':'passed','mapping':io.mapping,'metrics':metrics,
++            'trace_hash':digest(trace),'external_case_hash':digest({'trace':trace,'route_shares':shares,
++                'sampling':runtime['sampling'],'arrival_sec':h['arrival_sec'],'drain_sec':h['drain_sec']}),
++            'send_lateness_p95_ms':_percentile(late,.95),'queue_last_third_samples':len(last_third),
++            'queue_last_third_positive':sum(any(state.get('waiting',0)>0 for state in s['measured']) for s in last_third),
++            'migrations':migrations,'route_audit':routes,'reward_scale_status':'awaiting_healthy_Stay_opportunity_data',
++            'live_smoke_prior_status':'skipped_by_user_unverified'}
++        atomic_json(io.directory/'episode.json',result)
++        atomic_json(io.directory/'opportunity_episode.json',row)
++        atomic_json(io.directory/'queue_samples.json',samples)
++        atomic_json(io.directory/'reward_inputs.json',{'edges_ns':edges,'migrations':migrations,'cleanup_through_ns':through})
++        (io.directory/'migrations.jsonl').write_text(''.join(json.dumps(m)+'\n' for m in migrations))
++        payload=(row,env.ledger,edges,migrations,through)
++        await bridge.call('release_episode',run_id=run_id,episode_id=episode_id)
++        return payload
++    except BaseException as exc:
++        if env.state not in ('new','finished'):
++            try:await env.close()
++            except BaseException:pass
++        invalid={**case,'episode_id':episode_id,'status':'incomplete','reason':type(exc).__name__+':'+str(exc)}
++        atomic_json(io.directory/'interrupted.json',invalid)
++        raise
++    finally:
++        await io.close()
++
++
++async def run_opportunity(spec,runtime,*,run_dir,invocation_id):
++    import aiohttp
++    run_dir=Path(run_dir);folder=run_dir/'opportunity_runs'/invocation_id
++    budget=BudgetLedger(run_dir);probes=[];episodes=[];saved=[];mapping=None
++    try:
++        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10.)) as control, \
++                   aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=360.),connector=aiohttp.TCPConnector(limit=4096)) as traffic:
++            bridge=RealBridge(runtime['service']['base_url'],control)
++            for qps,seed in zip(spec['probe']['qps'],spec['probe']['seeds']):
++                for scene in ('A','B'):
++                    case={'phase':'probe','scene':scene,'seed':seed,'qps':qps,'policy':'Stay'}
++                    item=await run_episode(spec,runtime,case,bridge=bridge,session=traffic,run_dir=run_dir,
++                        episode_id=f'{invocation_id}_probe_{scene}_{qps}',budget=budget,session_mapping=mapping)
++                    row=item[0];mapping=row['mapping'];probes.append(row)
++                    atomic_json(folder/'probes.json',probes)
++            selection=select_loads(probes,spec);atomic_json(folder/'selection.json',selection)
++            if selection['status']!='passed':
++                atomic_json(folder/'opportunity_gate.json',selection);return selection
++            for index,case in enumerate(episode_schedule(spec,selection['selected'])):
++                item=await run_episode(spec,runtime,case,bridge=bridge,session=traffic,run_dir=run_dir,
++                    episode_id=f'{invocation_id}_{index:02}_{case["scene"]}_{case["seed"]}_{case["policy"]}',
++                    budget=budget,session_mapping=mapping)
++                saved.append(item);episodes.append(item[0]);atomic_json(folder/'episodes.json',episodes)
++            gate=paired_gate(episodes,spec)
++            # Always report the full paired result even when reference fitting is impossible.
++            atomic_json(folder/'opportunity_gate.json',gate)
++            try:
++                scales,provenance=fit_reference_scales(episodes,healthy=lambda row:healthy(row,spec))
++                atomic_json(folder/'reward_scales.json',{'status':'measured','scales':asdict(scales),'provenance':provenance})
++                for row,ledger,edges,migrations,through in saved:
++                    rewards=reconstruct_rewards(ledger,edges,migrations,scales=scales,cleanup_through_ns=through,valid_episode=True,
++                                                weights=RewardWeights(**spec['reward']['weights']))
++                    row['reward_windows']=rewards
++                    path=run_dir/'runs'/row['episode_id']/'reward_windows.jsonl'
++                    path.write_text(''.join(json.dumps(r,allow_nan=False)+'\n' for r in rewards))
++                atomic_json(folder/'reward_scale_diagnostics.json',reward_scale_diagnostics(episodes))
++            except ValueError as exc:
++                gate.update(status='incomplete',reward_scale_reason=str(exc))
++                atomic_json(folder/'reward_scales.json',{'status':'unmeasured','C_ref':None,'N_ref':None,'reason':str(exc)})
++            # Materialise final C arrivals by preregistered rule, before any policy/final result.
++            from .real_opportunity import make_trace
++            burst={str(seed):make_trace(spec,seed=seed,qps=selection['selected']['A'],duration=120,bursty=True)
++                   for seed in spec['final_burst']['seeds']}
++            atomic_json(folder/'final_burst_traces.json',{'rule':spec['final_burst'],'base_qps':selection['selected']['A'],
++                                                       'traces':burst,'trace_hashes':{k:digest(v) for k,v in burst.items()}})
++            atomic_json(folder/'paired_results.json',gate)
++            atomic_json(folder/'episodes.json',episodes)
++            atomic_json(folder/'opportunity_gate.json',gate)
++            return gate
++    except BaseException as exc:
++        gate={'status':'incomplete','reason':type(exc).__name__+':'+str(exc),'probes_completed':len(probes),
++              'episodes_completed':len(episodes),'failed_attempts_retained':True,'automatic_retry':False}
++        atomic_json(folder/'opportunity_gate.json',gate)
++        raise
+--- /dev/null
++++ p3_after/rl_scheduler/tests/test_real_reward.py
+@@ -0,0 +1,114 @@
++"""Hand-computed rewards from complete client ledgers, including cleanup censoring."""
++from copy import deepcopy
++from dataclasses import asdict
++import math
++import unittest
++
++from rl_scheduler.real_metrics import NS
++from rl_scheduler.real_reward import (RewardWeights,RewardScales,reconstruct_rewards,fit_reference_scales,reward_scale_diagnostics)
++from rl_scheduler.tests.test_real_metrics import Fixture
++
++
++class RewardTests(unittest.TestCase):
++    def fixture(self):
++        f=Fixture();f.plan_send('a',0);f.output(1,1,'a');f.output(1.3,4,'a');f.terminal(2,'a')
++        f.plan_send('b',1);f.plan_send('c',2);f.output(3,2,'c');f.terminal(5,'c',outcome='service_error',http_status=500)
++        f.add('planned',0,'not_sent',scheduled_ns=3*NS);f.ack(8)
++        f.ledger.freeze_score();f.output(9,2,'b');f.terminal(10,'b');f.ack(10)
++        return f
++
++    def compute(self,f,edges=None,migrations=None,**kw):
++        return reconstruct_rewards(f.ledger,edges or [0,2*NS,4*NS,8*NS],migrations or [],
++            scales=kw.pop('scales',RewardScales(2.,2.,'hand-computed-fixture-only')),
++            cleanup_through_ns=10*NS,valid_episode=kw.pop('valid_episode',True),**kw)
++
++    def test_hand_calculated_counts_integrals_and_tail(self):
++        f=self.fixture();saved=deepcopy(f.ledger.freeze_score())
++        migrations=[{'decision_id':'d1','migration_id':'m1','attempt_ns':NS//2,'terminal_ns':2*NS,'terminal_status':'failed'},
++                    {'decision_id':'d2','migration_id':None,'attempt_ns':None,'terminal_ns':4*NS,'terminal_status':'rejected'},
++                    {'decision_id':'d3','migration_id':'m3','attempt_ns':7*NS,'terminal_ns':9*NS,'terminal_status':'succeeded'}]
++        rows=self.compute(f,migrations=migrations)
++        raw={key:sum(row['raw'][key] for row in rows) for key in rows[0]['raw']}
++        self.assertEqual(raw,dict(good=1,hold=12.,first=5.,gap=1.,attempt=2,bad=2,tail=1))
++        self.assertAlmostEqual(sum(r['reward'] for r in rows),-3.49)
++        self.assertEqual([r['raw']['good'] for r in rows],[0,1,0])
++        self.assertEqual([r['raw']['bad'] for r in rows],[0,1,1])
++        self.assertEqual([r['raw']['tail'] for r in rows],[0,0,1])
++        self.assertEqual(f.ledger.freeze_score(),saved)
++        self.assertFalse(any(r['clipped'] for r in rows))
++
++    def test_variable_windows_partition_same_reward_without_double_count(self):
++        f=self.fixture();a=self.compute(f);b=self.compute(f,[0,NS//3,NS,2*NS,7*NS,8*NS])
++        self.assertAlmostEqual(sum(row['reward'] for row in a),sum(row['reward'] for row in b))
++        self.assertAlmostEqual(sum(row['dt_sec'] for row in b),8.)
++        for key in a[0]['raw']:
++            self.assertAlmostEqual(sum(row['raw'][key] for row in a),sum(row['raw'][key] for row in b))
++
++    def test_deadline_completion_counted_once_and_single_token_TPOT_not_needed(self):
++        f=Fixture();f.plan_send();f.output(1,1);f.terminal(8);f.ack(10)
++        rows=self.compute(f)
++        self.assertEqual(sum(r['raw']['good'] for r in rows),1)
++        self.assertEqual(rows[-1]['raw']['tail'],0)
++        self.assertIsNone(f.ledger.freeze_score()['fixed']['tpot_p95_ms'])
++
++    def test_duplicate_cumulative_output_does_not_reset_gap_timer(self):
++        f=Fixture();f.plan_send();f.output(1,1);f.output(3,1);f.terminal(5);f.ack(10)
++        rows=self.compute(f)
++        self.assertEqual(sum(r['raw']['gap'] for r in rows),3.)
++
++    def test_pressure_not_saturated(self):
++        f=Fixture()
++        for i in range(10):f.plan_send(str(i));f.output(1,1,str(i));f.terminal(8,str(i))
++        f.ack(10);row=self.compute(f,[0,8*NS],scales=RewardScales(1,1,'fixture'))[0]
++        self.assertEqual(row['normalized']['hold'],80.)
++        self.assertEqual(row['weighted']['hold'],-16.)
++
++    def test_unknown_missing_flush_pending_and_invalid_episode_rejected(self):
++        f=self.fixture()
++        with self.assertRaises(ValueError):self.compute(f,valid_episode=False)
++        with self.assertRaises(ValueError):self.compute(f,scales=None)
++        for pending,durable in [(1,True),(None,True),(0,False)]:
++            f=self.fixture();f.ack(10,pending=pending,durable=durable)
++            with self.assertRaises(ValueError):self.compute(f)
++        f=Fixture();f.plan_send();f.output(1,1);f.terminal(2,outcome='unknown');f.ack(10)
++        with self.assertRaises(ValueError):self.compute(f)
++
++    def test_ambiguous_migration_terminal_and_duplicate_attempt_rejected(self):
++        f=self.fixture();record=dict(decision_id='d',migration_id='m',attempt_ns=NS,terminal_ns=2*NS,terminal_status='unknown')
++        with self.assertRaises(ValueError):self.compute(f,migrations=[record])
++        record['terminal_status']='succeeded'
++        with self.assertRaises(ValueError):self.compute(f,migrations=[record,dict(record,decision_id='other')])
++        record['attempt_ns']=None
++        with self.assertRaises(ValueError):self.compute(f,migrations=[record])
++
++    def test_partition_and_weights_validation(self):
++        f=self.fixture()
++        for edges in ([1,8*NS],[0,4*NS,4*NS,8*NS],[0,9*NS],[0.,8*NS]):
++            with self.assertRaises(ValueError):self.compute(f,edges)
++        for value in (float('nan'),float('inf'),-1.):
++            with self.assertRaises(ValueError):RewardWeights(hold=value)
++        with self.assertRaises(ValueError):RewardScales(0,1,'x')
++
++    def test_scales_only_healthy_Stay_opportunity_not_final_or_Balanced(self):
++        def episode(name,phase,policy,c,n,duration=240,status='passed',health=True):
++            return dict(episode_id=name,phase=phase,policy=policy,status=status,health=health,
++                metrics=dict(completed=c,outstanding_request_seconds=n,duration_sec=duration))
++        rows=[episode('a','opportunity','Stay',480,960),episode('b','opportunity','Stay',240,480),
++              episode('bad-health','opportunity','Stay',1000,999,health=False),
++              episode('balanced','opportunity','Balanced',999999,999999),episode('final','final','Stay',999999,999999),
++              episode('probe','probe','Stay',999999,999999)]
++        scales,details=fit_reference_scales(rows,healthy=lambda row:row['health'])
++        self.assertEqual((scales.C_ref,scales.N_ref),(1.5,3.))
++        self.assertEqual(details['episode_ids'],['a','b']);self.assertEqual(details['excluded_unhealthy_Stay_ids'],['bad-health'])
++        rows[0]['status']='incomplete'
++        with self.assertRaises(ValueError):fit_reference_scales(rows,healthy=lambda row:True)
++        with self.assertRaises(ValueError):fit_reference_scales([],healthy=lambda row:True)
++
++    def test_measured_reference_floor_is_explicit(self):
++        row={'episode_id':'tiny','phase':'opportunity','policy':'Stay','status':'passed',
++             'metrics':{'duration_sec':240,'completed':1,'outstanding_request_seconds':20}}
++        scales,evidence=fit_reference_scales([row],healthy=lambda row:True)
++        self.assertEqual((scales.C_ref,scales.N_ref),(1,1));self.assertEqual(evidence['raw_C_ref_rps'],1/240)
++
++
++if __name__=='__main__':unittest.main(verbosity=2)
+--- /dev/null
++++ p3_after/rl_scheduler/tests/test_real_opportunity.py
+@@ -0,0 +1,306 @@
++"""CPU invariants for the frozen P3 protocol and sequential orchestration."""
++import asyncio
++from copy import deepcopy
++from dataclasses import asdict
++import json
++from pathlib import Path
++import tempfile
++from types import SimpleNamespace as Obj
++import unittest
++from unittest.mock import patch
++
++from rl_scheduler.real_bridge import digest
++from rl_scheduler.real_metrics import Event,NS
++from rl_scheduler.real_opportunity import (protocol,episode_schedule,balanced_action,healthy,select_loads,paired_gate,
++                                         make_trace,maximum_duration,readonly_budget,metric_summary)
++from rl_scheduler.real_opportunity_runner import reconcile_migrations,route_audit,run_opportunity
++from rl_scheduler.tests.test_real_metrics import Fixture
++from rl_scheduler.tests.test_real_bridge import Clock,states,extract_method,load_file
++from rl_scheduler.tests.test_real_env import budget_file,ROOT
++
++
++def row(scene='A',seed=2101,policy='Stay',qps=3,phase='opportunity'):
++    return {'episode_id':f'{phase}-{scene}-{seed}-{policy}','phase':phase,'scene':scene,'seed':seed,'policy':policy,'qps':qps,
++        'status':'passed','trace_hash':f'{qps}-{seed}','external_case_hash':f'{qps}-{seed}-{scene}',
++        'mapping':[[str(i),'e'+str(i)] for i in range(4)],'send_lateness_p95_ms':5.,
++        'queue_last_third_samples':10,'queue_last_third_positive':5,
++        'metrics':{'offered':100,'sent':100,'completed':100,'duration_sec':240,'completion_rate':1.,
++            'nonmanual_error_rate':0.,'first_output_censored_fraction':0.,'terminal_censored_fraction':0.,
++            'slo_goodput_rps':1.,'outstanding_request_seconds':480.}}
++
++
++class ProtocolTests(unittest.TestCase):
++    def setUp(self):self.spec=protocol('/tmp/p3-test','/tmp/runtime.yaml')
++
++    def probes(self):
++        return [row(scene,s,'Stay',q,'probe') for q,s in zip((3,6,9),(7101,7102,7103)) for scene in ('A','B')]
++
++    def matrix(self):return [row(**case) for case in episode_schedule(self.spec,{'A':6,'B':9})]
++
++    def test_fixed_12_matrix_counterbalances_same_trace_pair(self):
++        matrix=self.matrix();self.assertEqual(len(matrix),12)
++        self.assertEqual([(r['scene'],r['seed'],r['policy']) for r in matrix[:4]],
++                         [('A',2101,'Stay'),('A',2101,'Balanced'),('A',2102,'Balanced'),('A',2102,'Stay')])
++        for a,b in zip(matrix[::2],matrix[1::2]):self.assertEqual(a['trace_hash'],b['trace_hash'])
++        self.assertFalse(set(self.spec['final_burst']['seeds'])&set(self.spec['opportunity']['seeds']))
++
++    def test_selection_frozen_median_and_persistent_queue(self):
++        probes=self.probes();selected=select_loads(probes,self.spec)
++        self.assertEqual(selected['selected'],{'A':6,'B':9})
++        for r in probes:
++            if r['scene']=='B' and r['qps']==9:r['queue_last_third_positive']=4
++        self.assertEqual(select_loads(probes,self.spec)['selected']['B'],6)
++        for r in probes:r['metrics']['nonmanual_error_rate']=.5
++        self.assertEqual(select_loads(probes,self.spec)['status'],'incomplete')
++
++    def test_selection_never_omits_failed_or_missing_probe(self):
++        probes=self.probes();probes[0]['status']='incomplete'
++        with self.assertRaises(ValueError):select_loads(probes,self.spec)
++        with self.assertRaises(ValueError):select_loads(self.probes()[:-1],self.spec)
++        with self.assertRaises(ValueError):select_loads(self.probes()+self.probes()[:1],self.spec)
++
++    def test_no_healthy_queued_skew_scene_cannot_proceed(self):
++        probes=self.probes()
++        for r in probes:r['queue_last_third_positive']=0
++        self.assertEqual(select_loads(probes,self.spec)['status'],'incomplete')
++        r=probes[0];r['metrics']['sent']=99;self.assertFalse(healthy(r,self.spec))
++        r['metrics']['sent']=100;r['send_lateness_p95_ms']=1001;self.assertFalse(healthy(r,self.spec))
++
++    def test_gate_2_of_3_ten_percent_plus_all_seed_error_guard(self):
++        matrix=self.matrix()
++        for r in matrix:
++            if r['scene']=='B' and r['policy']=='Balanced' and r['seed'] in (2101,2102):r['metrics']['slo_goodput_rps']=1.1
++        result=paired_gate(matrix,self.spec);self.assertEqual(result['status'],'passed')
++        self.assertEqual(result['scenes']['B']['winning_seeds'],2)
++        for r in matrix:
++            if r['scene']=='B' and r['policy']=='Balanced' and r['seed']==2103:r['metrics']['nonmanual_error_rate']=.010001
++        self.assertEqual(paired_gate(matrix,self.spec)['status'],'failed')
++
++    def test_integer_count_thresholds_and_no_epsilon_relaxation(self):
++        matrix=self.matrix()
++        for r in matrix:
++            r['metrics'].update(offered=300,completed=300,slo_completed=100,nonmanual_errors=10)
++            if r['policy']=='Balanced':r['metrics'].update(slo_completed=110,slo_goodput_rps=1.1,nonmanual_errors=13)
++        self.assertEqual(paired_gate(matrix,self.spec)['status'],'passed')
++        for r in matrix:
++            if r['policy']=='Balanced':r['metrics']['nonmanual_errors']=14
++        self.assertEqual(paired_gate(matrix,self.spec)['status'],'failed')
++        matrix=self.matrix()
++        for r in matrix:
++            if r['policy']=='Balanced':r['metrics']['slo_goodput_rps']=1.0999999999999
++        self.assertEqual(paired_gate(matrix,self.spec)['status'],'failed')
++
++    def test_zero_goodput_and_zero_offered_do_not_auto_pass(self):
++        matrix=self.matrix()
++        for r in matrix:r['metrics']['slo_goodput_rps']=0.
++        self.assertEqual(paired_gate(matrix,self.spec)['status'],'incomplete')
++        for r in matrix:
++            if r['policy']=='Balanced':r['metrics']['slo_goodput_rps']=2.
++        result=paired_gate(matrix,self.spec);self.assertEqual(result['status'],'failed')
++        self.assertTrue(all(r['relative_gain'] is None for r in result['pairs']))
++        matrix[0]['metrics']['offered']=0;matrix[0]['metrics']['nonmanual_error_rate']=None
++        self.assertEqual(paired_gate(matrix,self.spec)['status'],'incomplete')
++
++    def test_trace_route_window_mapping_mismatch_and_invalid_episode_fail_closed(self):
++        for change in ('trace','routing','window','mapping','audit','missing'):
++            matrix=self.matrix()
++            if change=='trace':matrix[0]['trace_hash']='other'
++            elif change=='routing':matrix[0]['external_case_hash']='other'
++            elif change=='window':matrix[0]['metrics']['duration_sec']=239
++            elif change=='mapping':matrix[0]['mapping'][0][1]='rebuilt'
++            elif change=='audit':matrix[0]['status']='incomplete'
++            else:matrix.pop()
++            self.assertEqual(paired_gate(matrix,self.spec)['status'],'incomplete',change)
++
++    def test_deterministic_trace_profiles_and_future_burst_registration(self):
++        a=make_trace(self.spec,seed=2101,qps=3,duration=120)
++        self.assertEqual(a,make_trace(self.spec,seed=2101,qps=3,duration=120))
++        self.assertTrue(all(0<=r['scheduled_arrival_sec']<120 for r in a))
++        self.assertEqual({(r['input_budget'],r['output_tokens']) for r in a},
++                         {(i,o) for i in (256,512,1048) for o in (256,512,1048)})
++        burst=make_trace(self.spec,seed=5101,qps=3,duration=120,bursty=True)
++        self.assertNotEqual(a,burst);self.assertEqual(self.spec['reward']['C_ref'],None)
++        self.assertGreater(len(burst),len(a))
++        self.assertEqual(maximum_duration(self.spec,{'service':{'startup_timeout_sec':1200}}),5760)
++
++    def test_balanced_matches_native_order_and_predicate_using_actual_SR_blocks(self):
++        clock=Clock();ss=states(clock)
++        for s in ss:s.update(total_blocks=100000,free_blocks=90000,used_blocks=10000,running=0,waiting=0)
++        ss[0]['running']=20
++        snap={'instances':ss,'mapping':[[s['instance_id'],s['epoch']] for s in ss],'version':'v'}
++        obs={'raw':{'snapshot_version':'v','action_mask':[True,True]+[False]*11}}
++        self.assertEqual(balanced_action(obs,snap),1)
++        class Load:
++            def __init__(self,x):self.remaining_steps=x
++            def __lt__(self,other):return self.remaining_steps>=other.remaining_steps
++        source=Obj(instance_id='0',migration_load_metric=Load(90000/20),migration_load_metric_after_migrate_out=Load(90020/19))
++        destination=Obj(instance_id='1',migration_load_metric=Load(float('inf')),migration_load_metric_after_migrate_in=Load(89980))
++        method=extract_method('llumnix/global_scheduler/migration_policy.py','Balanced','pair_migration',{})
++        owner=Obj(sort_instance_infos=lambda values,descending:values,_metric_value=lambda metric:metric.remaining_steps,migrate_out_load_threshold=9000.)
++        self.assertEqual(method(owner,[source],[destination]),[('0','1')])
++        obs['raw']['action_mask'][1]=False;self.assertEqual(balanced_action(obs,snap),0)
++        obs['raw']['action_mask'][1]=True;ss[0]['free_blocks']=None;self.assertEqual(balanced_action(obs,snap),0)
++
++    def test_budget_peek_does_not_change_clock_bytes(self):
++        with tempfile.TemporaryDirectory() as d:
++            run=Path(d);budget_file(run)
++            from rl_scheduler.real_budget import BudgetLedger
++            BudgetLedger(run).status();before=(run/'experiment_clock.json').read_bytes()
++            status=readonly_budget(run);self.assertTrue(status['read_only'])
++            self.assertEqual((run/'experiment_clock.json').read_bytes(),before)
++
++    def test_cli_dry_run_reports_budget_and_live_plan_refuses_without_clock_write(self):
++        cli=load_file('_test_opportunity_cli','benchmark/run_real_opportunity.py')
++        from rl_scheduler.real_budget import BudgetLedger
++        with tempfile.TemporaryDirectory() as d:
++            run=Path(d);budget_file(run);BudgetLedger(run).status()
++            value=json.loads((run/'budget.json').read_text());value['phase_caps_sec']['P0_P3_including_GPU_checks_and_opportunity']=5000
++            (run/'budget.json').write_text(json.dumps(value));before=(run/'experiment_clock.json').read_bytes()
++            args=Obj(output_dir=run,config=run/'runtime.yaml',manage_services=True,dry_run=True,invocation_id='test')
++            args.config.write_text('{}')
++            validator=Obj(validate_gate=lambda *a:{'stage':'P3_CPU_preparation','dependency_hashes':{}})
++            with patch.object(cli,'validate_inputs',return_value={}),patch.object(cli,'smoke_cli',return_value=validator):
++                result=cli.plan(args,self.spec,{'service':{'startup_timeout_sec':1200}})
++                self.assertFalse(result['GPU_will_start']);self.assertFalse(result['ready_for_live'])
++                self.assertTrue(any('budget insufficient' in reason for reason in result['blocked_reasons']))
++                args.dry_run=False
++                with self.assertRaises(RuntimeError):cli.plan(args,self.spec,{'service':{'startup_timeout_sec':1200}})
++            self.assertEqual((run/'experiment_clock.json').read_bytes(),before)
++
++    def test_frozen_trace_and_prompt_pool_tampering_is_detected(self):
++        from rl_scheduler.real_opportunity import load_frozen_trace
++        from rl_scheduler.real_budget import atomic_json
++        import hashlib
++        with tempfile.TemporaryDirectory() as d:
++            run=Path(d);directory=run/'traces/opportunity07';directory.mkdir(parents=True)
++            spec=protocol(run,'/tmp/runtime');pool={str(i):{'prompt':'CPU','input_tokens':1} for i in (256,512,1048)}
++            trace=make_trace(spec,seed=7101,qps=3,duration=30)
++            atomic_json(directory/'trace.json',trace);atomic_json(directory/'prompt_pool.json',pool)
++            manifest={'protocol_hash':digest(spec),'prompt_pool_hash':digest(pool),'traces':{
++                'probe_q3_seed7101':{'path':'trace.json','sha256':hashlib.sha256((directory/'trace.json').read_bytes()).hexdigest()}}}
++            atomic_json(directory/'manifest.json',manifest)
++            self.assertEqual(len(load_frozen_trace(run,spec,seed=7101,qps=3,phase='probe')),len(trace))
++            pool['256']['prompt']='changed';atomic_json(directory/'prompt_pool.json',pool)
++            with self.assertRaises(ValueError):load_frozen_trace(run,spec,seed=7101,qps=3,phase='probe')
++
++    def test_client_metrics_errors_manual_cancel_and_censoring(self):
++        f=Fixture();f.plan_send('a');f.output(1,1,'a');f.terminal(2,'a')
++        f.plan_send('b');f.terminal(3,'b',outcome='timeout',http_status=None)
++        f.plan_send('c');f.add('cancel_requested',4,'c');f.terminal(5,'c',outcome='cancelled',http_status=499,reason='manual_drain');f.add('cancel_ack',6,'c',confirmed=True)
++        f.plan_send('d');f.ack()
++        metrics=metric_summary(f.ledger)
++        self.assertEqual(metrics['nonmanual_errors'],1);self.assertEqual(metrics['nonmanual_error_rate'],.25)
++        self.assertEqual(metrics['terminal_censored_fraction'],.25)
++        self.assertEqual(metrics['first_output_censored_fraction'],.75)
++
++    def test_original_attempt_timestamp_and_explicit_rejection_reconcile(self):
++        decision=dict(decision_id='d',sampled_action=1,monotonic_time=NS)
++        receipt=dict(receipt_status='accepted',terminal_status='succeeded',terminal_ns=4*NS,migration_id='m')
++        event=Event('s',1,'diagnostic',2*NS,2*NS,'r','e',data={'event':'migration_attempt_started','migration_id':'m'})
++        records=reconcile_migrations([decision],{'d':receipt},[event]);self.assertEqual(records[0]['attempt_ns'],2*NS)
++        with self.assertRaises(ValueError):reconcile_migrations([decision],{'d':dict(receipt,terminal_status='unknown')},[event])
++        with self.assertRaises(ValueError):reconcile_migrations([],{},[event])
++        local={'receipt_status':'rejected','terminal_status':'rejected'}
++        self.assertEqual(reconcile_migrations([decision],{'d':local},[])[0]['terminal_ns'],NS)
++
++    def test_actual_initial_route_uses_engine_admission_not_latest_owner(self):
++        f=Fixture();f.plan_send('a');f.output(1,1,'a');f.terminal(2,'a');f.ack()
++        mapping=[[str(i),'e'+str(i)] for i in range(4)]
++        event=Event('s',1,'diagnostic',NS,NS,'r','e','a',data={'event':'request_engine_admitted','instance_id':'0'})
++        io=Obj(route_shares=None,expected_routes={})
++        self.assertEqual(route_audit(io,f.ledger,[event],mapping)['status'],'passed')
++        io.route_shares=[.7,.1,.1,.1];io.expected_routes={'a':'1'}
++        self.assertEqual(route_audit(io,f.ledger,[event],mapping)['status'],'incomplete')
++        self.assertEqual(route_audit(io,f.ledger,[],mapping)['status'],'incomplete')
++
++
++class OrchestrationTests(unittest.IsolatedAsyncioTestCase):
++    async def test_actual_episode_over_CPU_HTTP_reconciles_normal_and_skew_routes(self):
++        from aiohttp import web,ClientSession,ClientTimeout
++        from aiohttp.test_utils import TestServer
++        from rl_scheduler.real_bridge import ControlArbiter,RealBridge
++        from rl_scheduler.real_budget import atomic_json
++        from rl_scheduler.real_runner import server_request_id
++        from rl_scheduler.real_opportunity_runner import run_episode
++        from rl_scheduler.tests.test_real_runner import Producer
++        import time
++        with tempfile.TemporaryDirectory() as d:
++            run=Path(d);budget_file(run);causal=run/'causal';causal.mkdir()
++            atomic_json(run/'service_session.json',{'causal_dir':str(causal)})
++            producers={name:Producer(causal,name) for name in ('api','manager',*[f'local{i}' for i in range(4)],*[f'worker{i}' for i in range(4)])}
++            measured=states(Clock())
++            for s in measured:s.update(running=0,used_blocks=0,free_blocks=1000)
++            async def provider():return [dict(s,measured_ns=time.monotonic_ns()) for s in measured]
++            async def dispatch(receipt):raise AssertionError('Stay dispatched migration')
++            core=ControlArbiter(provider,dispatch)
++            async def control(request):
++                method=request.match_info['method'];body=await request.json()
++                if method=='flush':return web.json_response({'api':producers['api'].checkpoint(),'cluster':{
++                    'manager':producers['manager'].checkpoint(),'instances':[{'local':producers[f'local{i}'].checkpoint(),
++                    'workers':[producers[f'worker{i}'].checkpoint()]} for i in range(4)]}})
++                if method=='release_episode':return web.json_response({'status':'released'})
++                return web.json_response(await getattr(core,method)(**body))
++            async def generate(request):
++                body=await request.json();rid=body['request_id'];ep=body['episode_id'];sid=server_request_id('run',ep,rid)
++                instance=body.get('initial_instance_id','0')
++                if 'initial_instance_id' in body:producers['manager'].emit('real_initial_route',request_id=sid,instance_id=instance)
++                producers['local'+instance].emit('request_engine_admitted',request_id=sid,instance_id=instance)
++                def event(kind,**data):producers['api'].emit('real_metrics_event',metric_kind=kind,run_id='run',episode_id=ep,
++                    request_id=rid,server_request_id=sid,data=data)
++                def frame(kind,**data):return (json.dumps({'run_id':'run','episode_id':ep,'request_id':rid,'server_request_id':sid,
++                    'kind':kind,**data})+'\0').encode()
++                response=web.StreamResponse();await response.prepare(request)
++                event('accepted');await response.write(frame('accepted'))
++                event('api_first');await response.write(frame('output',cumulative_tokens=1,text='a'))
++                await asyncio.sleep(.001)
++                await response.write(frame('output',cumulative_tokens=4,text='abcd'))
++                event('server_terminal',outcome='success');await response.write(frame('terminal',outcome='success'))
++                return response
++            app=web.Application();app.router.add_post('/real_control/{method}',control);app.router.add_post('/generate_real_metrics',generate)
++            spec=protocol(run,'/tmp/runtime');spec['horizons'].update(arrival_sec=.1,drain_sec=.1,decision_interval_sec=.02,cleanup_sec=1.)
++            trace=[dict(request_id='a',scheduled_arrival_sec=0.,prompt='CPU',output_tokens=4,route_seed=1),
++                   dict(request_id='b',scheduled_arrival_sec=.03,prompt='CPU',output_tokens=4,route_seed=2)]
++            try:
++                async with TestServer(app) as server,ClientSession(timeout=ClientTimeout(total=2.)) as session:
++                    bridge=RealBridge(str(server.make_url('')).rstrip('/'),session)
++                    runtime={'sampling':{'n':1}};mapping=None
++                    with patch('rl_scheduler.real_opportunity_runner.load_frozen_trace',return_value=trace):
++                        for scene in ('A','B'):
++                            result=await run_episode(spec,runtime,dict(phase='opportunity',scene=scene,seed=2101,qps=3,policy='Stay'),
++                                bridge=bridge,session=session,run_dir=run,episode_id='cpu_'+scene,
++                                budget=Obj(require=lambda *args:None),session_mapping=mapping)
++                            r,ledger,edges,migrations,through=result;mapping=r['mapping']
++                            self.assertEqual(r['status'],'passed');self.assertEqual(r['metrics']['completed'],2)
++                            self.assertEqual(r['route_audit']['status'],'passed');self.assertEqual(r['metrics']['client_output_tokens'],8)
++                            self.assertFalse(migrations);self.assertEqual(ledger.audit(through_ns=through,require_cleanup=True)['status'],'passed')
++            finally:
++                for producer in producers.values():producer.stream.close()
++
++    async def test_sequential_six_probes_then_twelve_pairs_and_deferred_scales(self):
++        with tempfile.TemporaryDirectory() as d:
++            run=Path(d);budget_file(run);spec=protocol(run,'/tmp/runtime');calls=[]
++            async def episode(spec,runtime,case,**kw):
++                calls.append(case);e=row(**case);e['episode_id']=kw['episode_id']
++                if e['policy']=='Balanced':e['metrics']['slo_goodput_rps']=1.2
++                (run/'runs'/e['episode_id']).mkdir(parents=True)
++                return e,Obj(),[0,240*NS],[],240*NS
++            with patch('rl_scheduler.real_opportunity_runner.run_episode',side_effect=episode), \
++                 patch('rl_scheduler.real_opportunity_runner.reconstruct_rewards',return_value=[]):
++                result=await run_opportunity(spec,{'service':{'base_url':'http://127.0.0.1:1'}},run_dir=run,invocation_id='cpu')
++            self.assertEqual(result['status'],'passed');self.assertEqual(len(calls),18)
++            self.assertTrue(all(c['phase']=='probe' and c['policy']=='Stay' for c in calls[:6]))
++            scales=json.loads((run/'opportunity_runs/cpu/reward_scales.json').read_text())
++            self.assertEqual(len(scales['provenance']['episode_ids']),6)
++            self.assertTrue((run/'opportunity_runs/cpu/final_burst_traces.json').exists())
++
++    async def test_first_invalid_episode_stops_without_retry_or_later_cases(self):
++        with tempfile.TemporaryDirectory() as d:
++            run=Path(d);budget_file(run);spec=protocol(run,'/tmp/runtime')
++            with patch('rl_scheduler.real_opportunity_runner.run_episode',side_effect=RuntimeError('unknown receipt')) as episode:
++                with self.assertRaises(RuntimeError):await run_opportunity(spec,{'service':{'base_url':'http://127.0.0.1:1'}},run_dir=run,invocation_id='failed')
++            self.assertEqual(episode.await_count,1)
++            gate=json.loads((run/'opportunity_runs/failed/opportunity_gate.json').read_text())
++            self.assertEqual(gate['status'],'incomplete');self.assertFalse(gate['automatic_retry'])
++
++
++if __name__=='__main__':unittest.main(verbosity=2)
