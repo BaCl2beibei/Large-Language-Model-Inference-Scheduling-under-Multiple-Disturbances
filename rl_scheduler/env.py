@@ -22,7 +22,7 @@ from rl_scheduler.action_mask import MigPPOActionMaskConfig
 from rl_scheduler.cost_estimator import MigPPOMigrationCostEstimator
 from rl_scheduler.observation import MigPPOObservation, RollingArrivalRate, build_mig_ppo_observation
 from rl_scheduler.reward import MigPPORewardCalculator, MigPPORewardMetrics, MigPPORewardWeights, MigPPORewardScales
-from rl_scheduler.service_model import predict_service_model
+from rl_scheduler.service_model import predict_service_model, sample_qps_quantile_model
 
 
 @dataclass
@@ -64,6 +64,7 @@ class MigPPOEnvConfig:
     decode_ms_per_context_token: float = 0.004
     decode_intercept_ms: float = 1.0
     service_time_model: Optional[dict[str, object]] = None
+    decode_token_interval_model: Optional[dict[str, object]] = None
     service_model_mode: str = "legacy"
     # A calibrated multiplier converts executor iteration wall time into the
     # observed per-request token interval when requests are not emitted on
@@ -80,9 +81,11 @@ class MigPPOEnvConfig:
     migration_beta_ms_per_block: float = 0.1
     migration_cost_csv: Optional[str] = None
     migration_cost_estimator: Optional[dict[str, object]] = None
+    migration_pause_model: Optional[dict[str, object]] = None
     migration_uncertainty_scale: float = 0.0
     calibration_status: str = "uncalibrated"
     routing_skew_probability: float = 0.12
+    state_sample_interval_sec: float = 0.05
 
     def __post_init__(self) -> None:
         if not self.prompt_profiles or not self.output_profiles:
@@ -99,6 +102,8 @@ class MigPPOEnvConfig:
             raise ValueError("service_model_mode must be 'legacy' or 'calibrated'")
         if self.decode_token_interval_scale <= 0:
             raise ValueError("decode_token_interval_scale must be positive")
+        if self.state_sample_interval_sec <= 0:
+            raise ValueError("state_sample_interval_sec must be positive")
         if any(float(qps) <= 0 for qps in self.target_qps_levels):
             raise ValueError("target_qps_levels must contain positive values")
 
@@ -131,6 +136,7 @@ class _Request:
     last_token_time: Optional[float] = None
     first_token_time: Optional[float] = None
     migrating: bool = False
+    resume_ready_time: Optional[float] = None
     preemptions: int = 0
     tpot_samples_ms: list[float] = field(default_factory=list)
     token_timestamps_sec: list[float] = field(default_factory=list)
@@ -178,8 +184,12 @@ class _PendingMigration:
     blocks: int
     start_time: float
     end_time: float
+    pause_start_time: float
     predicted_ms: float
     actual_ms: float
+    pause_stage_ms: float
+    recovery_ms: float
+    pause_started: bool = False
     replay_status: Optional[str] = None
     observed_blocks: Optional[int] = None
 
@@ -277,6 +287,7 @@ class LlumnixMigrationEnv:
         )
         self.rng = np.random.default_rng()
         self.output_rng = np.random.default_rng()
+        self.cadence_rng = np.random.default_rng()
         self.py_rng = random.Random()
         self.scenario = self.config.workload_scenario
         self.now = 0.0
@@ -295,14 +306,18 @@ class LlumnixMigrationEnv:
         self.request_events: list[dict[str, object]] = []
         self.request_results: list[dict[str, object]] = []
         self.service_iterations: list[dict[str, object]] = []
+        self.state_samples: list[dict[str, float]] = []
         self.observed_ttft_samples_ms: list[float] = []
         self.observed_tpot_samples_ms: list[float] = []
         self._output_distribution_cache: dict[
-            tuple[int, int], tuple[list[int], list[float]] | None
+            tuple[int, int, float], tuple[list[int], list[float]] | None
         ] = {}
-        self._expected_output_token_cache: dict[tuple[int, int], int] = {}
+        self._expected_output_token_cache: dict[tuple[int, int, float], int] = {}
         self._arrival_trace: list[dict[str, object]] = []
         self._arrival_trace_index = 0
+        self._migration_replay_trace: list[dict[str, object]] = []
+        self._migration_replay_index = 0
+        self.migration_replay_results: list[dict[str, object]] = []
         self._trace_routes: dict[str, str] = {}
         self._profile_cycle: list[tuple[int, int]] = []
         self._last_obs: Optional[MigPPOObservation] = None
@@ -411,8 +426,14 @@ class LlumnixMigrationEnv:
             if source is None or target is None:
                 raise AssertionError("pending migration references an unknown instance")
             request = self.requests.get(pending.request_id)
-            if request is not None and (request not in source.running or not request.migrating):
+            if request is not None and pending.pause_started and request not in source.running:
                 raise AssertionError(f"pending migration ownership mismatch for {pending.request_id}")
+            if (request is not None and not pending.pause_started
+                    and request not in source.running and request not in source.waiting):
+                raise AssertionError(f"pending migration lost request {pending.request_id}")
+            if (request is not None and request in source.running
+                    and request.migrating != pending.pause_started):
+                raise AssertionError(f"pending migration pause-state mismatch for {pending.request_id}")
             if not source.is_migrating or not target.is_migrating:
                 raise AssertionError("pending migration is missing an instance migration flag")
         elif any(instance.is_migrating for instance in self.instances):
@@ -420,6 +441,22 @@ class LlumnixMigrationEnv:
 
     def _blocks_for_tokens(self, tokens: int) -> int:
         return max(1, int(math.ceil(max(1, tokens) / max(1, self.config.block_size_tokens))))
+
+    def _migration_component_ms(self, name: str, blocks: int, fallback_ms: float) -> float:
+        model = self.config.migration_pause_model or {}
+        component = model.get(name, {})
+        if not isinstance(component, Mapping):
+            return max(0.0, float(fallback_ms))
+        try:
+            intercept = float(component.get("intercept_ms", fallback_ms))
+        except (TypeError, ValueError, OverflowError):
+            intercept = float(fallback_ms)
+        try:
+            slope = float(component.get("ms_per_block", 0.0))
+        except (TypeError, ValueError, OverflowError):
+            slope = 0.0
+        value = intercept + slope * max(0, int(blocks))
+        return max(0.0, value if math.isfinite(value) else float(fallback_ms))
 
     def _choose_scenario(self) -> str:
         if self.config.workload_scenario != "mix":
@@ -451,6 +488,7 @@ class LlumnixMigrationEnv:
         if seed is not None:
             self.rng = np.random.default_rng(seed)
             self.output_rng = np.random.default_rng(np.random.SeedSequence([int(seed), 0x4D4947]))
+            self.cadence_rng = np.random.default_rng(np.random.SeedSequence([int(seed), 0x434144]))
             self.py_rng = random.Random(seed)
         if options and options.get("target_qps") is not None:
             target_qps = float(options["target_qps"])
@@ -460,7 +498,7 @@ class LlumnixMigrationEnv:
         else:
             self.scenario = self._choose_scenario()
         self.arrival_rate = self._scenario_arrival_rate(self.scenario)
-        self.now = 0.0
+        self.now = float((options or {}).get("start_time_sec", 0.0))
         self.decision_count = 0
         self.request_count = 0
         self.action_count = 0
@@ -480,12 +518,20 @@ class LlumnixMigrationEnv:
         self.lifecycle_events = []
         self.request_results = []
         self.service_iterations = []
+        self.state_samples = []
+        interval = self.config.state_sample_interval_sec
+        self._next_state_sample_sec = (math.floor(self.now / interval + 1e-9) + 1) * interval
         self.observed_ttft_samples_ms = []
         self.observed_tpot_samples_ms = []
         self._profile_cycle = []
         self._arrival_trace = [dict(item) for item in (options or {}).get("arrival_trace", [])]
         self._arrival_trace.sort(key=lambda item: float(item["arrival_time"]))
         self._arrival_trace_index = 0
+        self._migration_replay_trace = [dict(item) for item in
+                                        (options or {}).get("migration_event_trace", [])]
+        self._migration_replay_trace.sort(key=lambda item: float(item.get("migration_time_sec", math.inf)))
+        self._migration_replay_index = 0
+        self.migration_replay_results = []
         self._trace_routes = {str(key): str(value) for key, value in
                               (options or {}).get("request_routes", {}).items()}
         self.next_arrival = self._sample_next_arrival()
@@ -581,7 +627,8 @@ class LlumnixMigrationEnv:
         return f"{int(prompt_tokens)}:{int(output_budget)}"
 
     def _output_distribution(self, prompt_tokens: int, output_budget: int) -> tuple[list[int], list[float]] | None:
-        cache_key = (int(prompt_tokens), int(output_budget))
+        qps = float(getattr(self, "arrival_rate", 0.0))
+        cache_key = (int(prompt_tokens), int(output_budget), qps)
         if cache_key in self._output_distribution_cache:
             return self._output_distribution_cache[cache_key]
         model = self.config.output_length_model or {}
@@ -589,7 +636,11 @@ class LlumnixMigrationEnv:
         if not isinstance(profiles, Mapping):
             self._output_distribution_cache[cache_key] = None
             return None
-        profile = profiles.get(self._output_profile_key(prompt_tokens, output_budget))
+        profile = profiles.get(f"{self._output_profile_key(prompt_tokens, output_budget)}:{qps:g}")
+        if not isinstance(profile, Mapping):
+            profile = profiles.get(self._output_profile_key(prompt_tokens, output_budget))
+        if not isinstance(profile, Mapping):
+            profile = profiles.get(f"*:{int(output_budget)}:{qps:g}")
         if not isinstance(profile, Mapping):
             profile = profiles.get(f"*:{int(output_budget)}")
         if not isinstance(profile, Mapping):
@@ -612,7 +663,7 @@ class LlumnixMigrationEnv:
 
     def _expected_output_tokens(self, request: _Request) -> int:
         budget = int(request.requested_output_tokens or request.target_output_tokens)
-        cache_key = (int(request.prompt_tokens), budget)
+        cache_key = (int(request.prompt_tokens), budget, float(self.arrival_rate))
         if cache_key in self._expected_output_token_cache:
             return self._expected_output_token_cache[cache_key]
         distribution = self._output_distribution(request.prompt_tokens, budget)
@@ -777,7 +828,8 @@ class LlumnixMigrationEnv:
         admitted = self._schedule_waiting(instance)
         prefill_tokens = sum(request.request_len for request in admitted)
         decoders = [request for request in instance.running
-                    if request.stage == "decode" and not request.migrating]
+                    if request.stage == "decode" and not request.migrating
+                    and request.resume_ready_time is None]
         self._active_prefill_batch = len(admitted)
         self._active_running_count = len(instance.running)
         prefill_ms = self._prefill_latency_ms(prefill_tokens, instance) if admitted else 0.0
@@ -785,7 +837,46 @@ class LlumnixMigrationEnv:
             len(decoders), sum(request.request_len for request in decoders), instance
         ) if decoders else 0.0
         decode_token_interval_ms = decode_iteration_ms * self.config.decode_token_interval_scale
-        step_ms = max(self.config.min_engine_step_ms, prefill_ms, decode_token_interval_ms)
+        batch_features = {
+            "batch_size": float(len(admitted) + len(decoders)),
+            "num_prefill_requests": float(len(admitted)),
+            "num_decode_requests": float(len(decoders)),
+            "num_running_sequences": float(len(instance.running)),
+            "num_waiting_requests": float(len(instance.waiting)),
+            "num_batched_tokens": float(prefill_tokens + len(decoders)),
+            "prefill_tokens": float(prefill_tokens),
+            "decode_tokens": float(len(decoders)),
+            "total_context_tokens": float(
+                sum(request.request_len for request in admitted)
+                + sum(request.request_len for request in decoders)
+            ),
+            "kv_utilization": float(instance.used_blocks / max(1, instance.total_blocks)),
+            "num_preempted": 0.0,
+            "num_blocks_to_swap_in": 0.0,
+            "num_blocks_to_swap_out": 0.0,
+            "num_blocks_to_copy": 0.0,
+            "is_prefill": float(bool(admitted) and not decoders),
+            "is_decode": float(bool(decoders) and not admitted),
+            "is_mixed": float(bool(decoders) and bool(admitted)),
+        }
+        batch_model = (self.config.service_time_model or {}).get("batch_execution")
+        if self.config.service_model_mode == "calibrated" and batch_model:
+            engine_execution_ms = max(
+                self.config.min_engine_step_ms,
+                predict_service_model(batch_model, batch_features) * instance.capacity_scale,  # type: ignore[arg-type]
+            )
+        else:
+            engine_execution_ms = max(self.config.min_engine_step_ms, prefill_ms, decode_token_interval_ms)
+        output_cadence_ms = 0.0
+        if (decoders and self.config.service_model_mode == "calibrated"
+                and self.config.decode_token_interval_model):
+            output_cadence_ms = sample_qps_quantile_model(
+                self.config.decode_token_interval_model, self.arrival_rate, self.cadence_rng)
+        # API-visible token intervals include engine execution. Use the larger
+        # measured duration instead of adding the two and counting GPU work twice.
+        step_ms = max(engine_execution_ms, output_cadence_ms)
+        if output_cadence_ms > 0.0:
+            decode_token_interval_ms = output_cadence_ms
         instance.service_step_count += 1
         step_id = instance.service_step_count
         step_start = self.now
@@ -796,6 +887,8 @@ class LlumnixMigrationEnv:
             "engine_step_scheduled", instance=instance,
             timestamp=step_start, timestamp_source="simulated_batch_start",
             step_id=step_id, batch_end_sec=step_end, batch_duration_ms=step_ms,
+            engine_execution_ms=engine_execution_ms,
+            output_cadence_ms=output_cadence_ms,
             prefill_request_ids=[request.request_id for request in admitted],
             decode_request_ids=[request.request_id for request in decoders],
             prefill_iteration_ms=prefill_ms, decode_iteration_ms=decode_iteration_ms,
@@ -804,6 +897,19 @@ class LlumnixMigrationEnv:
             waiting_after_admission=len(instance.waiting),
             kv_used_blocks=instance.used_blocks, kv_reserved_blocks=instance.reserved_blocks,
         )
+        if batch_model and self.config.service_model_mode == "calibrated":
+            batch_type = ("mixed" if decoders and admitted else
+                          "prefill" if admitted else "decode")
+            self.service_iterations.append({
+                "timestamp_sec": step_start, "batch_start_sec": step_start,
+                "batch_end_sec": step_end, "instance_id": instance.instance_id,
+                "step_id": step_id, "phase": "batch", "batch_type": batch_type,
+                "request_ids": [request.request_id for request in admitted + decoders],
+                **batch_features, "predicted_ms": engine_execution_ms,
+                "engine_execution_ms": engine_execution_ms,
+                "output_cadence_ms": output_cadence_ms,
+                "step_duration_ms": step_ms, "clock_advanced_once": True,
+            })
         if admitted:
             self.service_iterations.append({
                 "timestamp_sec": step_start, "batch_start_sec": step_start, "batch_end_sec": step_end,
@@ -811,6 +917,8 @@ class LlumnixMigrationEnv:
                 "batch_size": len(admitted), "request_ids": [request.request_id for request in admitted],
                 "running_requests": len(instance.running), "waiting_requests": len(instance.waiting),
                 "batch_tokens": prefill_tokens, "predicted_ms": prefill_ms,
+                "engine_execution_ms": engine_execution_ms,
+                "output_cadence_ms": output_cadence_ms,
                 "step_duration_ms": step_ms, "clock_advanced_once": True,
                 "kv_used_blocks": instance.used_blocks, "kv_reserved_blocks": instance.reserved_blocks,
             })
@@ -824,6 +932,8 @@ class LlumnixMigrationEnv:
                 "total_context_tokens": sum(req.request_len for req in decoders),
                 "predicted_ms": decode_iteration_ms,
                 "effective_token_interval_ms": decode_token_interval_ms,
+                "engine_execution_ms": engine_execution_ms,
+                "output_cadence_ms": output_cadence_ms,
                 "step_duration_ms": step_ms, "clock_advanced_once": True,
                 "kv_used_blocks": instance.used_blocks, "kv_reserved_blocks": instance.reserved_blocks,
             })
@@ -833,10 +943,9 @@ class LlumnixMigrationEnv:
             return
         instance.pending_prefill = list(admitted)
         instance.pending_decode = list(decoders)
-        # One GPU forward batch emits all of its request outputs at the batch
-        # completion event, whose wall time is the maximum concurrent phase
-        # prediction. Do not timestamp a faster phase before that event.
-        instance.pending_prefill_time = step_end
+        # First-token output is available after engine work. Decode output follows
+        # the independently measured API cadence when it exceeds engine time.
+        instance.pending_prefill_time = min(step_end, step_start + engine_execution_ms / 1000.0)
         instance.pending_decode_time = step_end
         instance.step_in_flight = True
         instance.pending_step_id = step_id
@@ -1076,9 +1185,11 @@ class LlumnixMigrationEnv:
         uncertainty = prediction.uncertainty_ms * max(0.0, self.config.migration_uncertainty_scale)
         actual_ms = max(1.0, float(self.rng.normal(prediction.duration_ms, uncertainty))
                         if uncertainty > 0 else prediction.duration_ms)
+        pause_stage_ms = min(actual_ms, self._migration_component_ms(
+            "pause_stage_ms", blocks, actual_ms))
+        recovery_ms = self._migration_component_ms("recovery_after_resume_ms", blocks, 0.0)
         action_id = f"mig-{self.decision_count:06d}-{self.action_count:06d}"
         self.action_count += 1
-        candidate.migrating = True
         src.is_migrating = True
         dst.is_migrating = True
         if self.config.kv_dynamics_enabled:
@@ -1087,13 +1198,17 @@ class LlumnixMigrationEnv:
             action_id=action_id, source_id=src_id, target_id=dst_id,
             request_id=candidate.request_id, blocks=blocks,
             start_time=self.now, end_time=self.now + actual_ms / 1000.0,
+            pause_start_time=self.now + max(0.0, actual_ms - pause_stage_ms) / 1000.0,
             predicted_ms=prediction.duration_ms, actual_ms=actual_ms,
+            pause_stage_ms=pause_stage_ms, recovery_ms=recovery_ms,
         )
         metrics.migration_operations += 1
         self._record_lifecycle_event(
             "migration_started", candidate, src, timestamp_source="migration_action",
             action_id=action_id, target_instance_id=dst.instance_id, blocks_reserved=blocks,
             migration_end_sec=self.pending_migration.end_time,
+            migration_pause_start_sec=self.pending_migration.pause_start_time,
+            predicted_pause_stage_ms=pause_stage_ms, predicted_recovery_ms=recovery_ms,
             source_used_blocks=src.used_blocks, target_used_blocks=dst.used_blocks,
             target_reserved_blocks=dst.reserved_blocks,
         )
@@ -1125,8 +1240,9 @@ class LlumnixMigrationEnv:
         if blocks > dst.free_blocks:
             return "destination_capacity_mismatch"
         duration_ms = max(1.0, float(event.get("cost_ms", 1.0)))
+        pause_stage_ms = min(duration_ms, max(0.0, float(event.get("pause_stage_ms") or duration_ms)))
+        recovery_ms = max(0.0, float(event.get("recovery_after_resume_ms") or 0.0))
         self.action_count += 1
-        request.migrating = True
         src.is_migrating = True
         dst.is_migrating = True
         if self.config.kv_dynamics_enabled:
@@ -1135,18 +1251,39 @@ class LlumnixMigrationEnv:
         self.pending_migration = _PendingMigration(
             action_id=f"replay-{self.action_count:06d}", source_id=src_id, target_id=dst_id,
             request_id=request.request_id, blocks=blocks, start_time=self.now,
-            end_time=self.now + duration_ms / 1000.0, predicted_ms=duration_ms,
-            actual_ms=duration_ms, replay_status=status, observed_blocks=observed_blocks,
+            end_time=self.now + duration_ms / 1000.0,
+            pause_start_time=self.now + max(0.0, duration_ms - pause_stage_ms) / 1000.0,
+            predicted_ms=duration_ms, actual_ms=duration_ms,
+            pause_stage_ms=pause_stage_ms, recovery_ms=recovery_ms,
+            replay_status=status, observed_blocks=observed_blocks,
         )
         self._record_lifecycle_event(
             "migration_started", request, src, timestamp_source="fixed_event_replay",
             action_id=self.pending_migration.action_id, target_instance_id=dst.instance_id,
             blocks_reserved=blocks, observed_blocks=observed_blocks,
             migration_end_sec=self.pending_migration.end_time,
+            migration_pause_start_sec=self.pending_migration.pause_start_time,
+            predicted_pause_stage_ms=pause_stage_ms, predicted_recovery_ms=recovery_ms,
             source_used_blocks=src.used_blocks, target_used_blocks=dst.used_blocks,
             target_reserved_blocks=dst.reserved_blocks,
         )
         return "started"
+
+    def _begin_migration_pause(self, pending: _PendingMigration) -> bool:
+        if pending.pause_started or pending.pause_start_time > self.now + 1e-9:
+            return False
+        request = self.requests.get(pending.request_id)
+        source = next(instance for instance in self.instances if instance.instance_id == pending.source_id)
+        if request is not None and request in source.running:
+            request.migrating = True
+            self._record_lifecycle_event(
+                "migration_request_pause_started", request, source,
+                timestamp=self.now, timestamp_source="modeled_migration_pause_start",
+                action_id=pending.action_id, target_instance_id=pending.target_id,
+                blocks_reserved=pending.blocks,
+            )
+        pending.pause_started = True
+        return True
 
     def _finish_migration(self, metrics: MigPPORewardMetrics, window_start: float, window_end: float) -> None:
         pending = self.pending_migration
@@ -1154,9 +1291,10 @@ class LlumnixMigrationEnv:
             return
         src = next(instance for instance in self.instances if instance.instance_id == pending.source_id)
         dst = next(instance for instance in self.instances if instance.instance_id == pending.target_id)
+        self._begin_migration_pause(pending)
         request = self.requests.get(pending.request_id)
         status = "success"
-        if request is None or request not in src.running or not request.migrating:
+        if request is None or request not in src.running or not pending.pause_started:
             status = "aborted"
         elif pending.replay_status is not None and pending.replay_status not in {"finished", "success"}:
             status = "failed" if "fail" in pending.replay_status else "aborted"
@@ -1169,6 +1307,9 @@ class LlumnixMigrationEnv:
                 dst.reserved_blocks -= pending.blocks
                 dst.used_blocks += request.allocated_blocks
             request.migrating = False
+            request.resume_ready_time = (
+                self.now + pending.recovery_ms / 1000.0 if pending.recovery_ms > 0 else None
+            )
             dst.running.append(request)
             request.stage = "decode"
             if not dst.step_in_flight:
@@ -1179,6 +1320,9 @@ class LlumnixMigrationEnv:
                 dst.reserved_blocks -= pending.blocks
             if request is not None:
                 request.migrating = False
+                request.resume_ready_time = (
+                    self.now + pending.recovery_ms / 1000.0 if pending.recovery_ms > 0 else None
+                )
             if status == "failed":
                 metrics.migration_failed += 1
             else:
@@ -1203,6 +1347,8 @@ class LlumnixMigrationEnv:
             "start_time": self.wall_epoch + pending.start_time,
             "end_time": self.wall_epoch + pending.end_time,
             "predicted_cost_ms": pending.predicted_ms, "cost_ms": pending.actual_ms,
+            "pause_stage_ms": pending.pause_stage_ms,
+            "predicted_recovery_after_resume_ms": pending.recovery_ms,
             "status": status, "fixed_trace_replay": pending.replay_status is not None,
         }
         self.migration_events.append(event)
@@ -1211,6 +1357,8 @@ class LlumnixMigrationEnv:
             timestamp=self.now, timestamp_source="migration_terminal_event",
             action_id=pending.action_id, request_id=pending.request_id, source_instance_id=src.instance_id,
             target_instance_id=dst.instance_id, blocks_reserved=pending.blocks,
+            pause_stage_ms=pending.pause_stage_ms,
+            predicted_recovery_after_resume_ms=pending.recovery_ms,
             observed_blocks=pending.observed_blocks,
             source_used_blocks=src.used_blocks, source_reserved_blocks=src.reserved_blocks,
             target_used_blocks=dst.used_blocks, target_reserved_blocks=dst.reserved_blocks,
@@ -1223,6 +1371,20 @@ class LlumnixMigrationEnv:
         kv_integral = 0.0
         imbalance_integral = 0.0
         elapsed = 0.0
+        sample_interval = self.config.state_sample_interval_sec
+        next_state_sample = self._next_state_sample_sec
+
+        def record_state_sample(timestamp: float) -> None:
+            waiting = [len(instance.waiting) for instance in self.instances]
+            kv = [(instance.used_blocks + instance.reserved_blocks) / max(1, instance.total_blocks)
+                  for instance in self.instances]
+            self.state_samples.append({
+                "time_sec": float(timestamp),
+                "queue_mean_requests": float(np.mean(waiting)) if waiting else 0.0,
+                "queue_total_requests": float(sum(waiting)),
+                "kv_mean_fraction": float(np.mean(kv)) if kv else 0.0,
+            })
+
         while self.now < window_end - 1e-9:
             next_deadline = (
                 min((request.arrival_time + self.config.request_timeout_sec
@@ -1230,10 +1392,30 @@ class LlumnixMigrationEnv:
                 if self.config.request_timeout_sec is not None else math.inf
             )
             migration_end = self.pending_migration.end_time if self.pending_migration else math.inf
+            migration_pause_start = (
+                self.pending_migration.pause_start_time
+                if self.pending_migration is not None and not self.pending_migration.pause_started
+                else math.inf
+            )
+            replay_migration_start = (
+                float(self._migration_replay_trace[self._migration_replay_index].get(
+                    "migration_time_sec", math.inf))
+                if self._migration_replay_index < len(self._migration_replay_trace) else math.inf
+            )
+            resume_ready = min(
+                (request.resume_ready_time for request in self.requests.values()
+                 if request.resume_ready_time is not None),
+                default=math.inf,
+            )
             service_event = min((instance.next_step_time for instance in self.instances), default=math.inf)
-            event_time = min(window_end, self.next_arrival, migration_end, service_event, next_deadline)
+            event_time = min(window_end, self.next_arrival, migration_pause_start,
+                             replay_migration_start,
+                             migration_end, resume_ready, service_event, next_deadline)
             if event_time < self.now:
                 event_time = self.now
+            while next_state_sample < event_time - 1e-9:
+                record_state_sample(next_state_sample)
+                next_state_sample += sample_interval
             dt = event_time - self.now
             if dt > 0:
                 waiting = sum(len(instance.waiting) for instance in self.instances)
@@ -1247,6 +1429,20 @@ class LlumnixMigrationEnv:
                 self.now = event_time
 
             progressed = False
+            if replay_migration_start <= self.now + 1e-9:
+                replay_event = self._migration_replay_trace[self._migration_replay_index]
+                self._migration_replay_index += 1
+                result = self.start_replay_migration(replay_event)
+                self.migration_replay_results.append({
+                    "migration_id": replay_event.get("migration_id"),
+                    "request_id": replay_event.get("request_id"),
+                    "migration_time_sec": replay_event.get("migration_time_sec"),
+                    "result": result,
+                })
+                progressed = True
+            if (self.pending_migration is not None and not self.pending_migration.pause_started
+                    and self.pending_migration.pause_start_time <= self.now + 1e-9):
+                progressed = self._begin_migration_pause(self.pending_migration) or progressed
             if self.pending_migration and self.pending_migration.end_time <= self.now + 1e-9:
                 self._finish_migration(metrics, window_start, window_end)
                 progressed = True
@@ -1254,17 +1450,31 @@ class LlumnixMigrationEnv:
                 self._process_arrival()
                 progressed = True
             for instance in self.instances:
+                ready_requests = [request for request in instance.running
+                                  if request.resume_ready_time is not None
+                                  and request.resume_ready_time <= self.now + 1e-9]
+                for request in ready_requests:
+                    request.resume_ready_time = None
+                    if not instance.step_in_flight:
+                        instance.next_step_time = min(instance.next_step_time, self.now)
+                    progressed = True
+            for instance in self.instances:
                 if instance.next_step_time <= self.now + 1e-9:
                     self._run_engine_step(instance, metrics, window_start, window_end)
                     progressed = True
             before = len(self.requests)
             self._expire_requests(metrics, window_start, window_end)
             progressed = progressed or len(self.requests) != before
+            while next_state_sample <= self.now + 1e-9:
+                record_state_sample(next_state_sample)
+                next_state_sample += sample_interval
             if self.config.validate_state_invariants:
                 self._check_state_invariants()
             if not progressed and dt <= 1e-12:
                 # Avoid a pathological zero-time loop from a stale event.
                 self.now = min(window_end, self.now + 1e-6)
+
+        self._next_state_sample_sec = next_state_sample
 
         metrics.accumulated_waiting_request_seconds = queue_integral
         metrics.average_queue_length = queue_integral / max(elapsed, 1e-6)

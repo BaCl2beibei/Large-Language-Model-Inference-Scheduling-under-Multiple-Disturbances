@@ -35,6 +35,7 @@ from llumnix.utils import (
 )
 from llumnix.llumlet.local_migration_scheduler import LocalMigrationScheduler
 from llumnix.constants import PENDING_MIGRATE_IN_TIMEOUT
+from llumnix.metrics.causal_events import emit as emit_causal_event
 
 logger = init_logger(__name__)
 
@@ -305,6 +306,18 @@ class MigrationCoordinator:
                                        migrate_out_request: LlumnixRequest,
                                        migration_type: Optional[MigrationType] = None) -> List[LlumnixRequest]:
         t0 = time.time()
+        t0_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        migration_id = f"{self.instance_id}:{migrate_out_request.request_id}:{t0_ns}"
+        emit_causal_event(
+            "migration_attempt_started",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            initial_status=str(migrate_out_request.llumnix_status),
+            migration_type=str(migration_type),
+        )
+        migrate_out_request.causal_migration_id = migration_id
         logger.info("{}->{} begin migrate out {}.".format(self.instance_id, dst_instance_id, migrate_out_request.request_id))
         migrated_request = []
 
@@ -315,17 +328,50 @@ class MigrationCoordinator:
             migrate_out_request.migration_start_time = time.time()
             status = await self._migrate_out_waiting_request(dst_instance_actor, dst_instance_id, migrate_out_request)
         else:
+            t1_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+            emit_causal_event(
+                "migration_attempt_completed",
+                migration_id=migration_id,
+                request_id=str(migrate_out_request.request_id),
+                source_instance_id=str(self.instance_id),
+                target_instance_id=str(dst_instance_id),
+                status="skipped_invalid_request_state",
+                success=False,
+                total_blocks=0,
+                migration_total_ms=(t1_ns - t0_ns) / 1_000_000.0,
+            )
             return migrated_request
 
         if status == MigrationStatus.FINISHED:
+            emit_causal_event(
+                "migration_target_commit_started",
+                migration_id=migration_id,
+                request_id=str(migrate_out_request.request_id),
+                source_instance_id=str(self.instance_id),
+                target_instance_id=str(dst_instance_id),
+            )
             response = await self._dst_commit_dst_request(dst_instance_actor, dst_instance_id, migrate_out_request)
             if response.success:
+                emit_causal_event(
+                    "migration_request_resumed",
+                    migration_id=migration_id,
+                    request_id=str(migrate_out_request.request_id),
+                    instance_id=str(dst_instance_id),
+                    resume_reason="destination_commit_acknowledged",
+                )
                 self.backend_engine.free_src_request(migrate_out_request)
                 self.backend_engine.pop_migrating_out_request_last_stage(migrate_out_request)
                 migrated_request.append(migrate_out_request.request_id)
             else:
                 await self.backend_engine.add_running_request(migrate_out_request)
                 self.backend_engine.pop_migrating_out_request_last_stage(migrate_out_request)
+                emit_causal_event(
+                    "migration_request_resumed",
+                    migration_id=migration_id,
+                    request_id=str(migrate_out_request.request_id),
+                    instance_id=str(self.instance_id),
+                    resume_reason="destination_commit_failed_source_restored",
+                )
                 status = MigrationStatus.ABORTED_DST
         else: # ABORTED_SRC or ABORTED_DST
             if status == MigrationStatus.ABORTED_SRC:
@@ -341,6 +387,18 @@ class MigrationCoordinator:
                 await self._dst_free_pre_alloc_cache(dst_instance_actor, dst_instance_id, migrate_out_request.request_id)
 
         t1 = time.time()
+        t1_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        emit_causal_event(
+            "migration_attempt_completed",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            status=str(status),
+            success=status == MigrationStatus.FINISHED and bool(migrated_request),
+            total_blocks=sum(migrate_out_request.stage_num_blocks_list),
+            migration_total_ms=(t1_ns - t0_ns) / 1_000_000.0,
+        )
         logger.info(
             "Instance {}->{} migrate done, migration type: {}, migrate request {}, "
             "migration status: {}, len: {} blocks, cost: {} ms".format(
@@ -408,6 +466,17 @@ class MigrationCoordinator:
         if migrate_out_request.should_abort_migration():
             return MigrationStatus.ABORTED_SRC
 
+        migration_id = getattr(migrate_out_request, "causal_migration_id", None)
+        stage_index = len(migrate_out_request.stage_num_blocks_list) + 1
+        stage_start_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        emit_causal_event(
+            "migration_stage_started",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            stage_index=stage_index,
+        )
         pre_stage_num_blocks = sum(migrate_out_request.stage_num_blocks_list)
         incremental_blocks, incremental_token_ids, is_last_stage = \
             await self.backend_engine.get_request_incremental_blocks(migrate_out_request, pre_stage_num_blocks)
@@ -435,6 +504,15 @@ class MigrationCoordinator:
         else:
             # last stage migration, stop inference, transfer all blocks
             migration_status = MigrationStatus.FINISHED
+            pause_start_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+            emit_causal_event(
+                "migration_request_pause_started",
+                migration_id=migration_id,
+                request_id=str(migrate_out_request.request_id),
+                source_instance_id=str(self.instance_id),
+                target_instance_id=str(dst_instance_id),
+                stage_index=stage_index,
+            )
             found = await self.backend_engine.remove_running_request(migrate_out_request.request_id)
             # Request coule be finished by previous or current step.
             if not found:
@@ -465,7 +543,27 @@ class MigrationCoordinator:
             if is_last_stage:
                 await self.backend_engine.add_running_request(migrate_out_request)
                 self.backend_engine.pop_migrating_out_request_last_stage(migrate_out_request)
+                emit_causal_event(
+                    "migration_request_resumed",
+                    migration_id=migration_id,
+                    request_id=str(migrate_out_request.request_id),
+                    instance_id=str(self.instance_id),
+                    resume_reason="destination_preallocation_failed_source_restored",
+                    source_pause_ms=(time.clock_gettime_ns(time.CLOCK_MONOTONIC) - pause_start_ns) / 1_000_000.0,
+                )
             return MigrationStatus.ABORTED_DST
+
+        emit_causal_event(
+            "migration_preallocation_completed",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            stage_index=stage_index,
+            blocks=int(stage_block_num),
+            succeeded=bool(response.success),
+            is_final_stage=bool(is_last_stage),
+        )
 
         if migrate_out_request.should_abort_migration():
             return MigrationStatus.ABORTED_SRC
@@ -475,18 +573,61 @@ class MigrationCoordinator:
         migrate_out_request.stage_timestamps.append(time.time())
         migrate_out_request.stage_num_blocks_list.append(stage_block_num)
         # TODO(ZeldaHuang): send_cache in pre_alloc_cache/migrate_in_last_stage
+        transfer_start_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        emit_causal_event(
+            "migration_transfer_started",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            stage_index=stage_index,
+            blocks=int(stage_block_num),
+            is_final_stage=bool(is_last_stage),
+        )
         response = await self._send_cache(
             dst_instance_actor, dst_instance_id, src_blocks, dst_blocks, migrate_out_request.request_id, is_last_stage
+        )
+        transfer_end_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        emit_causal_event(
+            "migration_transfer_completed",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            stage_index=stage_index,
+            blocks=int(stage_block_num),
+            succeeded=bool(response.success),
+            transfer_ms=(transfer_end_ns - transfer_start_ns) / 1_000_000.0,
         )
         if not response.success:
             if is_last_stage:
                 await self.backend_engine.add_running_request(migrate_out_request)
                 self.backend_engine.pop_migrating_out_request_last_stage(migrate_out_request)
+                emit_causal_event(
+                    "migration_request_resumed",
+                    migration_id=migration_id,
+                    request_id=str(migrate_out_request.request_id),
+                    instance_id=str(self.instance_id),
+                    resume_reason="cache_transfer_failed_source_restored",
+                    source_pause_ms=(time.clock_gettime_ns(time.CLOCK_MONOTONIC) - pause_start_ns) / 1_000_000.0,
+                )
             return MigrationStatus.ABORTED_DST
 
         if not is_last_stage and migrate_out_request.should_abort_migration():
             # migrate-out request abort by scheduler during send/recv
             return MigrationStatus.ABORTED_SRC
+
+        stage_end_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        emit_causal_event(
+            "migration_stage_completed",
+            migration_id=migration_id,
+            request_id=str(migrate_out_request.request_id),
+            source_instance_id=str(self.instance_id),
+            target_instance_id=str(dst_instance_id),
+            stage_index=stage_index,
+            is_final_stage=bool(is_last_stage),
+            stage_ms=(stage_end_ns - stage_start_ns) / 1_000_000.0,
+        )
 
         return migration_status
 
@@ -607,7 +748,14 @@ class MigrationCoordinator:
     @update_migrating_in_request_id_set_decorator
     @update_pending_migrate_in_request_decorator
     async def commit_dst_request(self, request_id: RequestIDType, backend_request: LlumnixRequest) -> MigrationResponse:
-        return await self.backend_engine.commit_dst_request(request_id, backend_request)
+        result = await self.backend_engine.commit_dst_request(request_id, backend_request)
+        emit_causal_event(
+            "migration_destination_committed",
+            request_id=str(request_id),
+            instance_id=str(self.instance_id),
+            succeeded=bool(getattr(result, "success", False)),
+        )
+        return result
 
     async def _dst_commit_dst_request(self,
                                       dst_instance_actor: ray.actor.ActorHandle,

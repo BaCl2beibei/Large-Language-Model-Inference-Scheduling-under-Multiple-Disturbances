@@ -7,6 +7,7 @@ is computed by the simulator's event loop and is not added to these predictions.
 from __future__ import annotations
 
 import math
+from bisect import bisect_right
 from typing import Mapping
 
 
@@ -57,4 +58,54 @@ def predict_service_model(model: Mapping[str, object], features: Mapping[str, fl
     if not math.isfinite(prediction):
         return max(0.0, floor)
     return max(floor, prediction)
+
+
+def sample_qps_quantile_model(model: Mapping[str, object], qps: float, rng: object) -> float:
+    """Sample one value from an empirical quantile profile interpolated by QPS."""
+    profiles = model.get("profiles", {})
+    if not isinstance(profiles, Mapping) or not profiles:
+        return 0.0
+    levels = model.get("quantile_levels", [])
+    try:
+        levels = [float(value) for value in levels]
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    if not levels:
+        return 0.0
+    usable: list[tuple[float, list[float]]] = []
+    for key, profile in profiles.items():
+        if not isinstance(profile, Mapping):
+            continue
+        try:
+            x = float(key)
+            values = [float(value) for value in profile.get("interval_quantiles_ms", [])]
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if len(values) == len(levels) and all(math.isfinite(value) and value > 0 for value in values):
+            usable.append((x, values))
+    usable.sort(key=lambda row: row[0])
+    if not usable:
+        return 0.0
+    if qps <= usable[0][0]:
+        quantiles = usable[0][1]
+    elif qps >= usable[-1][0]:
+        quantiles = usable[-1][1]
+    else:
+        quantiles = usable[-1][1]
+        for (left_qps, left), (right_qps, right) in zip(usable, usable[1:]):
+            if left_qps <= qps <= right_qps:
+                weight = (float(qps) - left_qps) / (right_qps - left_qps)
+                quantiles = [a + (b - a) * weight for a, b in zip(left, right)]
+                break
+    uniform = float(rng.random())
+    index = bisect_right(levels, uniform)
+    if index <= 0:
+        return max(0.0, quantiles[0])
+    if index >= len(levels):
+        return max(0.0, quantiles[-1])
+    left_level, right_level = levels[index - 1], levels[index]
+    if right_level <= left_level:
+        return max(0.0, quantiles[index])
+    fraction = (uniform - left_level) / (right_level - left_level)
+    return max(0.0, quantiles[index - 1] + (quantiles[index] - quantiles[index - 1]) * fraction)
 

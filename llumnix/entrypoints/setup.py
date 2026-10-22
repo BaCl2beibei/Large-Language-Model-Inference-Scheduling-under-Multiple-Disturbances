@@ -143,23 +143,68 @@ def init_llumnix_components(entrypoints_args: EntrypointsArgs,
 
     request_output_queue_type: QueueType = QueueType(entrypoints_args.request_output_queue_type)
     node_id = ray.get_runtime_context().get_node_id()
-    # Initial placement-group creation is serial; allow slower multi-GPU hosts
-    # to return the instance handles before the per-instance readiness checks below.
+    # Initial placement-group creation is serial. Keep this RPC alive long enough
+    # for each instance to use its configured placement-group readiness timeout.
+    # Otherwise the API process can time out at 60s while the scaler is still
+    # waiting for the first placement group, which hides the more useful result.
+    init_instances_timeout = float(os.getenv(
+        "LLUMNIX_INIT_INSTANCES_TIMEOUT",
+        str(max(
+            60.0,
+            manager_args.initial_instances * float(llumnix_envs.WAIT_PLACEMENT_GROUP_TIMEOUT) + 30.0,
+        )),
+    ))
+    logger.info("Initialize %s instances with RPC timeout %.1fs.",
+                manager_args.initial_instances, init_instances_timeout)
     instance_ids, instances = ray.get(
-        scaler.init_instances.remote(request_output_queue_type, instance_args, engine_args, node_id), timeout=60.0,
+        scaler.init_instances.remote(request_output_queue_type, instance_args, engine_args, node_id),
+        timeout=init_instances_timeout,
     )
 
-    available_instance_ids = []
-    available_instances = []
-    for instance_id, instance in zip(instance_ids, instances):
+    instance_ready_timeout = float(llumnix_envs.INSTANCE_READY_TIMEOUT)
+    instance_ready_refs = {
+        instance.is_ready.remote(): instance_id
+        for instance_id, instance in zip(instance_ids, instances)
+    }
+    if instance_ready_refs:
+        ready_refs, pending_refs = ray.wait(
+            list(instance_ready_refs),
+            num_returns=len(instance_ready_refs),
+            timeout=instance_ready_timeout,
+        )
+    else:
+        ready_refs, pending_refs = [], []
+
+    ready_instance_ids = set()
+    instances_to_scale_down = []
+    for ready_ref in ready_refs:
+        instance_id = instance_ready_refs[ready_ref]
         try:
-            ray.get(instance.is_ready.remote(), timeout=float(llumnix_envs.INSTANCE_READY_TIMEOUT))
-            available_instance_ids.append(instance_id)
-            available_instances.append(instance)
+            ray.get(ready_ref)
+            ready_instance_ids.add(instance_id)
         # pylint: disable=broad-except
         except Exception as e:
             log_instance_exception(e, instance_id, "init_llumnix_components")
-            ray_get_with_timeout(manager.scale_down.remote(instance_id))
+            instances_to_scale_down.append(instance_id)
+
+    for pending_ref in pending_refs:
+        instance_id = instance_ready_refs[pending_ref]
+        logger.warning(
+            "Instance %s did not become ready within %.1fs.",
+            instance_id, instance_ready_timeout,
+        )
+        instances_to_scale_down.append(instance_id)
+
+    for instance_id in instances_to_scale_down:
+        ray_get_with_timeout(manager.scale_down.remote(instance_id))
+
+    # Preserve the scaler's original instance ordering after concurrent checks.
+    available_instance_ids = [
+        instance_id for instance_id in instance_ids if instance_id in ready_instance_ids
+    ]
+    available_instances_by_id = dict(zip(instance_ids, instances))
+    available_instances = [available_instances_by_id[instance_id]
+                           for instance_id in available_instance_ids]
 
     if len(available_instance_ids) > 0:
         logger.info("Init Llumnix components done, {} instances are ready, instance_ids: {}."

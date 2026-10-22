@@ -30,6 +30,7 @@ from llumnix.utils import (
 )
 from llumnix.request_output import LlumnixRequestOuput as LlumnixRequestOuputVLLM
 from llumnix.entrypoints.client import LlumnixClient
+from llumnix.metrics.causal_events import emit as emit_causal_event, should_sample_output_update
 
 logger = init_logger(__name__)
 
@@ -188,6 +189,17 @@ class LlumnixClientVLLM(LlumnixClient):
                     request_response.request_processing_context.add_trace_timeline('api_server_get_queue_timestamp')
                     request_output: RequestOutput = request_response.get_engine_output()
                     request_id = request_response.request_id
+                    output_tokens = max(
+                        (len(sequence.token_ids) for sequence in request_output.outputs or []),
+                        default=0,
+                    )
+                    if should_sample_output_update(request_id, output_tokens, request_output.finished):
+                        emit_causal_event(
+                            "output_queue_dequeue", request_id=str(request_id),
+                            instance_id=str(request_response.instance_id),
+                            output_tokens=output_tokens, finished=bool(request_output.finished),
+                            queue_batch_size=len(request_responses),
+                        )
                     # Request could be dispatched twice when manager is dead, the first request will free the request_streams when finished.
                     if request_id not in self.request_stream:
                         continue

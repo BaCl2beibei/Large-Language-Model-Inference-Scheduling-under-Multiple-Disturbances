@@ -27,6 +27,8 @@ from llumnix.logging.logger import init_logger
 from llumnix.llumlet.request import LlumnixRequest, RequestInferenceType, RequestStatus
 from llumnix.backends.vllm.sequence import SequenceGroupLlumnix
 from llumnix.utils import MigrationResponse
+from llumnix.metrics.causal_events import emit as emit_causal_event
+from llumnix.metrics.causal_events import register_scheduled_batch
 
 logger = init_logger(__name__)
 
@@ -305,11 +307,151 @@ class SchedulerLlumnix(Scheduler):
         return instance_info
 
     def schedule(self) -> Tuple[List[SequenceGroupMetadata], SchedulerOutputs, bool]:
+        schedule_start_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        waiting_before = len(self.waiting)
+        running_before = len(self.running)
         seq_group_metadata_list, scheduler_outputs, allow_async_output_proc = super().schedule()
-        self.update_instance_info_callback(self._get_instance_info([scheduled_seq_group.seq_group \
-                                            for scheduled_seq_group in scheduler_outputs.scheduled_seq_groups]))
+        instance_info = self._get_instance_info([scheduled_seq_group.seq_group
+                                                 for scheduled_seq_group in scheduler_outputs.scheduled_seq_groups])
+        self.update_instance_info_callback(instance_info)
         for seq_group in self.waiting:
             seq_group.try_schedule_times += 1
+
+        if seq_group_metadata_list:
+            groups = []
+            prompt_groups = 0
+            decode_groups = 0
+            prefill_tokens = 0
+            decode_tokens = 0
+            context_tokens = 0
+            sequence_lengths = []
+            for metadata in seq_group_metadata_list:
+                is_prompt = bool(getattr(metadata, "is_prompt", False))
+                prompt_groups += int(is_prompt)
+                decode_groups += int(not is_prompt)
+                seq_data = getattr(metadata, "seq_data", {}) or {}
+                group_context = 0
+                group_scheduled = 0
+                group_sequence_lengths = []
+                for sequence in seq_data.values():
+                    try:
+                        length = int(sequence.get_len())
+                    except (AttributeError, TypeError, ValueError):
+                        length = 0
+                    try:
+                        computed = int(sequence.get_num_computed_tokens())
+                    except (AttributeError, TypeError, ValueError):
+                        computed = 0
+                    group_context += length
+                    sequence_lengths.append(length)
+                    group_sequence_lengths.append(length)
+                    if is_prompt:
+                        group_scheduled += max(0, length - computed)
+                    else:
+                        group_scheduled += 1
+                if is_prompt:
+                    chunk = getattr(metadata, "token_chunk_size", None)
+                    if chunk is not None:
+                        group_scheduled = int(chunk)
+                    prefill_tokens += group_scheduled
+                else:
+                    decode_tokens += group_scheduled
+                context_tokens += group_context
+                groups.append({
+                    "request_id": str(getattr(metadata, "request_id", "")),
+                    "is_prompt": is_prompt,
+                    "sequence_count": len(seq_data),
+                    "scheduled_tokens": group_scheduled,
+                    "context_tokens": group_context,
+                    "sequence_lengths": group_sequence_lengths,
+                })
+
+            if prompt_groups and decode_groups:
+                batch_type = "mixed"
+            elif prompt_groups:
+                batch_type = "prefill"
+            else:
+                batch_type = "decode"
+            features = {
+                "instance_id": str(getattr(instance_info, "instance_id", "")),
+                "batch_type": batch_type,
+                "request_ids": [group["request_id"] for group in groups],
+                "batch_size": len(groups),
+                "num_prefill_requests": prompt_groups,
+                "num_decode_requests": decode_groups,
+                "prefill_tokens": prefill_tokens,
+                "decode_tokens": decode_tokens,
+                "num_batched_tokens": int(getattr(scheduler_outputs, "num_batched_tokens", 0) or 0),
+                "total_context_tokens": context_tokens,
+                "sequence_lengths": sequence_lengths,
+                "num_running_requests_before": running_before,
+                "num_running_requests": int(getattr(instance_info, "num_running_requests", len(self.running))),
+                "num_waiting_requests_before": waiting_before,
+                "num_waiting_requests": int(getattr(instance_info, "num_waiting_requests", len(self.waiting))),
+                "num_running_sequences": sum(
+                    len(seq_group.get_seqs(SequenceStatus.RUNNING)) for seq_group in self.running
+                ),
+                "num_preempted": int(getattr(scheduler_outputs, "preempted", 0) or 0),
+                "num_ignored": len(getattr(scheduler_outputs, "ignored_seq_groups", []) or []),
+                "num_blocks_to_swap_in": len(getattr(scheduler_outputs, "blocks_to_swap_in", []) or []),
+                "num_blocks_to_swap_out": len(getattr(scheduler_outputs, "blocks_to_swap_out", []) or []),
+                "num_blocks_to_copy": len(getattr(scheduler_outputs, "blocks_to_copy", []) or []),
+                "kv_total_blocks": int(getattr(instance_info, "num_total_gpu_blocks", 0) or 0),
+                "kv_free_blocks": int(getattr(instance_info, "num_free_gpu_blocks", 0) or 0),
+                "kv_used_blocks": int(getattr(instance_info, "num_used_gpu_blocks", 0) or 0),
+                "kv_utilization": float(getattr(instance_info, "gpu_cache_usage", 0.0) or 0.0),
+                "scheduler_schedule_start_ns": schedule_start_ns,
+                "scheduled_groups": groups,
+            }
+            self.last_causal_batch_id = register_scheduled_batch(seq_group_metadata_list, features)
+            self.last_causal_batch_features = features
+
+            # Track exact block-table ownership deltas at scheduler boundaries.
+            # This is request-local and does not infer KV use from token length.
+            current_request_blocks = {}
+            for seq_group in self.running:
+                request_id = str(getattr(seq_group, "request_id", ""))
+                try:
+                    seqs = seq_group.get_seqs(SequenceStatus.RUNNING)
+                except (AttributeError, TypeError):
+                    seqs = seq_group.get_seqs()
+                blocks = 0
+                for seq in seqs:
+                    try:
+                        blocks += len(tuple(self.block_manager.get_block_table(seq)))
+                    except (KeyError, AttributeError, TypeError):
+                        continue
+                if request_id:
+                    current_request_blocks[request_id] = blocks
+            previous_request_blocks = getattr(self, "_causal_request_blocks", {})
+            for request_id in set(previous_request_blocks) | set(current_request_blocks):
+                old_blocks = int(previous_request_blocks.get(request_id, 0))
+                new_blocks = int(current_request_blocks.get(request_id, 0))
+                if old_blocks != new_blocks:
+                    emit_causal_event(
+                        "kv_request_blocks_changed",
+                        instance_id=str(getattr(instance_info, "instance_id", "")),
+                        request_id=request_id,
+                        previous_blocks=old_blocks,
+                        current_blocks=new_blocks,
+                        block_delta=new_blocks - old_blocks,
+                    )
+            self._causal_request_blocks = current_request_blocks
+        else:
+            self.last_causal_batch_id = None
+            self.last_causal_batch_features = None
+            last_idle_sample_ns = int(getattr(self, "_causal_last_idle_sample_ns", 0) or 0)
+            if schedule_start_ns - last_idle_sample_ns >= 50_000_000:
+                emit_causal_event(
+                    "scheduler_idle",
+                    instance_id=str(getattr(instance_info, "instance_id", "")),
+                    num_running_requests=running_before,
+                    num_waiting_requests=waiting_before,
+                    kv_used_blocks=int(getattr(instance_info, "num_used_gpu_blocks", 0) or 0),
+                    kv_free_blocks=int(getattr(instance_info, "num_free_gpu_blocks", 0) or 0),
+                    sample_period_ms=50.0,
+                )
+                self._causal_last_idle_sample_ns = schedule_start_ns
         return seq_group_metadata_list, scheduler_outputs, allow_async_output_proc
 
     def _schedule(self):

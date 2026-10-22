@@ -24,6 +24,7 @@ from llumnix.queue.queue_client_base import QueueClientBase
 from llumnix.server_info import ServerInfo
 from llumnix.ray_utils import LlumnixActor, log_actor_ray_info, get_llumnix_actor_handle
 from llumnix.request_output import LlumnixRequestOuput, LlumnixRequestOutputs
+from llumnix.metrics.causal_events import emit as emit_causal_event, should_sample_output_update
 from llumnix.queue.utils import init_request_output_queue_client
 from llumnix.constants import NUM_GPUS_BLADELLM_GPU_ACTOR
 from llumnix.utils import (
@@ -40,6 +41,40 @@ from llumnix.queue.queue_type import QueueType
 logger = init_logger(__name__)
 
 LlumnixRequestOutputsType = Union[List[LlumnixRequestOuput], LlumnixRequestOutputs]
+
+
+def _record_output_forwarder_stage(
+    event_name: str,
+    server_request_outputs: Dict[str, LlumnixRequestOutputsType],
+) -> None:
+    """Record sampled output forwarding boundaries without changing queue behavior."""
+    for request_outputs in server_request_outputs.values():
+        try:
+            outputs = iter(request_outputs)
+        except TypeError:
+            continue
+        try:
+            for wrapped_output in outputs:
+                get_engine_output = getattr(wrapped_output, "get_engine_output", None)
+                if get_engine_output is None:
+                    continue
+                engine_output = get_engine_output()
+                output_tokens = max(
+                    (len(sequence.token_ids) for sequence in getattr(engine_output, "outputs", []) or []),
+                    default=0,
+                )
+                request_id = str(wrapped_output.request_id)
+                instance_id = str(wrapped_output.instance_id)
+                finished = bool(getattr(engine_output, "finished", False))
+                if should_sample_output_update(request_id, output_tokens, finished):
+                    emit_causal_event(
+                        event_name, request_id=request_id, instance_id=instance_id,
+                        output_tokens=output_tokens, finished=finished,
+                    )
+        except Exception:
+            # Optional telemetry must not affect serving if a backend output
+            # differs from the standard Llumnix wrapper shape.
+            continue
 
 
 class RequestOutputForwardingMode(str, Enum):
@@ -71,6 +106,7 @@ class BaseOutputForwarder(ABC):
         server_request_outputs: Dict[str, LlumnixRequestOutputsType],
         server_info_dict: Dict[str, ServerInfo],
     ) -> List[RequestIDType]:
+        _record_output_forwarder_stage("output_forwarder_queue_client_send", server_request_outputs)
         tasks = []
         for server_id, req_outputs in server_request_outputs.items():
             server_info = server_info_dict[server_id]
@@ -165,6 +201,7 @@ class ThreadOutputForwarder(BaseOutputForwarder):
         server_request_outputs: Dict[str, LlumnixRequestOutputsType],
         server_info_dict: Dict[str, ServerInfo]
     ) -> None:
+        _record_output_forwarder_stage("output_forwarder_submit", server_request_outputs)
         for req_outputs in server_request_outputs.values():
             self.add_trace_timeline(req_outputs, trace_name="engine_thread_put_queue_timestamp")
         asyncio.run_coroutine_threadsafe(
@@ -180,6 +217,7 @@ class ThreadOutputForwarder(BaseOutputForwarder):
         server_request_outputs: Dict[str, LlumnixRequestOutputsType],
         server_info_dict: Dict[str, ServerInfo],
     ) -> None:
+        _record_output_forwarder_stage("output_forwarder_loop_start", server_request_outputs)
         if self.request_output_forwarding_mode == RequestOutputForwardingMode.THREAD:
             aborted_request_ids = await self.put_nowait_to_servers_func(
                 self.request_output_queue_type, self.request_output_queue_client, server_request_outputs, server_info_dict

@@ -32,6 +32,9 @@ from llumnix.logging.logger import init_logger
 from llumnix.utils import random_uuid, ray_get_with_timeout
 from llumnix.constants import NUM_GPUS_VLLM_GPU_ACTOR
 import llumnix.envs as llumnix_envs
+from llumnix.metrics.causal_events import emit as emit_causal_event
+from llumnix.metrics.causal_events import enabled as causal_telemetry_enabled
+from llumnix.metrics.causal_events import finish_scheduled_batch, start_scheduled_batch
 
 logger = init_logger(__name__)
 
@@ -354,22 +357,55 @@ class LlumnixRayGPUExecutor(RayGPUExecutorAsync):
         # Ray worker result. This is the service-time signal consumed by the
         # calibration pipeline; do not synchronize CUDA separately here.
         t0 = time.perf_counter()
-        if not self.use_ray_spmd_worker:
-            request_outputs = await super().execute_model_async(execute_model_req)
+        if not causal_telemetry_enabled():
+            if not self.use_ray_spmd_worker:
+                request_outputs = await super().execute_model_async(execute_model_req)
+                self.last_inference_latency = (time.perf_counter() - t0) * 1000
+                return request_outputs
+            if self.forward_dag is None:
+                self.forward_dag = self._compiled_ray_dag(enable_asyncio=True)
+            serialized_data = self.input_encoder.encode(execute_model_req)
+            dag_future = await self.forward_dag.execute_async(serialized_data)
+            outputs = await dag_future[0]
+            request_outputs = self.output_decoder.decode(outputs)
             self.last_inference_latency = (time.perf_counter() - t0) * 1000
             return request_outputs
 
-        # pylint: disable=access-member-before-definition
-        if self.forward_dag is None:
-            self.forward_dag = self._compiled_ray_dag(enable_asyncio=True)
+        metadata_list = getattr(execute_model_req, "seq_group_metadata_list", ()) or ()
+        batch_id, batch_features = start_scheduled_batch(metadata_list)
+        emit_causal_event(
+            "executor_iteration_started",
+            batch_id=batch_id,
+            instance_id=str(getattr(self, "instance_id", "") or ""),
+            request_ids=[str(getattr(item, "request_id", "")) for item in metadata_list],
+            batch_features=batch_features,
+            ray_spmd_worker=bool(self.use_ray_spmd_worker),
+        )
+        failed = False
+        error_type = None
+        try:
+            if not self.use_ray_spmd_worker:
+                request_outputs = await super().execute_model_async(execute_model_req)
+            else:
+                # pylint: disable=access-member-before-definition
+                if self.forward_dag is None:
+                    self.forward_dag = self._compiled_ray_dag(enable_asyncio=True)
 
-        serialized_data = self.input_encoder.encode(execute_model_req)
-        dag_future = await self.forward_dag.execute_async(serialized_data)
-        outputs = await dag_future[0]
-        request_outputs = self.output_decoder.decode(outputs)
-
-        self.last_inference_latency = (time.perf_counter() - t0) * 1000
-        return request_outputs
+                serialized_data = self.input_encoder.encode(execute_model_req)
+                dag_future = await self.forward_dag.execute_async(serialized_data)
+                outputs = await dag_future[0]
+                request_outputs = self.output_decoder.decode(outputs)
+            self.last_inference_latency = (time.perf_counter() - t0) * 1000
+            return request_outputs
+        except Exception as exc:
+            failed = True
+            error_type = type(exc).__name__
+            raise
+        finally:
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            if failed:
+                self.last_inference_latency = elapsed_ms
+            finish_scheduled_batch(batch_id, elapsed_ms, succeeded=not failed, error_type=error_type)
 
     # _check_ray_adag_installation in vllm-v0.6.3.post1 requires ray version == 2.35.
     # _check_ray_adag_installation here (follows vllm-v0.7.2) requires ray version >= 2.40.

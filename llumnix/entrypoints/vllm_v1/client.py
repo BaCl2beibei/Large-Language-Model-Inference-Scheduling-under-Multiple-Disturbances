@@ -34,6 +34,7 @@ from llumnix.constants import LLUMNIX_TRACE_REQUEST, WAIT_MANAGER_INTERVAL
 from llumnix.utils import asyncio_wait_for_ray_remote_call_with_timeout, log_instance_exception
 from llumnix.request_output import LlumnixRequestOutputs
 from llumnix.entrypoints.client import LlumnixClient
+from llumnix.metrics.causal_events import emit as emit_causal_event, should_sample_output_update
 
 logger = init_logger(__name__)
 
@@ -188,6 +189,17 @@ class LlumnixClientVLLMV1(LlumnixClient, AsyncMPClient):
         """Process output order and put EngineCoreOutputs to local queue"""
         while True:
             llumnix_request_outputs: LlumnixRequestOutputs = await self.request_output_queue.get()
+            for engine_core_output in llumnix_request_outputs.engine_outputs.outputs:
+                request_id = str(engine_core_output.request_id)
+                output_tokens = int(get_completion_tokens(engine_core_output) or 0)
+                finished = bool(engine_core_output.finished)
+                if should_sample_output_update(request_id, output_tokens, finished):
+                    emit_causal_event(
+                        "output_queue_dequeue", request_id=request_id,
+                        instance_id=str(llumnix_request_outputs.instance_id),
+                        output_tokens=output_tokens, finished=finished,
+                        queue_batch_size=len(llumnix_request_outputs.engine_outputs.outputs),
+                    )
             outputs: List[EngineCoreOutput] = []
             for engine_core_output in llumnix_request_outputs.engine_outputs.outputs:
                 set_timestamp(engine_core_output, 'api_server_get_queue_timestamp', time.time())

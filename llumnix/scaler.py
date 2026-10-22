@@ -65,7 +65,6 @@ from llumnix.ray_utils import (
 )
 from llumnix.internal_config import PDDConfig
 from llumnix.constants import (
-    WAIT_PLACEMENT_GROUP_TIMEOUT,
     AUTO_SCALE_UP_INTERVAL,
     CHECK_DEPLOYMENT_STATES_INTERVAL,
     WATCH_DEPLOYMENT_INTERVAL,
@@ -290,7 +289,9 @@ class Scaler:
                         service_name=service_name,
                     )
                 try:
-                    await asyncio.wait_for(new_pg.ready(), timeout=WAIT_PLACEMENT_GROUP_TIMEOUT)
+                    await asyncio.wait_for(
+                        new_pg.ready(), timeout=float(llumnix_envs.WAIT_PLACEMENT_GROUP_TIMEOUT)
+                    )
                 except asyncio.TimeoutError:
                     logger.debug("Waiting for new placement group {} ready timeout.".format(new_unit_id))
                     # After timeout, the new placement group might be pending,

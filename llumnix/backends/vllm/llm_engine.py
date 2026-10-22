@@ -55,6 +55,8 @@ from llumnix.utils import (
     InstanceContext,
 )
 from llumnix.request_output import LlumnixRequestOuput
+from llumnix.metrics.causal_events import emit as emit_causal_event
+from llumnix.metrics.causal_events import emit_clock_sync as emit_causal_clock_sync
 
 logger = init_logger(__name__)
 
@@ -97,6 +99,12 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
         )
         self.disable_async_output_proc = disable_async_output_proc
         self.request_ids = set()
+        self._causal_output_counts: Dict[str, int] = {}
+        try:
+            self.scheduler[0].instance_id = instance_id
+        except (AttributeError, IndexError):
+            pass
+        emit_causal_clock_sync()
 
     # pylint: disable=W0221
     @classmethod
@@ -219,10 +227,34 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
             context.add_trace_timeline('engine_step_timestamp_end')
 
         for request_output in request_outputs:
+            request_id = str(request_output.request_id)
+            output_tokens = max((len(output.token_ids) for output in request_output.outputs), default=0)
+            previous_tokens = self._causal_output_counts.get(request_id, 0)
+            self._causal_output_counts[request_id] = output_tokens
+            scheduler = self.scheduler[0] if self.scheduler else None
+            batch_features = getattr(scheduler, "last_causal_batch_features", {}) or {}
+            emit_causal_event(
+                "engine_request_output",
+                request_id=request_id,
+                instance_id=self.instance_id,
+                batch_id=getattr(scheduler, "last_causal_batch_id", None),
+                input_tokens=len(request_output.prompt_token_ids or []),
+                output_tokens=output_tokens,
+                new_output_tokens=max(0, output_tokens - previous_tokens),
+                finished=bool(request_output.finished),
+                finish_reason=getattr(request_output.outputs[0], "finish_reason", None)
+                if request_output.outputs else None,
+                stop_reason=getattr(request_output.outputs[0], "stop_reason", None)
+                if request_output.outputs else None,
+                kv_utilization=batch_features.get("kv_utilization"),
+                running_requests=batch_features.get("num_running_requests"),
+                waiting_requests=batch_features.get("num_waiting_requests"),
+            )
             if request_output.finished:
                 logger.info("Engine finished request {}".format(request_output.request_id))
                 if request_output.request_id in self.request_ids:
                     self.request_ids.remove(request_output.request_id)
+                self._causal_output_counts.pop(request_id, None)
 
         instance_info: InstanceInfo = self.instance_info
         instance_info.instance_id = self.instance_id
@@ -285,8 +317,27 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
 
     async def step_async(self) -> Tuple[List[RequestOutput], List[RequestProcessingContext]]:
         self.step_begin_time = time.perf_counter()
+        step_start_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
         # pylint: disable=too-many-function-args
         outputs = await super().step_async(0)
+        step_end_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        scheduler = self.scheduler[0] if self.scheduler else None
+        batch_id = getattr(scheduler, "last_causal_batch_id", None)
+        if not batch_id and not outputs:
+            return await self._process_request_outputs(outputs)
+        batch_features = getattr(scheduler, "last_causal_batch_features", {}) or {}
+        emit_causal_event(
+            "llm_engine_step_completed",
+            instance_id=self.instance_id,
+            batch_id=batch_id,
+            request_ids=batch_features.get("request_ids", []),
+            batch_type=batch_features.get("batch_type"),
+            step_start_monotonic_ns=step_start_ns,
+            step_end_monotonic_ns=step_end_ns,
+            engine_step_wall_ms=(step_end_ns - step_start_ns) / 1_000_000.0,
+            executor_wall_ms=float(getattr(self.model_executor, "last_inference_latency", 0.0) or 0.0),
+            output_count=len(outputs or []),
+        )
         return await self._process_request_outputs(outputs)
 
     def stop(self) -> None:
@@ -315,6 +366,15 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
         super().add_request(request_id, *args, **kwargs)
         seq_group = self.scheduler[0].waiting[-1]
         request_processing_context.add_trace_timeline('engine_add_request_timestamp')
+        emit_causal_event(
+            "request_engine_admitted",
+            request_id=str(request_id),
+            instance_id=self.instance_id,
+            input_tokens=int(getattr(seq_group, "request_len", 0) or 0),
+            output_budget=int(getattr(getattr(seq_group, "sampling_params", None), "max_tokens", 0) or 0),
+            waiting_requests=len(self.scheduler[0].waiting),
+            running_requests=len(self.scheduler[0].running),
+        )
         hit_length = kwargs.get("hit_length", 0)
         transfer_penalty = kwargs.get("transfer_penalty", 1)
         self.scheduler[0].waiting[-1] = SequenceGroupLlumnix(

@@ -31,7 +31,7 @@ from ray.experimental.internal_kv import (
 import ray.exceptions
 
 from llumnix.logging.logger import init_logger
-from llumnix.constants import WAIT_PLACEMENT_GROUP_TIMEOUT
+import llumnix.envs as llumnix_envs
 from llumnix.utils import (InstanceType, log_instance_exception,
                            asyncio_wait_for_ray_remote_call_with_timeout)
 
@@ -210,7 +210,10 @@ def initialize_placement_group(
         # if they cannot be provisioned.
         if block:
             try:
-                ray.get(current_placement_group.ready(), timeout=WAIT_PLACEMENT_GROUP_TIMEOUT)
+                ray.get(
+                    current_placement_group.ready(),
+                    timeout=float(llumnix_envs.WAIT_PLACEMENT_GROUP_TIMEOUT),
+                )
             except ray.exceptions.GetTimeoutError:
                 logger.warning("Waiting for new placement group {} ready timeout.".format(placement_group_name))
                 return None

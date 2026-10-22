@@ -69,6 +69,8 @@ PROFILE_MIX = [
     {"name": "long", "input_tokens": 256, "output_tokens": 128, "weight": 0.25},
 ]
 PROFILE_CYCLE = False
+ENABLE_CAUSAL_TRACE = False
+IGNORE_EOS = True
 PROBE_QPS = [0.5, 1.0, 2.0, 3.0, 4.0, 6.0]
 PROBE_SEC = 20.0
 PROBE_DRAIN_SEC = 180.0
@@ -79,7 +81,9 @@ GPU_QUERY = (
 REQUEST_FIELDS = [
     "experiment_id", "mode", "qps_label", "target_qps", "seed", "run_id", "phase",
     "request_id", "server_request_id", "request_type", "scheduled_arrival_sec", "actual_send_wall_time",
-    "actual_send_sec", "completion_wall_time", "completion_sec", "expected_input_tokens",
+    "actual_send_sec", "client_send_monotonic_ns", "client_send_wall_time_ns",
+    "completion_wall_time", "completion_sec", "client_complete_monotonic_ns",
+    "client_complete_wall_time_ns", "expected_input_tokens",
     "server_input_tokens", "expected_output_tokens", "server_output_tokens", "client_e2e_ms",
     "server_ttft_ms", "server_tpot_ms", "timeline_count", "timeline_matches_output",
     "per_token_latency_json", "status_code", "success", "timeout", "error_type", "error_message",
@@ -405,6 +409,8 @@ def make_request_row(ctx: dict, req, phase: str) -> dict:
         "expected_input_tokens": req.input_tokens, "server_input_tokens": None,
         "expected_output_tokens": req.output_tokens, "server_output_tokens": None,
         "actual_send_wall_time": None, "actual_send_sec": None, "completion_wall_time": None,
+        "client_send_monotonic_ns": None, "client_send_wall_time_ns": None,
+        "client_complete_monotonic_ns": None, "client_complete_wall_time_ns": None,
         "completion_sec": None, "client_e2e_ms": None, "server_ttft_ms": None,
         "server_tpot_ms": None, "timeline_count": 0, "timeline_matches_output": False,
         "per_token_latency_json": None, "status_code": None, "success": False,
@@ -442,17 +448,23 @@ async def execute_trace(trace, ctx: dict, phase: str, duration: float, drain_sec
             await asyncio.sleep(delay)
         row["actual_send_wall_time"] = time.time()
         row["actual_send_sec"] = time.monotonic() - phase_start
+        row["client_send_monotonic_ns"] = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        row["client_send_wall_time_ns"] = time.time_ns()
         body = {
             "prompt": req.prompt, "n": 1, "best_of": 1, "temperature": 0.0,
-            "top_k": 1, "max_tokens": req.output_tokens, "ignore_eos": True, "stream": False,
+            "top_k": 1, "max_tokens": req.output_tokens, "ignore_eos": IGNORE_EOS, "stream": False,
             "request_id": row["request_id"],
         }
         try:
-            async with session.post(f"{BASE_URL}/generate_benchmark", json=body) as response:
+            headers = ({"X-Llumnix-Trace": "true", "X-Llumnix-Trace-Events": "true"}
+                       if ENABLE_CAUSAL_TRACE else None)
+            async with session.post(f"{BASE_URL}/generate_benchmark", json=body, headers=headers) as response:
                 row["status_code"] = response.status
                 raw = await response.text()
                 row["completion_wall_time"] = time.time()
                 row["completion_sec"] = time.monotonic() - phase_start
+                row["client_complete_monotonic_ns"] = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+                row["client_complete_wall_time_ns"] = time.time_ns()
                 row["client_e2e_ms"] = (row["completion_sec"] - row["actual_send_sec"]) * 1000.0
                 if response.status != 200:
                     row["error_type"] = "http_error"
@@ -482,6 +494,8 @@ async def execute_trace(trace, ctx: dict, phase: str, duration: float, drain_sec
             row["error_message"] = str(exc)[:1000]
             row["completion_wall_time"] = time.time()
             row["completion_sec"] = time.monotonic() - phase_start
+            row["client_complete_monotonic_ns"] = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+            row["client_complete_wall_time_ns"] = time.time_ns()
             if row["actual_send_sec"] is not None:
                 row["client_e2e_ms"] = (row["completion_sec"] - row["actual_send_sec"]) * 1000.0
 

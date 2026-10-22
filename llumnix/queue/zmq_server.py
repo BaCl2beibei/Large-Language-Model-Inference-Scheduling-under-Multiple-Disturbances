@@ -21,6 +21,7 @@ import zmq.asyncio
 import cloudpickle
 
 from llumnix.queue.queue_server_base import QueueServerBase
+from llumnix.metrics.causal_events import emit as emit_causal_event, should_sample_output_update
 from llumnix.queue.zmq_utils import (RPC_SUCCESS_STR, RPCPutNoWaitQueueRequest,
                                      RPCPutNoWaitBatchQueueRequest, RPCUtilityRequest,
                                      get_open_zmq_ipc_path)
@@ -181,6 +182,7 @@ class ZmqServer(QueueServerBase):
         try:
             item = put_nowait_queue_request.item
             self.put_nowait(item)
+            self._record_output_queue_enqueues(item, put_nowait_queue_request.send_time)
             await asyncio.wait_for(
                 self.socket.send_multipart(
                     [identity, cloudpickle.dumps(RPC_SUCCESS_STR)]
@@ -201,10 +203,33 @@ class ZmqServer(QueueServerBase):
             except Exception as e:
                 self._log_exception(e)
 
+    def _record_output_queue_enqueues(self, item: Any, client_send_time: float | None) -> None:
+        items = item if isinstance(item, Iterable) else (item,)
+        queue_depth = self.qsize()
+        for output in items:
+            if not isinstance(output, LlumnixRequestOuput):
+                continue
+            engine_output = output.get_engine_output()
+            output_tokens = max(
+                (len(sequence.token_ids) for sequence in getattr(engine_output, "outputs", []) or []),
+                default=0,
+            )
+            finished = bool(getattr(engine_output, "finished", False))
+            if not should_sample_output_update(output.request_id, output_tokens, finished):
+                continue
+            emit_causal_event(
+                "output_queue_enqueue", request_id=str(output.request_id),
+                instance_id=str(output.instance_id), output_tokens=output_tokens,
+                finished=finished, queue_depth_messages=queue_depth,
+                queue_client_send_monotonic_sec=client_send_time,
+            )
+
     async def _put_nowait_batch(self, identity, put_nowait_batch_queue_request: RPCPutNoWaitBatchQueueRequest):
         try:
             items = put_nowait_batch_queue_request.items
             self.put_nowait_batch(items)
+            for item in items:
+                self._record_output_queue_enqueues(item, put_nowait_batch_queue_request.send_time)
             await asyncio.wait_for(
                 self.socket.send_multipart(
                     [identity, cloudpickle.dumps(RPC_SUCCESS_STR)]
