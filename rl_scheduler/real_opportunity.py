@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from decimal import Decimal
 import hashlib
 import json
 import math
@@ -55,7 +56,7 @@ def protocol(run_dir, runtime_config):
             'pairing':'busiest sources (ascending numeric capacity/request) with least busy destinations, stable ID ties',
             'move':'exact observed SR candidate; after-load uses its actual block count and one running request',
             'predicate':'source_after < destination_after and 0 < abs(after_difference) < abs(before_difference)',
-            'relation_to_native':'native Balanced remaining_steps ordering/filter/predicate; actual SR blocks replace stale last-queue estimate',
+            'relation_to_native':'native remaining_steps threshold direction and Balanced sorting/predicate; actual SR blocks replace stale last-queue estimate; native killed-request override is not exposed and is not reproduced',
             'control':'same lease, one global migration, terminal cooldown 5s, reserve max(16,ceil(5% total)), freshness <=2s'},
         'slos':{'ttft_ms':2000.,'tpot_ms':150.,'single_token':'TTFT only; TPOT N/A'},
         'metrics':{'primary':'SLO-goodput over fixed 240s','completion_denominator':'all offered',
@@ -177,9 +178,17 @@ def paired_gate(episodes,spec):
             ga,gb=a['metrics']['slo_goodput_rps'],b['metrics']['slo_goodput_rps']
             ea,eb=a['metrics']['nonmanual_error_rate'],b['metrics']['nonmanual_error_rate']
             relative=(gb-ga)/ga if ga>0 else None
-            error_pp=(eb-ea)*100 if ea is not None and eb is not None else None
-            error_ok=error_pp is not None and error_pp<=spec['gate']['max_error_rate_increase_pp']+1e-12
-            win=relative is not None and relative+1e-12>=spec['gate']['min_paired_relative_gain'] and error_ok
+            # Use integer counts when present to avoid threshold changes caused
+            # by subtracting rounded rates; Decimal fallback supports CPU fixtures.
+            error_delta=(Decimal(b['metrics']['nonmanual_errors']-a['metrics']['nonmanual_errors'])*100/Decimal(a['metrics']['offered'])
+                         if 'nonmanual_errors' in a['metrics'] and 'nonmanual_errors' in b['metrics']
+                         else (Decimal(str(eb))-Decimal(str(ea)))*100 if ea is not None and eb is not None else None)
+            error_pp=float(error_delta) if error_delta is not None else None
+            error_ok=error_delta is not None and error_delta<=Decimal(str(spec['gate']['max_error_rate_increase_pp']))
+            ga_exact=Decimal(a['metrics']['slo_completed']) if 'slo_completed' in a['metrics'] else Decimal(str(ga))
+            gb_exact=Decimal(b['metrics']['slo_completed']) if 'slo_completed' in b['metrics'] else Decimal(str(gb))
+            gain_ok=ga_exact>0 and gb_exact>=ga_exact*(1+Decimal(str(spec['gate']['min_paired_relative_gain'])))
+            win=relative is not None and gain_ok and error_ok
             row={'scene':scene,'seed':seed,'Stay_goodput_rps':ga,'Balanced_goodput_rps':gb,
                  'absolute_goodput_delta':gb-ga,'relative_gain':relative,'error_rate_delta_pp':error_pp,
                  'error_guard_passed':error_ok,'winning_pair':win,
@@ -226,7 +235,7 @@ def make_trace(spec, *, seed,qps,duration,bursty=False):
         at=lo+arrivals.expovariate(qps*multiplier)
         while at<hi:
             times.append(at);at+=arrivals.expovariate(qps*multiplier)
-    if len(times)>=spec['workload']['max_requests']:raise ValueError('trace cap reached; do not silently truncate offered arrivals')
+    if len(times)>spec['workload']['max_requests']:raise ValueError('trace cap reached; do not silently truncate offered arrivals')
     rows=[];mix=[(i,o) for i in spec['workload']['input_budgets'] for o in spec['workload']['output_budgets']]
     for index,at in enumerate(times):
         inp,out=profiles.choice(mix)

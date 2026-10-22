@@ -69,9 +69,10 @@ def reconstruct_rewards(ledger, edges_ns, migrations, *, scales, cleanup_through
         ids.add(record['decision_id'])
         if record.get('terminal_status') not in ('succeeded','failed','rejected','aborted') or type(record.get('terminal_ns')) is not int:
             raise ValueError('unknown migration terminal cannot be scored')
+        if record['terminal_ns']<ledger.start_ns:raise ValueError('foreign pre-episode terminal')
         stamp=record.get('attempt_ns');mid=record.get('migration_id')
         if stamp is not None:
-            if type(stamp) is not int or not mid or mid in migration_ids or stamp>record['terminal_ns']:
+            if type(stamp) is not int or stamp<ledger.start_ns or not mid or mid in migration_ids or stamp>record['terminal_ns']:
                 raise ValueError('invalid or duplicate original migration attempt')
             migration_ids.add(mid)
         if record['terminal_status']=='succeeded' and stamp is None:
@@ -118,6 +119,10 @@ def fit_reference_scales(episodes, *, healthy):
         if episode.get('status')!='passed':raise ValueError('invalid Stay evidence cannot be silently omitted')
         if healthy(episode):eligible.append(episode)
     if not eligible:raise ValueError('no measured healthy Stay opportunity data for C_ref/N_ref')
+    for episode in eligible:
+        m=episode['metrics']
+        if (any(not math.isfinite(m[key]) or m[key]<0 for key in ('completed','outstanding_request_seconds','duration_sec'))
+                or m['duration_sec']<=0):raise ValueError('invalid measured reference metrics')
     duration=sum(e['metrics']['duration_sec'] for e in eligible)
     if duration<=0:raise ValueError('nonpositive reference duration')
     c=sum(e['metrics']['completed'] for e in eligible)/duration

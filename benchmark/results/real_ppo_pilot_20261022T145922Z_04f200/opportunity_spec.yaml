@@ -96,8 +96,9 @@ balanced:
   move: exact observed SR candidate; after-load uses its actual block count and one
     running request
   predicate: source_after < destination_after and 0 < abs(after_difference) < abs(before_difference)
-  relation_to_native: native Balanced remaining_steps ordering/filter/predicate; actual
-    SR blocks replace stale last-queue estimate
+  relation_to_native: native remaining_steps threshold direction and Balanced sorting/predicate;
+    actual SR blocks replace stale last-queue estimate; native killed-request override
+    is not exposed and is not reproduced
   control: same lease, one global migration, terminal cooldown 5s, reserve max(16,ceil(5%
     total)), freshness <=2s
 slos:

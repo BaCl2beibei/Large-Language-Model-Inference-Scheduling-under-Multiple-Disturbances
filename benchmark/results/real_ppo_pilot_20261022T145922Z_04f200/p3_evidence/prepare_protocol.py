@@ -19,6 +19,8 @@ def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
 def main():
+    if (RUN/'gates/p3_ready.json').exists() or (RUN/'opportunity_runs').exists():
+        raise RuntimeError('protocol already frozen or attempted; preserve it and issue a reviewed amendment')
     spec=protocol(RUN,ROOT/'rl_scheduler/configs/real_pilot.yaml')
     runtime=yaml.safe_load((ROOT/'rl_scheduler/configs/real_pilot.yaml').read_text())
     spec['sampling']=runtime['sampling'];spec['runtime_config_hash']=sha(ROOT/'rl_scheduler/configs/real_pilot.yaml')
