@@ -204,7 +204,8 @@ class MigrationScheduler:
     # TODO(KuilongCui): The migration rules can be defined in constructor
     def push_migrations(
         self,
-        instance_info: Dict[str, InstanceInfo]
+        instance_info: Dict[str, InstanceInfo],
+        allow_routine: bool = True,
     ) -> List[Tuple[MigrationType, List[Tuple[str, str]]]]:
         if self.enable_pre_stop_migration:
             pre_stop_migration_tasks = []
@@ -227,6 +228,8 @@ class MigrationScheduler:
                 if len(task[1]) > 0:
                     return pre_stop_migration_tasks
 
+        if not allow_routine:
+            return []
         routine_migration_tasks = []
         if self.enable_pd_disagg:
             routine_migration_tasks.append((

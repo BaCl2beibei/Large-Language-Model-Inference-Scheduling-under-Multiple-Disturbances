@@ -39,6 +39,9 @@ from llumnix.constants import SERVER_TIMEOUT_KEEP_ALIVE, LLUMNIX_TRACE_HEADER, L
 from llumnix.request_output import LlumnixRequestOuput
 from llumnix.metrics.causal_events import emit as emit_causal_event
 from llumnix.metrics.causal_events import emit_clock_sync as emit_causal_clock_sync
+from llumnix.metrics.causal_events import flush as flush_causal_events
+from llumnix.entrypoints.vllm.real_metrics_stream import install_real_metrics_routes
+from llumnix.entrypoints.vllm.real_control_api import install_real_control_routes
 
 # Code file with __main__ should set the logger name to inherit the llumnix logger configuration.
 logger = init_logger("llumnix.entrypoints.vllm.api_server")
@@ -61,6 +64,37 @@ async def lifespan(fastapi_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+async def _real_metrics_abort_confirmed(request_id: str) -> bool:
+    # Recent-output routing can still point to the old migration source.
+    # Only the Manager can fence pending dispatch and every possible owner.
+    manager = getattr(llumnix_client, 'manager', None)
+    if manager is None:
+        return False
+    import asyncio
+    import time
+    deadline = time.monotonic()+50.
+    while time.monotonic()<deadline:
+        result = await asyncio_wait_for_ray_remote_call_with_timeout(
+            manager.real_cancel_request, request_id, timeout=max(.001,deadline-time.monotonic()))
+        if result.get('status')=='absent':break
+        await asyncio.sleep(min(.1,max(0.,deadline-time.monotonic())))
+    else:
+        return False
+    # The control-plane barrier includes output-forwarder delivery completion.
+    # Drain the API queue before finishing the local stream; the route also waits
+    # for its HTTP handler's done event before reporting cancelled_confirmed.
+    while llumnix_client.request_output_queue.qsize():
+        if time.monotonic()>=deadline:return False
+        await asyncio.sleep(.01)
+    llumnix_client._clear_client_request_states(request_id)
+    return True
+
+
+_real_metric_states = install_real_metrics_routes(app, lambda: llumnix_client, SamplingParams,
+                            emit_causal_event, flush_causal_events, _real_metrics_abort_confirmed)
+install_real_control_routes(app, lambda: llumnix_client, _real_metric_states, flush_causal_events)
 
 
 # pylint: disable=unused-argument

@@ -1,0 +1,81 @@
+algorithm: Mig-PPO
+environment:
+  num_instances: 4
+  decision_interval_sec: 0.05
+  max_decisions: 4000
+  max_running_requests: null
+  max_num_seqs_per_instance: 128
+  total_kv_blocks: 22084
+  block_size_tokens: 16
+  max_model_len: 2112
+  max_num_batched_tokens: 2112
+  ttft_slo_ms: 2000.0
+  tpot_slo_ms: 150.0
+  request_timeout_sec: null
+  migration_cooldown_sec: 0.0
+  max_state_age_sec: 2.0
+  safety_margin_blocks: 16
+  safety_margin_fraction: 0.05
+  arrival_model: poisson
+  workload_scenario: mix
+  target_qps_levels:
+  - 9
+  - 12
+  - 15
+  - 18
+  - 21
+  prompt_profiles:
+  - 256
+  - 512
+  - 1048
+  output_profiles:
+  - 256
+  - 512
+  - 1048
+  prefill_ms_per_token: 0.025
+  prefill_intercept_ms: 4.0
+  decode_ms_per_request: 2.5
+  decode_ms_per_context_token: 0.004
+  decode_intercept_ms: 1.0
+  migration_alpha_ms: 50.0
+  migration_beta_ms_per_block: 0.1
+  calibration_status: uncalibrated
+ppo:
+  device: cpu
+  hidden_size: 64
+  learning_rate: 0.0003
+  rollout_steps: 512
+  update_epochs: 10
+  minibatch_size: 64
+  clip_epsilon: 0.2
+  gamma: 0.99
+  gae_lambda: 0.95
+  entropy_coefficient: 0.01
+  value_coefficient: 0.5
+  max_grad_norm: 0.5
+reward:
+  weights:
+    throughput: 0.2
+    waiting_pressure: 0.25
+    tpot_pressure: 0.2
+    slo_violations: 0.25
+    kv_pressure: 0.1
+    migration_cost: 0.1
+    migration_count: 0.05
+    migration_failure: 0.2
+  scales:
+    throughput_tokens_per_sec: 100.0
+    mean_waiting_requests: 4.0
+    tpot_ms: 150.0
+    slo_violation_rate: 0.1
+    kv_usage: 0.9
+    migration_cost_ms: 1000.0
+    migration_operations: 1.0
+    migration_failures: 1.0
+training:
+  seed: 42
+  total_episodes: 2000
+  normalization_steps: 256
+  evaluation_interval_updates: 1
+  torch_num_threads: 1
+  output_dir: benchmark/results/ppo_system_validation_round2_causal_repairs_20261022/ppo_smoke_cpu8

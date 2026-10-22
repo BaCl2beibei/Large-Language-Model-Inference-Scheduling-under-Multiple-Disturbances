@@ -16,6 +16,7 @@ import queue
 import socket
 import threading
 import time
+import uuid
 from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -56,6 +57,8 @@ def _safe(value: Any) -> Any:
 class _JsonlWriter:
     def __init__(self, directory: str, pid: int) -> None:
         self.pid = pid
+        self.stream_id = f"{socket.gethostname()}-{pid}-{uuid.uuid4().hex}"
+        self.error: str | None = None
         self.path = Path(directory) / f"events_{socket.gethostname()}_{pid}.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.queue: queue.Queue[dict[str, Any] | None] = queue.Queue()
@@ -68,6 +71,12 @@ class _JsonlWriter:
         self.queue.put_nowait(event)
 
     def _run(self) -> None:
+        try:
+            self._write_loop()
+        except Exception as exc:  # surfaced by flush(), never claim a dead writer is complete
+            self.error = type(exc).__name__
+
+    def _write_loop(self) -> None:
         buffered_events = 0
         with self.path.open("a", encoding="utf-8", buffering=64 * 1024) as stream:
             while True:
@@ -82,6 +91,12 @@ class _JsonlWriter:
                     if item is None:
                         stream.flush()
                         return
+                    if isinstance(item, _FlushBarrier):
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                        item.done.set()
+                        buffered_events = 0
+                        continue
                     stream.write(json.dumps(item, ensure_ascii=False, separators=(",", ":"),
                                              allow_nan=False) + "\n")
                     buffered_events += 1
@@ -101,6 +116,38 @@ class _JsonlWriter:
             # The sentinel follows all queued events, so joining drains and
             # flushes the complete process stream before its interpreter exits.
             self.thread.join()
+
+
+class _FlushBarrier:
+    def __init__(self) -> None:
+        self.done = threading.Event()
+
+
+def flush(timeout_sec: float = 5.0) -> dict[str, Any]:
+    """Acknowledge durable process-local sequence progress, not cluster quiescence.
+
+    The caller must query every registered producer; pending output delivery and
+    asynchronous work need separate confirmation. Disabled/dead writers return
+    incomplete. Sequence assignment, enqueue and the barrier share one lock.
+    """
+    if timeout_sec < 0:
+        raise ValueError("negative flush timeout")
+    writer = _writer_for_process()
+    if writer is None:
+        return {"status": "incomplete", "reason": "tracing_disabled"}
+    with _SEQUENCE_LOCK:
+        barrier = _FlushBarrier()
+        sequence = _EVENT_SEQUENCE
+        through_ns = time.monotonic_ns()
+        if writer._closed or writer.error:
+            return {"status": "incomplete", "reason": writer.error or "writer_closed"}
+        writer.queue.put_nowait(barrier)
+    done = barrier.done.wait(timeout_sec)
+    return {"status": "passed" if done and writer.error is None else "incomplete",
+            "source": writer.stream_id, "last_sequence": sequence,
+            "through_ns": through_ns, "received_ns": time.monotonic_ns(),
+            "durable": bool(done and writer.error is None),
+            "reason": writer.error if writer.error else (None if done else "flush_timeout")}
 
 
 def _after_fork_child() -> None:
@@ -155,30 +202,30 @@ def emit(event: str, **fields: Any) -> int | None:
     writer = _writer_for_process()
     if writer is None:
         return None
-    mono_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
-    wall_ns = time.time_ns()
     with _SEQUENCE_LOCK:
+        mono_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        wall_ns = time.time_ns()
         _EVENT_SEQUENCE += 1
         event_sequence = _EVENT_SEQUENCE
-    payload = {
-        "schema_version": SCHEMA_VERSION,
-        "event_sequence": event_sequence,
-        "event": str(event),
-        "clock_id": "CLOCK_MONOTONIC",
-        "monotonic_ns": mono_ns,
-        "wall_time_ns": wall_ns,
-        "pid": os.getpid(),
-        "thread_id": threading.get_ident(),
-        "host": socket.gethostname(),
-        "process_name": os.environ.get("PROC_NAME", ""),
-        **_safe(fields),
-    }
-    try:
-        writer.put(payload)
-    except Exception:
-        # Telemetry must not terminate a serving actor. A failed event remains
-        # visible through the sequence gap in that process's JSONL stream.
-        return None
+        payload = {
+            **_safe(fields),
+            "schema_version": SCHEMA_VERSION,
+            "event_sequence": event_sequence,
+            "event": str(event),
+            "clock_id": "CLOCK_MONOTONIC",
+            "monotonic_ns": mono_ns,
+            "wall_time_ns": wall_ns,
+            "pid": os.getpid(),
+            "thread_id": threading.get_ident(),
+            "host": socket.gethostname(),
+            "process_name": os.environ.get("PROC_NAME", ""),
+            "stream_id": writer.stream_id,
+        }
+        try:
+            writer.put(payload)
+        except Exception:
+            # A failed event remains visible through the sequence gap.
+            return None
     return event_sequence
 
 

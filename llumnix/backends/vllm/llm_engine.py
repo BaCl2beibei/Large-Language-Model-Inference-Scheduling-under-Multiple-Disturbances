@@ -43,6 +43,7 @@ from llumnix.internal_config import MigrationConfig
 from llumnix.queue.queue_type import QueueType
 from llumnix.backends.utils import EngineState
 from llumnix.backends.output_forwarder import RequestOutputForwardingMode, OutputForwarder
+from rl_scheduler.real_bridge import CumulativeTokenCounter
 from llumnix.ray_utils import LlumnixActor, get_llumnix_actor_handle
 from llumnix.llumlet.request import LlumnixRequest
 from llumnix.constants import NO_OUTPUTS_STEP_INTERVAL, RAY_RPC_TIMEOUT
@@ -100,6 +101,8 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
         self.disable_async_output_proc = disable_async_output_proc
         self.request_ids = set()
         self._causal_output_counts: Dict[str, int] = {}
+        self._real_token_counter = CumulativeTokenCounter()
+        self._real_output_tokens_total = 0
         try:
             self.scheduler[0].instance_id = instance_id
         except (AttributeError, IndexError):
@@ -230,6 +233,8 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
             request_id = str(request_output.request_id)
             output_tokens = max((len(output.token_ids) for output in request_output.outputs), default=0)
             previous_tokens = self._causal_output_counts.get(request_id, 0)
+            self._real_token_counter.observe(request_id, output_tokens)
+            self._real_output_tokens_total = self._real_token_counter.total
             self._causal_output_counts[request_id] = output_tokens
             scheduler = self.scheduler[0] if self.scheduler else None
             batch_features = getattr(scheduler, "last_causal_batch_features", {}) or {}
@@ -290,7 +295,12 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
             context.add_trace_timeline("engine_step_postprocess_timestamp_end")
 
         if request_outputs:
-            server_request_outputs, server_info_dict = self._gen_server_request_outputs(request_outputs, request_processing_contexts)
+            # Retain engine production/events above, but fence future delivery of
+            # cancelled requests, including output from an already executing step.
+            kept = [(output,context) for output,context in zip(request_outputs,request_processing_contexts)
+                    if output.request_id not in getattr(self, '_real_cancelled_requests', set())]
+            server_request_outputs, server_info_dict = self._gen_server_request_outputs(
+                [pair[0] for pair in kept], [pair[1] for pair in kept])
             if server_request_outputs:
                 self.output_forwarder.put_request_outputs_to_server(server_request_outputs, server_info_dict)
 
@@ -510,6 +520,7 @@ class BackendVLLM(BackendBaseInterface, BackendMigrationInterface):
             await self._run_workers_async("commit_seq_group_metadata", request_id)
 
         seq = backend_request.get_seqs()[0]
+        self.engine._real_token_counter.baseline(request_id, backend_request.output_len)
         seq.seq_id = next(self.engine.seq_counter)
         logger.info("pop request {} from pre-allocated cache".format(request_id))
         pre_alloc_blocks = self.engine.scheduler[0].pre_alloc_cache_dict.pop(request_id)
@@ -597,7 +608,10 @@ class BackendVLLM(BackendBaseInterface, BackendMigrationInterface):
         return ret
 
     def _remove_running_request(self, request_id: str) -> bool:
-        return self.engine.scheduler[0].remove_running_request(request_id)
+        removed = self.engine.scheduler[0].remove_running_request(request_id)
+        if request_id in getattr(self.engine, '_real_cancelled_requests', set()):
+            self.engine.abort_request({request_id})
+        return removed
 
     def remove_waiting_request(self, *args, **kwargs) -> bool:
         return self.engine.scheduler[0].remove_waiting_request(*args, **kwargs)

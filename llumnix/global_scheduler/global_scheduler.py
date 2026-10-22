@@ -169,8 +169,8 @@ class GlobalScheduler:
 
         return prefill_instance_id, decode_instance_id, request_expected_steps
 
-    def push_migrations(self, instance_info: Dict[str, InstanceInfo]) -> List[List[Tuple[str, str]]]:
-        return self.migration_scheduler.push_migrations(instance_info)
+    def push_migrations(self, instance_info: Dict[str, InstanceInfo], allow_routine: bool = True) -> List[List[Tuple[str, str]]]:
+        return self.migration_scheduler.push_migrations(instance_info, allow_routine=allow_routine)
 
     def check_scale(self) -> Tuple[str, str]:
         scale_up_num, scale_down_num = self.scaling_scheduler.check_scale(self.instance_info, self.instance_id_set)

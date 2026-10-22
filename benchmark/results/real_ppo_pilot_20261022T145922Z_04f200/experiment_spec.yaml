@@ -1,0 +1,92 @@
+schema_version: 1
+status: draft_unreviewed
+run_id: real_ppo_pilot_20261022T145922Z_04f200
+project: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream
+source_basis:
+  execution_plan: rl_scheduler/docs/real_cluster_ppo_execution_plan.md
+  execution_plan_sha256: b344e6a36cd63072e0c99a6bd9012bd4442bef1071a10a74e634ad899616b145
+  historical_model: Qwen2-0.5B
+  historical_model_path: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B
+  historical_runtime_config_is_live: false
+  historical_config_reference: benchmark/results/ppo_system_validation_round3_fixed_lengths_20261022/qps_15/pilot_spec.json
+execution_scope:
+  hardware_mode: single_host_four_gpu_non_pd
+  num_independent_instances: 4
+  gpu_inventory: "4 x NVIDIA GeForce RTX 3060, 12 GiB each"
+  no_model_loading_during_p0: true
+workload:
+  candidate_load_probe_qps: [3, 6, 9]
+  do_not_escalate_automatically_to_qps_18: true
+  arrival_horizon_sec: 120
+  drain_horizon_sec: 120
+  fixed_score_window_sec: 240
+  cleanup_deadline_sec: 60
+  clock: monotonic
+  decision_interval_sec: 1.0
+  scenario_A:
+    description: normal dispatcher, stable medium load
+    selection_rule: choose from the predeclared QPS probe set using P3 health review before opportunity runs
+  scenario_B:
+    description: same model/profile with fixed arrival skew to one instance
+    initial_route_share_percent: [70, 10, 10, 10]
+    route_must_be_verified: true
+  scenario_C:
+    description: burst workload not used for training
+    trace_status: must be frozen and hashed before final evaluation
+  request_profile_candidate:
+    source: benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505/batch_config.json
+    input_token_budgets: [256, 512, 1048]
+    output_token_budgets: [256, 512, 1048]
+    combination_weights: equal
+    output_budgets_are_not_realized_lengths: true
+    force_exact_output_length: false
+    identical_exogenous_trace_across_paired_policies: true
+    sampling_parameters: retain_the_same_serving_parameters_across_policies_and_record_before_P3
+    request_profile_status: candidate_from_prior_calibration_not_live_verified
+slos:
+  ttft_max_ms: 2000
+  tpot_max_ms: 150
+  tpot_applies_when_output_tokens_at_least: 2
+  one_token_requests: ttft_only_and_report_separately
+  primary_metric: "SLO-goodput = normally completed requests within fixed 240-second score window meeting TTFT/TPOT SLO divided by 240 seconds"
+  completion_rate_denominator: all_offered_requests
+  late_completion_after_score_deadline: cleanup_appendix_only
+seeds:
+  status: candidate_reservation_after_existing_results_search
+  opportunity: [2101, 2102, 2103]
+  training_candidate_range: "3100-3199"
+  development: [4101, 4102, 4103]
+  final: [5101, 5102, 5103]
+  collision_found_in_existing_result_metadata_or_filenames: false
+  search_result: benchmark/results metadata and paths had no candidate seed matches
+  seed_sets_are_non_overlapping: true
+experiment_order:
+  stage_order: [P0, P1, P2, P3, P4, P5]
+  opportunity:
+    scenes: [A, B]
+    seeds: [2101, 2102, 2103]
+    policies: [Stay, Balanced]
+    pairing: same_trace_same_seed_and_scene
+    policy_order: counterbalance_Stay_then_Balanced_and_Balanced_then_Stay_across_seed_scene_pairs
+    planned_runs: 12
+  training:
+    candidate_seed_range: "3100-3199"
+    begin_only_after_P3_gate_passes: true
+  development:
+    seeds: [4101, 4102, 4103]
+    policy_selection_metric: SLO_goodput
+  final_evaluation:
+    seeds: [5101, 5102, 5103]
+    methods: [Stay, constrained_Balanced, constrained_Defrag, Mig_PPO]
+    planned_runs: 36
+    strategy_execution: deterministic_PPO_by_default
+    do_not_use_final_seeds_for_selection_or_tuning: true
+gate_rules:
+  opportunity_minimum: "At least one scene: Balanced beats Stay by >=10% in at least 2/3 paired seeds, and non-manual-cancel error rate rises <=1 percentage point; zero baseline goodput requires absolute reporting and does not auto-pass."
+  if_all_candidate_qps_are_unhealthy: stop_and_investigate_service_chain_before_training
+  if_both_policies_have_zero_goodput_in_most_scenes: do_not_enter_PPO
+  final_evaluation_gate: "Use taskbook threshold and report engineering success separately from preliminary effect."
+protocol_review:
+  reviewed_by_domain_expert: false
+  scope_note: P0 candidate draft only; P3 must freeze any remaining workload and reward details before opportunity runs.
+  unresolved_before_gpu: persistent_budget_timer_implementation_and_runtime_sampling_parameter_capture

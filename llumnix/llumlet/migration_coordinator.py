@@ -304,10 +304,11 @@ class MigrationCoordinator:
                                        dst_instance_actor: ray.actor.ActorHandle,
                                        dst_instance_id: str,
                                        migrate_out_request: LlumnixRequest,
-                                       migration_type: Optional[MigrationType] = None) -> List[LlumnixRequest]:
+                                       migration_type: Optional[MigrationType] = None,
+                                       migration_id: Optional[str] = None) -> List[LlumnixRequest]:
         t0 = time.time()
         t0_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
-        migration_id = f"{self.instance_id}:{migrate_out_request.request_id}:{t0_ns}"
+        migration_id = migration_id or f"{self.instance_id}:{migrate_out_request.request_id}:{t0_ns}"
         emit_causal_event(
             "migration_attempt_started",
             migration_id=migration_id,
@@ -638,7 +639,12 @@ class MigrationCoordinator:
                         request_arrival_time: float,
                         block_num: int,
                         token_ids: List[int],
-                        is_first_stage: bool) -> MigrationResponse:
+                        is_first_stage: bool,
+                        real_expected_epoch: Optional[str] = None) -> MigrationResponse:
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            return MigrationResponse(success=False, return_value=None)
+        if real_expected_epoch is not None and getattr(self, '_real_capacity_guards', {}).get(request_id) != real_expected_epoch:
+            return MigrationResponse(success=False, return_value=None)
         if is_first_stage and not self.has_migration_slot():
             logger.debug(
                 "Max migration concurrency ({}) reached, reject new migrate in attempt.".format(
@@ -660,6 +666,15 @@ class MigrationCoordinator:
                          block_num: int,
                          token_ids: List[int],
                          is_first_stage: bool) -> MigrationResponse:
+        if request_id in getattr(self, '_real_capacity_guards', set()):
+            from rl_scheduler.real_bridge import capacity_ok
+            info = self.backend_engine.engine.scheduler[0]._get_instance_info([])
+            destination = {'total_blocks': info.num_total_gpu_blocks,
+                           'free_blocks': info.num_free_gpu_blocks,
+                           'waiting_blocks': info.num_blocks_all_waiting_requests}
+            if not capacity_ok(destination, max(1, block_num)):
+                self.free_pre_alloc_cache(request_id)
+                return MigrationResponse(success=False, return_value=None)
         response = self.backend_engine.pre_alloc_cache(request_id,
                                                        request_status,
                                                        request_arrival_time,
@@ -681,6 +696,8 @@ class MigrationCoordinator:
                                    token_ids: List[int],
                                    is_first_stage: bool) -> MigrationResponse:
         try:
+            epoch = getattr(self, '_real_request_guards', {}).get(str(request_id))
+            control_kwargs = {'real_expected_epoch': epoch} if epoch is not None else {}
             return await asyncio_wait_for_ray_remote_call_with_timeout(
                 dst_instance_actor.execute_migration_method,
                 "pre_alloc_cache",
@@ -689,10 +706,12 @@ class MigrationCoordinator:
                 request_arrival_time,
                 block_num,
                 token_ids,
-                is_first_stage
+                is_first_stage,
+                **control_kwargs
             )
         # pylint: disable=W0703
         except Exception as e:
+            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(request_id))
             log_instance_exception(e, dst_instance_id, "_dst_pre_alloc_cache", request_id)
             # Once return False response, the migration status will become ABORTED_DST,
             # which will stop and clear the migration.
@@ -720,6 +739,7 @@ class MigrationCoordinator:
             return True
         # pylint: disable=W0703
         except Exception as e:
+            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(request_id))
             log_instance_exception(e, dst_instance_id, "_dst_free_pre_alloc_cache", request_id)
             return False
 
@@ -736,18 +756,23 @@ class MigrationCoordinator:
             )
         # pylint: disable=W0703
         except Exception as e:
+            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(request_id))
             log_instance_exception(e, dst_instance_id, "_send_cache", request_id)
             return MigrationResponse(success=False, return_value=None)
 
     @update_migrating_in_request_id_set_decorator
     @update_pending_migrate_in_request_decorator
     async def recv_cache(self, request_id: RequestIDType, *args, **kwargs) -> MigrationResponse:
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            return MigrationResponse(success=False, return_value=None)
         # pylint: disable=protected-access
         return await self.backend_engine.recv_cache(request_id, *args, **kwargs)
 
     @update_migrating_in_request_id_set_decorator
     @update_pending_migrate_in_request_decorator
     async def commit_dst_request(self, request_id: RequestIDType, backend_request: LlumnixRequest) -> MigrationResponse:
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            return MigrationResponse(success=False, return_value=None)
         result = await self.backend_engine.commit_dst_request(request_id, backend_request)
         emit_causal_event(
             "migration_destination_committed",
@@ -768,6 +793,7 @@ class MigrationCoordinator:
             )
         # pylint: disable=W0703
         except Exception as e:
+            self.__dict__.setdefault('_real_uncertain_requests', set()).add(str(migrate_out_request.request_id))
             log_instance_exception(e, dst_instance_id, "_dst_commit_dst_request", migrate_out_request.request_id)
             return MigrationResponse(success=False, return_value=None)
 

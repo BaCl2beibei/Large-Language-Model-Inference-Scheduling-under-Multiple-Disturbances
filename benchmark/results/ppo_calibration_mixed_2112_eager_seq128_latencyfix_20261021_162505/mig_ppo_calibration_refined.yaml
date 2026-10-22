@@ -1,0 +1,206 @@
+environment:
+  num_instances: 4
+  decision_interval_sec: 0.05
+  max_decisions: 4000
+  max_running_requests: null
+  max_num_seqs_per_instance: 128
+  total_kv_blocks: 22084
+  block_size_tokens: 16
+  max_model_len: 2112
+  max_num_batched_tokens: 2112
+  ttft_slo_ms: 2000.0
+  tpot_slo_ms: 150.0
+  request_timeout_sec: null
+  migration_cooldown_sec: 0.0
+  max_state_age_sec: 2.0
+  safety_margin_blocks: 16
+  safety_margin_fraction: 0.05
+  workload_scenario: mix
+  arrival_model: poisson
+  target_qps_levels:
+  - 9.0
+  - 12.0
+  - 15.0
+  - 18.0
+  - 21.0
+  prompt_profiles:
+  - 256
+  - 512
+  - 1048
+  output_profiles:
+  - 256
+  - 512
+  - 1048
+  service_model_mode: calibrated
+  kv_dynamics_enabled: true
+  instance_capacity_scale: 1.0
+  prefill_ms_per_token: 0.030680375684475403
+  prefill_intercept_ms: 68.02226099551811
+  decode_ms_per_request: 0.0
+  decode_ms_per_context_token: 0.0
+  decode_intercept_ms: 80.98984187754449
+  service_time_model:
+    version: 1
+    prefill_name: P1
+    decode_name: D3
+    prefill:
+      name: P1
+      kind: prefill
+      terms:
+      - op: linear
+        feature: batch_tokens
+      - op: linear
+        feature: batch_size
+      centers:
+      - 1307.0737788677702
+      - 2.1604332720212547
+      scales:
+      - 616.5434541485556
+      - 1.061279944151245
+      coefficients:
+      - 15.8421548351146
+      - 4.140744258895695
+      intercept_ms: 108.12377557850823
+      min_prediction_ms: 1.0
+      ridge_alpha: 0.0
+      regularized: false
+      residual_sigma_ms: 24.789542003616223
+      train_samples: 4893
+    decode:
+      name: D3
+      kind: decode
+      terms:
+      - op: linear
+        feature: batch_size
+      - op: linear
+        feature: avg_context_tokens
+      - op: interaction
+        left: batch_size
+        right: avg_context_tokens
+      centers:
+      - 49.36504158036294
+      - 688.3730792021573
+      - 34972.496614832904
+      scales:
+      - 35.307404912499635
+      - 84.83016063747883
+      - 26389.603294329692
+      coefficients:
+      - 83.99942198190546
+      - 0.5795819189842952
+      - -70.20728382483703
+      intercept_ms: 80.98984187754449
+      min_prediction_ms: 1.0
+      ridge_alpha: 10.0
+      regularized: true
+      residual_sigma_ms: 17.402545527654485
+      train_samples: 32347
+    fallback_prefill:
+      name: P0
+      kind: prefill
+      terms:
+      - op: linear
+        feature: total_context_tokens
+      centers:
+      - 1307.0737788677702
+      scales:
+      - 616.5434541485532
+      coefficients:
+      - 18.91578479908175
+      intercept_ms: 108.12377557850823
+      min_prediction_ms: 1.0
+      ridge_alpha: 0.0
+      regularized: false
+      residual_sigma_ms: 25.717955057806645
+      train_samples: 4893
+    fallback_decode:
+      name: D0
+      kind: decode
+      terms:
+      - op: linear
+        feature: batch_size
+      - op: linear
+        feature: total_context_tokens
+      centers:
+      - 49.36504158036294
+      - 34972.496614832904
+      scales:
+      - 35.307404912499635
+      - 26389.603294329692
+      coefficients:
+      - 14.739751830988757
+      - 0.0
+      intercept_ms: 80.98984187754449
+      min_prediction_ms: 1.0
+      ridge_alpha: 0.0
+      regularized: false
+      residual_sigma_ms: 17.474900013580076
+      train_samples: 32347
+    selection_rule: lowest grouped run-CV MAE; seed404 is report-only and does not
+      affect model choice
+  migration_cost_estimator:
+    global:
+      alpha_ms: 394.3156368532763
+      beta_ms_per_block: 6.3755855369865415
+      residual_sigma_ms: 263.88081004633295
+      samples: 74
+    pair_corrections:
+      f64578dcd6e44b3b960ba8a3694c2529|ed7dce3df32f4e568da679b7960a20fa:
+        intercept_correction_ms: -66.74168531676138
+        samples: 9
+        uncertainty_ms: 369.55905561074434
+      ed7dce3df32f4e568da679b7960a20fa|e1799c7dbb9543d39c63cddb336f715a:
+        intercept_correction_ms: -100.40031602444606
+        samples: 9
+        uncertainty_ms: 157.56661734580993
+      d8103520ef4244a297c5db101431cf82|ed7dce3df32f4e568da679b7960a20fa:
+        intercept_correction_ms: 48.72146567776942
+        samples: 10
+        uncertainty_ms: 513.9597521563508
+      d8103520ef4244a297c5db101431cf82|e1799c7dbb9543d39c63cddb336f715a:
+        intercept_correction_ms: 80.42014044110792
+        samples: 11
+        uncertainty_ms: 429.81760740652857
+      d8103520ef4244a297c5db101431cf82|f64578dcd6e44b3b960ba8a3694c2529:
+        intercept_correction_ms: 8.563239706574628
+        samples: 10
+        uncertainty_ms: 41.45411818027496
+      f64578dcd6e44b3b960ba8a3694c2529|e1799c7dbb9543d39c63cddb336f715a:
+        intercept_correction_ms: 133.61675076028808
+        samples: 8
+        uncertainty_ms: 329.7336029042732
+    pair_min_samples: 8
+    pair_shrinkage: 8.0
+    robust: true
+  migration_alpha_ms: 394.3156368532763
+  migration_beta_ms_per_block: 6.3755855369865415
+  migration_uncertainty_scale: 1.0
+  calibration_status: service_models_run_cv_and_seed404_validated
+calibration_metadata:
+  data_root: benchmark/results/ppo_calibration_mixed_2112_eager_seq128_latencyfix_20261021_162505
+  fit_seeds:
+  - 101
+  - 202
+  - 303
+  held_out_seed: 404
+  held_out_excluded_from_fit: true
+  held_out_used_for_model_selection: false
+  service_measurement: executor_iteration_wall_ms
+  service_fit_groups:
+  - qps_12_seed101
+  - qps_12_seed202
+  - qps_12_seed303
+  - qps_15_seed101
+  - qps_15_seed202
+  - qps_15_seed303
+  - qps_18_seed101
+  - qps_18_seed202
+  - qps_18_seed303
+  - qps_21_seed101
+  - qps_21_seed202
+  - qps_21_seed303
+  - qps_9_seed101
+  - qps_9_seed202
+  - qps_9_seed303
+  feature_join_note: profiling tuple is self-contained; running/queue/KV fields use
+    predecessor step only after feature match

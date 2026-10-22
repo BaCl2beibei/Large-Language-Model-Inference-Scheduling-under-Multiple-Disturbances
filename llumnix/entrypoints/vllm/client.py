@@ -72,6 +72,10 @@ class LlumnixClientVLLM(LlumnixClient):
                 self.manager_available = True
             # pylint: disable=broad-except
             except Exception as e:
+                if request_id.startswith('real-'):
+                    # Real-metrics IDs are server-generated and never bypass the
+                    # Manager's dispatch/cancellation fence on uncertain delivery.
+                    raise
                 self._handle_generate_by_manager_error(request_id, e)
                 # Do not re-generate the request to avoid duplicate requests.
                 if self.manager_available:

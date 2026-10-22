@@ -13,6 +13,7 @@
 
 from typing import Dict, List, Coroutine, Union
 import asyncio
+import threading
 from abc import ABC, abstractmethod
 from enum import Enum
 
@@ -128,6 +129,9 @@ class BaseOutputForwarder(ABC):
                 for req_output in req_outputs:
                     aborted_request_ids.append(req_output.request_id)
 
+        if aborted_request_ids and hasattr(self, '_real_pending_lock'):
+            with self._real_pending_lock:
+                self._real_delivery_error = True
         return aborted_request_ids
 
     def add_trace_timeline(self, req_outputs: LlumnixRequestOutputsType, trace_name: str):
@@ -169,6 +173,7 @@ class ActorOutputForwarder(BaseOutputForwarder):
         )
         if aborted_request_ids:
             await asyncio_wait_for_ray_remote_call_with_timeout(self.engine_actor_handle.abort, aborted_request_ids)
+            raise RuntimeError('output delivery failed before API queue acknowledgement')
 
     def stop(self):
         if self.request_output_queue_type == QueueType.ZMQ:
@@ -194,6 +199,13 @@ class ThreadOutputForwarder(BaseOutputForwarder):
             self.main_loop = asyncio.get_event_loop()
         self.abort_request_callback = abort_request_callback
         self.forwarder_loop = start_asyncio_thread("thread_output_forwarder")
+        self._real_pending_lock = threading.Lock()
+        self._real_pending = 0
+        self._real_delivery_error = False
+
+    def real_pending_delivery(self):
+        with self._real_pending_lock:
+            return None if self._real_delivery_error else self._real_pending
 
 
     def put_nowait_to_servers(
@@ -204,13 +216,21 @@ class ThreadOutputForwarder(BaseOutputForwarder):
         _record_output_forwarder_stage("output_forwarder_submit", server_request_outputs)
         for req_outputs in server_request_outputs.values():
             self.add_trace_timeline(req_outputs, trace_name="engine_thread_put_queue_timestamp")
-        asyncio.run_coroutine_threadsafe(
+        with self._real_pending_lock:
+            self._real_pending += 1
+        future = asyncio.run_coroutine_threadsafe(
             self._put_nowait_to_servers(
                 server_request_outputs,
                 server_info_dict,
             ),
             self.forwarder_loop,
         )
+        def completed(result):
+            with self._real_pending_lock:
+                self._real_pending -= 1
+                if result.cancelled() or result.exception() is not None:
+                    self._real_delivery_error = True
+        future.add_done_callback(completed)
 
     async def _put_nowait_to_servers(
         self,

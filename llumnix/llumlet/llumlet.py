@@ -210,13 +210,20 @@ class Llumlet:
         *args,
         **kwargs,
     ) -> None:
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            return
         request_processing_context.add_trace_timeline("llumlet_generate_timestamp")
         self.llumlet_metrics.llumlet_request_qps.increase(
             labels={"instance_id": self.instance_id}
         )
-        await self.backend_engine.add_request(
-            request_id, request_processing_context, expected_steps, *args, **kwargs
-        )
+        generating = self.__dict__.setdefault('_real_generating', set())
+        generating.add(request_id)
+        try:
+            await self.backend_engine.add_request(
+                request_id, request_processing_context, expected_steps, *args, **kwargs
+            )
+        finally:
+            generating.discard(request_id)
 
     async def abort(self, request_id: Union[RequestIDType, Iterable[RequestIDType]]) -> None:
         if isinstance(request_id, (str, int)):
@@ -253,10 +260,55 @@ class Llumlet:
         self,
         dst_instance_actor: ray.actor.ActorHandle,
         dst_instance_context: InstanceContext,
-        migration_type: Optional[MigrationType] = None
-    ) -> None:
+        migration_type: Optional[MigrationType] = None,
+        expected_candidate_id: Optional[str] = None,
+        decision_id: Optional[str] = None,
+        migration_id: Optional[str] = None,
+        source_epoch: Optional[str] = None,
+        destination_epoch: Optional[str] = None,
+        wait_for_completion: bool = False,
+    ):
+        if expected_candidate_id is not None:
+            from llumnix.real_control import controlled_migrate
+            return await controlled_migrate(self, dst_instance_actor, dst_instance_context, migration_type,
+                expected_candidate_id=expected_candidate_id, decision_id=decision_id,
+                migration_id=migration_id, source_epoch=source_epoch, destination_epoch=destination_epoch)
+        if wait_for_completion:
+            return await self._migrate_out(dst_instance_actor, dst_instance_context, migration_type)
         migrate_out_func = exception_wrapper_async(self._migrate_out)
         asyncio.create_task(migrate_out_func(dst_instance_actor, dst_instance_context, migration_type))
+
+    def real_control_state(self):
+        from llumnix.real_control import instance_state
+        return instance_state(self)
+
+    def real_control_result(self, decision_id):
+        return self.__dict__.get('_real_decision_results', {}).get(decision_id)
+
+    def real_control_reserve(self, request_id, expected_epoch):
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            return {'status': 'rejected'}
+        state = self.real_control_state()
+        if state['epoch'] != expected_epoch or not state['healthy'] or state['is_migrating']:
+            return {'status': 'rejected'}
+        guards = self.migration_coordinator.__dict__.setdefault('_real_capacity_guards', {})
+        guards[request_id] = expected_epoch
+        return {'status': 'prepared'}
+
+    def real_control_unreserve(self, request_id):
+        self.migration_coordinator.__dict__.setdefault('_real_capacity_guards', {}).pop(request_id,None)
+        return {'status': 'released'}
+
+    async def real_control_flush(self):
+        from llumnix.metrics.causal_events import flush
+        worker_acks = await self.backend_engine._run_workers_async('real_control_flush', timeout=10.)
+        local = await asyncio.to_thread(flush,5.)
+        local['pending_delivery'] = self.real_control_state()['pending_delivery']
+        return {'local': local, 'workers': worker_acks, 'state': self.real_control_state()}
+
+    async def real_cancel_request(self, request_id):
+        from llumnix.real_control import cancel_instance_request
+        return await cancel_instance_request(self, request_id)
 
     def execute_engine_method(self, method, *args, **kwargs):
         executor = getattr(self.backend_engine, method)
@@ -272,7 +324,13 @@ class Llumlet:
 
     async def execute_migration_method_async(self, method, *args, **kwargs):
         executor = getattr(self.migration_coordinator, method)
-        return await executor(*args, **kwargs)
+        active = self.__dict__.setdefault('_real_inbound_tasks', set())
+        task = asyncio.current_task()
+        active.add(task)
+        try:
+            return await executor(*args, **kwargs)
+        finally:
+            active.discard(task)
 
     async def call_engine_utility_async(self, method: str, *args) -> Any:
         """Call engine utility function for backend vLLM v1."""

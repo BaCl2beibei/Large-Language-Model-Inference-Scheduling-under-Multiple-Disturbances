@@ -58,6 +58,7 @@ from llumnix.constants import (
     MAX_ACTOR_METHOD_RETRIES,
 )
 from llumnix.ray_utils import clear_gloo_backend_ray_resources
+from llumnix.real_control import ManagerControlMixin
 
 logger = init_logger(__name__)
 
@@ -67,7 +68,7 @@ def clear_gloo_backend_ray_resources_task():
     clear_gloo_backend_ray_resources()
 
 
-class Manager:
+class Manager(ManagerControlMixin):
     def __init__(
         self,
         entrypoints_args: EntrypointsArgs,
@@ -141,6 +142,8 @@ class Manager:
         request_processing_context: RequestProcessingContext,
         *args, **kwargs
     ) -> Tuple[str, str]:
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            raise RuntimeError('request cancellation fence installed')
         def choose_destination_instance(prefill_instance_id: str, decode_instance_id: str, dispatch_kwargs: Dict):
             if self.backend_type == BackendType.BLADELLM:
                 if self.manager_args.enable_bladellm_engine_pd_disagg:
@@ -172,15 +175,30 @@ class Manager:
                 NO_INSTANCE_RETRY_GENERATE_INTERVAL, request_id))
             await asyncio.sleep(NO_INSTANCE_RETRY_GENERATE_INTERVAL)
 
-        prefill_instance_id, decode_instance_id, request_expected_steps = \
-            self.global_scheduler.dispatch(request_id, dispatch_context=kwargs)
+        initial_instance_id = kwargs.pop('real_initial_instance_id', None)
+        if request_id in getattr(self, '_real_cancelled_requests', set()):
+            raise RuntimeError('request cancelled while waiting for dispatch')
+        if initial_instance_id is not None:
+            controller = getattr(self, '_real_arbiter', None)
+            if self.enable_pd_disagg or initial_instance_id not in self.instances or not controller or not controller.lease:
+                raise RuntimeError('explicit smoke routing requires leased non-PD instance')
+            from llumnix.metrics.causal_events import emit
+            emit('real_initial_route', request_id=str(request_id), instance_id=initial_instance_id,
+                 route_source='pre_registered_smoke_disturbance')
+            prefill_instance_id, decode_instance_id, request_expected_steps = initial_instance_id, initial_instance_id, float('inf')
+        else:
+            prefill_instance_id, decode_instance_id, request_expected_steps = \
+                self.global_scheduler.dispatch(request_id, dispatch_context=kwargs)
         target_instance_id = choose_destination_instance(prefill_instance_id, decode_instance_id, kwargs)
         request_processing_context.add_trace_timeline('manager_generate_timestamp')
-        asyncio.create_task(
+        dispatch_task = asyncio.create_task(
             self._generate_with_exception_handling(
                 request_id, request_processing_context, request_expected_steps, target_instance_id, *args, **kwargs
             )
         )
+        dispatches = self.__dict__.setdefault('_real_dispatch_tasks', {})
+        dispatches.setdefault(request_id, set()).add(dispatch_task)
+        dispatch_task.add_done_callback(lambda task: dispatches[request_id].discard(task))
         return prefill_instance_id, decode_instance_id
 
     async def _generate_with_exception_handling(
@@ -192,6 +210,8 @@ class Manager:
         *args, **kwargs
     ) -> None:
         try:
+            if request_id in getattr(self, '_real_cancelled_requests', set()):
+                return
             await asyncio_wait_for_ray_remote_call_with_timeout(
                 self.instances[target_instance_id].generate,
                 request_id, request_processing_context, request_expected_steps, *args, **kwargs
@@ -200,7 +220,8 @@ class Manager:
         except Exception as e:
             log_instance_exception(e, target_instance_id, "generate", request_id)
             self.scale_down(target_instance_id)
-            await asyncio.create_task(self.generate(request_id, request_processing_context, *args, **kwargs))
+            if request_id not in getattr(self, '_real_cancelled_requests', set()):
+                await self.generate(request_id, request_processing_context, *args, **kwargs)
 
     @classmethod
     def from_args(
@@ -282,18 +303,31 @@ class Manager:
         # If encounter error during migration, to make manager keep running, we do not raise exception.
         try:
             instance_infos = self.global_scheduler.instance_info
-            migration_tasks = self.global_scheduler.push_migrations(instance_infos)
+            controller = getattr(self, '_real_arbiter', None)
+            migration_tasks = self.global_scheduler.push_migrations(
+                instance_infos, allow_routine=not (controller and controller.ordinary_blocked))
 
             for task in migration_tasks:
                 migration_type, migrate_pairs = task
                 for src_instance_id, dst_instance_id in migrate_pairs:
+                    if controller and controller.ordinary_blocked:
+                        controller.external_intervention('native_' + str(migration_type))
                     dst_instance_actor = self.instances[dst_instance_id]
-                    asyncio.create_task(
+                    native_task = asyncio.create_task(
                         asyncio_wait_for_ray_remote_call_with_timeout(
                             self.instances[src_instance_id].migrate_out,
-                            dst_instance_actor, self.instance_context[dst_instance_id], migration_type
+                            dst_instance_actor, self.instance_context[dst_instance_id], migration_type,
+                            wait_for_completion=True
                         )
                     )
+                    self.__dict__.setdefault('_real_native_tasks', set()).add(native_task)
+                    def native_done(future):
+                        self._real_native_tasks.discard(future)
+                        if future.cancelled() or future.exception() is not None:
+                            self._real_native_fault = True
+                            if getattr(self, '_real_arbiter', None):
+                                self._real_arbiter.external_intervention('native_migration_RPC_uncertain')
+                    native_task.add_done_callback(native_done)
         # pylint: disable=broad-except
         except Exception:
             logger.critical(
@@ -404,6 +438,8 @@ class Manager:
 
     @ray.method(max_task_retries=MAX_ACTOR_METHOD_RETRIES)
     def scale_down(self, instance_id: Union[str, Iterable[str]], rebuild_migration_backend: bool = True) -> None:
+        if getattr(self, '_real_arbiter', None):
+            self._real_arbiter.external_intervention('scale_down_or_failover')
         if isinstance(instance_id, str):
             instance_id = [instance_id,]
         instance_ids: List[str] = list(instance_id)

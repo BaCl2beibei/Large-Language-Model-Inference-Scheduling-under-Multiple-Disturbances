@@ -48,6 +48,20 @@ logger = init_logger(__name__)
 
 
 class MigrationWorker(Worker):
+    def real_control_flush(self):
+        from llumnix.metrics.causal_events import flush
+        deadline = time.monotonic() + 5.
+        pending = getattr(self, '_causal_cuda_queue', None)
+        if pending is not None:
+            with pending.all_tasks_done:
+                while pending.unfinished_tasks and time.monotonic() < deadline:
+                    pending.all_tasks_done.wait(max(0., deadline-time.monotonic()))
+                if pending.unfinished_tasks:
+                    return {'status': 'incomplete', 'reason': 'pending_cuda_telemetry'}
+        ack = flush(max(0., deadline-time.monotonic()))
+        ack['pending_delivery'] = 0
+        return ack
+
     def __init__(self, *args, **kwargs) -> None:
         # replace sampler
         # pylint: disable=import-outside-toplevel
