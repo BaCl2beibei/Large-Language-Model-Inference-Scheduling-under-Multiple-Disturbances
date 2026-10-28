@@ -1,0 +1,104 @@
+{
+  "status": "passed",
+  "scope": "amended minimal feasibility only",
+  "verified_at_utc": "2026-10-28T09:04:14.440061+00:00",
+  "episodes": [
+    {
+      "offered": 1,
+      "sent": 1,
+      "completed": 1,
+      "slo_completed": 1,
+      "client_output_tokens": 32,
+      "ttft_p95_ms": 221.12137,
+      "tpot_p95_ms": 32.69789351612903,
+      "label": "baseline",
+      "audit_status": "passed",
+      "producer_count": 7,
+      "decision_latency_p95_ms": 108.28975409999998,
+      "reward_windows": 10,
+      "diagnostic_reward_sum": 0.7528147937999999,
+      "replayed_from_raw_events": true,
+      "original_coordinator_attempts": 0
+    },
+    {
+      "offered": 2,
+      "sent": 2,
+      "completed": 2,
+      "slo_completed": 2,
+      "client_output_tokens": 512,
+      "ttft_p95_ms": 160.3435164,
+      "tpot_p95_ms": 52.5553545027451,
+      "label": "migration",
+      "audit_status": "passed",
+      "producer_count": 7,
+      "decision_latency_p95_ms": 126.00466094999999,
+      "reward_windows": 28,
+      "diagnostic_reward_sum": -2.5130029717999998,
+      "replayed_from_raw_events": true,
+      "migration_id": "real-1261d00da4361a2712b81ddfa546c6e24954ee250c3a9b614e8d6e156fb16c1a",
+      "actual_request_id": "real-cd3af0a5886ad1ef57c43e3f7965ac0f3ed529c35e4efa2d02c7e082b534efaf",
+      "copied_blocks": 19,
+      "successful_migrations": 1,
+      "original_coordinator_attempts": 1,
+      "duplicate_idempotency": "passed",
+      "stale_candidate_rejection": "SR_candidate_changed"
+    }
+  ],
+  "checks": [
+    {
+      "name": "current_sources_configs_and_prior_gates_bound",
+      "status": "passed"
+    },
+    {
+      "name": "four_GPU_real_model_startup",
+      "status": "passed"
+    },
+    {
+      "name": "three_normal_HTTP_completions",
+      "status": "passed"
+    },
+    {
+      "name": "durable_gap_free_all_producer_ledger",
+      "status": "passed"
+    },
+    {
+      "name": "fixed_initial_routing_from_engine_admission",
+      "status": "passed"
+    },
+    {
+      "name": "actual_migration_with_matching_ids_and_KV_blocks",
+      "status": "passed"
+    },
+    {
+      "name": "duplicate_RPC_single_coordinator_attempt",
+      "status": "passed"
+    },
+    {
+      "name": "stale_candidate_rejected_without_dispatch",
+      "status": "passed"
+    },
+    {
+      "name": "real_observation_and_reward_replayed_from_raw_events",
+      "status": "passed"
+    },
+    {
+      "name": "owned_processes_stopped_GPU_released",
+      "status": "passed"
+    },
+    {
+      "name": "supplemental_900s_cap_parent_clock_preserved",
+      "status": "passed"
+    }
+  ],
+  "old_gates_hash_valid": [
+    "reviews/bridge_review.json",
+    "gates/p1_offline_portfix_02.json",
+    "gates/p2_offline_portfix_02.json",
+    "gates/p3_ready.json"
+  ],
+  "production_reference_scales_measured": false,
+  "original_100ms_latency_gate": "not accepted; observed values retained",
+  "full_original_05_accepted": false,
+  "P3_opportunity_gate_passed": false,
+  "PPO_updates": 0
+}
