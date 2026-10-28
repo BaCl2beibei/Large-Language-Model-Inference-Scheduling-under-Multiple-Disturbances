@@ -1,0 +1,167 @@
+{
+  "schema": "minimal-feasibility-v1",
+  "created_utc": "2026-10-28T08:46:45.912775+00:00",
+  "parent_run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "case_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/minimal_20261028T084645Z",
+  "purpose": "Short engineering feasibility verification replacing 05/06 long acceptance sequence for this request only",
+  "user_authorization": "05\u7684smoke\u8fd8\u6ca1\u5b8c\u6210\uff0c\u7531\u4e8e\u65f6\u95f4\u8d85\u51fa\u9884\u7b97\uff0c06\u7684\u4e00\u4e9b\u4e5f\u672a\u5b8c\u6210\uff0c\u7b80\u5316\u539fsmoke\u7b49\u7b49\u6d41\u7a0b\uff0c\u4ee5\u6700\u77ed\u7684\u6d41\u7a0b\u9a8c\u8bc1\u53ef\u884c\u6027\u5373\u53ef\uff0c\u9a8c\u8bc1\u7ed3\u675f\u540e\u4fee\u653905\u548c06\u7684\u4ea4\u4ed8\u6587\u6863\u3002",
+  "budget_amendment": {
+    "scope": "one bounded supplemental minimal verification under the same parent run; not an original clock reset",
+    "wall_cap_sec": 900,
+    "startup_cap_sec": 600,
+    "cleanup_reserve_sec": 60,
+    "parent_budget_sha256": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983",
+    "parent_clock_sha256": "7ba946d09cb6e8eda45b165c6071e80a5e7eed1a14abf21d77335159276dec5b",
+    "parent_last_recorded_elapsed_sec": 1619.8142068386078,
+    "original_clock_policy": "continuous since first activation including offline waiting; left unchanged",
+    "P4_and_P5_allocations_changed": false,
+    "retry_startup_cap_sec": 300,
+    "retry_traffic_cap_sec": 120,
+    "retry_cleanup_cap_sec": 60,
+    "retry_required_remaining_sec": 480,
+    "original_900s_origin_preserved": true
+  },
+  "cases": [
+    {
+      "label": "baseline",
+      "mode": "stay",
+      "requests": 1,
+      "input_budget": 128,
+      "output_budget": 32,
+      "arrival_sec": 1,
+      "drain_sec": 9
+    },
+    {
+      "label": "migration",
+      "mode": "active",
+      "requests": 2,
+      "input_budget": 256,
+      "output_budget": 256,
+      "arrival_sec": 1,
+      "drain_sec": 29,
+      "initial_route": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "maximum_nonstay_decisions": 3,
+      "stop_new_migrations_after_first_accepted": true
+    }
+  ],
+  "minimum_pass_criteria": [
+    "four healthy neutral instances, no external owner",
+    "3/3 actual HTTP normal completions and positive cumulative client tokens",
+    "durable gap-free client/API/Manager/local/worker ledgers with clean pending delivery and idle KV baseline",
+    "at least one original coordinator migration start and exactly one succeeded terminal with matching decision_id/migration_id/request_id and blocks>0",
+    "duplicate original decision RPC returns same terminal without another coordinator attempt",
+    "an explicit stale candidate is rejected, not dispatched",
+    "real-event observation and finite reward reconstruction run with labelled mini-only diagnostic scales",
+    "owned GPU/Ray processes stopped and GPU memory released"
+  ],
+  "unchanged_controls": {
+    "single_global_migration": 1,
+    "terminal_cooldown_sec": 5,
+    "state_max_age_sec": 2,
+    "reserve": "max(16 blocks,ceil(5% total))",
+    "ttft_slo_ms": 2000,
+    "tpot_slo_ms": 150,
+    "unknown": "incomplete; never infer success or cancellation"
+  },
+  "not_claimed": [
+    "original 10 terminal attempts / 5 successes acceptance",
+    "repeated OFF/ON overhead tolerance",
+    "QPS 3/6/9 selection and 12 paired opportunity runs",
+    "measured production C_ref/N_ref or PPO benefit",
+    "any training or final evaluation"
+  ],
+  "bounded_repair_policy": "retain all failures; at most one source-diagnosed minimal repair and one retry within the same 900s service-attempt budget, no blind loops",
+  "source_hashes": {
+    "benchmark/run_real_ppo.py": "39771520aedf9f36b5b5c03f74e1cd213cf9c7700bc5e87f28930ae893c9c688",
+    "llumnix/backends/output_forwarder.py": "84d1378acdf8b84c9e4c59467cffb6332ebfaa65ee9e73dc5f28d2c75565b2f6",
+    "llumnix/backends/vllm/executor.py": "55869f3f1ed722d9dea4ffd5e9f27776208211afd308006df6565ee11145515e",
+    "llumnix/backends/vllm/llm_engine.py": "4839b1daa4c77f181b84a29325a0f0c79f9bdeb441ae792a85b8ca730e8633a7",
+    "llumnix/backends/vllm/scheduler.py": "a695a298b1cff1c9a833284f60dc89755d8200078da2f324d362a9e6ec45d9b6",
+    "llumnix/backends/vllm/worker.py": "27849f5db78f2cee9ee84b798bf845ca1305a7fa42973bfb39cd3dd155e1909f",
+    "llumnix/config/default.py": "09c3427361aa36ab551438a0a0754f826d8acda18a97d99e014f982e04a5ecaa",
+    "llumnix/constants.py": "02232df647bc91381c571b72a98dfc11963bddfa51f2310381d8b4d2f97a498b",
+    "llumnix/entrypoints/client.py": "6224c013836ad66fbd32af1d5459684bbceb62be87d929928fcd371d8e51100f",
+    "llumnix/entrypoints/vllm/api_server.py": "eb3138ece2f387978c885ed05ed990cd7b0e859c05ef44f49662367e5f7d22f1",
+    "llumnix/entrypoints/vllm/client.py": "a93d1000d924465c4ea72a4644a961bb2f472fc14719644322721f7c82e8254a",
+    "llumnix/entrypoints/vllm/real_control_api.py": "78683850cb66c0ab90165adc565b450ec1f3bb484ed6f3cc9ab5e35847ab860a",
+    "llumnix/entrypoints/vllm/real_metrics_stream.py": "122082e9c7906aa55fd5671c713e6648ea53c52699c48d06687de026a61558e9",
+    "llumnix/global_scheduler/global_scheduler.py": "11a25e83c1c4e4189c5d32b286d260c3cbbf0184235f4b9bdd18dab7cd15f532",
+    "llumnix/global_scheduler/migration_filter.py": "9680f2b86a5f0c59fbb02abfb33e56362d22652ea1c9cfd0c41ab120e3d5fbe4",
+    "llumnix/global_scheduler/migration_policy.py": "9da715cf0469b0e90da93b9f9c7121986df2e1ac92c24c9562cc506004be46b4",
+    "llumnix/global_scheduler/migration_scheduler.py": "9a11e0ce661f8763fca86c1acd2f4d38f6193e3287ee8bd0de9d251be147cbd3",
+    "llumnix/llumlet/llumlet.py": "13769482b47b97c229b4101dd83a372879b70814d00a1dcd588d82889626f3e0",
+    "llumnix/llumlet/local_migration_scheduler.py": "49ffa3569c9c66af44d583f38d9d35748f6eb047fd75cf36388e4f68000c0806",
+    "llumnix/llumlet/migration_coordinator.py": "e174802a07c3b4c01ec1283e140d53d679b031a25bebdbd8482308f48d875457",
+    "llumnix/llumlet/request.py": "46c6574d8afddd1489c079c042728e4d360c800a065e107fd8d22cac0bb744f2",
+    "llumnix/manager.py": "13e32ffc5f9de1a9b8c13997a74f1b8c28d28e825565ea57505393d56c16a6fb",
+    "llumnix/metrics/causal_events.py": "e41bc01f8cb34bcf6eb207df2704c0ffb8ef9b7cc8e65f66f292b7878baf2323",
+    "llumnix/queue/zmq_client.py": "9fb76fb246fc8179d0a3a74173ca4eeb2c7adde76748fb7d939c8fe748422eb2",
+    "llumnix/queue/zmq_server.py": "39955928c6c8bba539fd0c628cdc2f8c335687d1b5877f87e631a133f27d1fc2",
+    "llumnix/real_control.py": "c3545cbd9f11e7d5087fb9c3cb588376238273030ed7418581ee8aa5e14a3601",
+    "llumnix/utils.py": "f78599d2ae596703fa8bb1133352c64d6bb8943bdcbcca3bd23966a41c1fead7",
+    "rl_scheduler/real_bridge.py": "876fae9c3bd9bc645eee0e12b52ff69e731d42dafe20fe145b8407dc50848362",
+    "rl_scheduler/real_budget.py": "20ad5fda2bc3d25560477c30ceb135577a479a12ddafa7dd4ba14552f561be98",
+    "rl_scheduler/real_client.py": "3510fb0d9a8e147131eed4822dfbee032ccc2225a1f7636b1c5de4c353efedd7",
+    "rl_scheduler/real_env.py": "4fb71a73d4ddc29b8b6f335bbc0e6a6fa06d44ea0ab925c91d27fd482a07ea38",
+    "rl_scheduler/real_metrics.py": "500742813f6d52f874a7afe6c1f86420b9a6aa55968cec1f39a010e8ef04b5ab",
+    "rl_scheduler/real_observation.py": "feb2f7dbe16321a2b80e81539c97aba6d110179918b84d595a6939d0d86f31cf",
+    "rl_scheduler/real_runner.py": "de34d0a71f41b9235cbb8405f18c2481bfef4c849549c53ca3e7c16623d50632",
+    "rl_scheduler/real_service.py": "9670106a3e2c919b25a3bd3f54b24d468c1879f0d22874d69021ae8a5309c2f1",
+    "rl_scheduler/tests/test_real_bridge.py": "34ec071922a7063b5ea076e2e609c25a7a56580d4861a4a588556d9c2865f87d",
+    "rl_scheduler/tests/test_real_env.py": "d8265442ae1d342d844a4da443bce17b7557827008884cdf7cd0a2667b1e4235",
+    "rl_scheduler/tests/test_real_metrics.py": "99c1baf3a5d393d177153be03ea6425b8a8fa3d26e43baaa9d6bb4aad609cee4",
+    "rl_scheduler/tests/test_real_repairs.py": "1832c5e96ab7c66480b0707a82b3d46bfab36f913ebd4acee5b95e02db000147",
+    "rl_scheduler/tests/test_real_runner.py": "c9a297129334dc7f6fd158a2d9fb260e0ee1ba560b4462234cba85ce31e8ac2d",
+    "rl_scheduler/real_reward.py": "550d00c5a73480207b4305f39b077809d29f53066ed660ed9547155468990d50",
+    "rl_scheduler/real_opportunity.py": "e00104b7dba0f1024a7abe9cdc256588ade854080d2cb50aceaad55889885dae",
+    "rl_scheduler/real_opportunity_runner.py": "27965cdf53e8401430e39175d9911026de2771930c07f1bcadb4e9bfbbf9a2a6"
+  },
+  "sampling": {
+    "n": 1,
+    "best_of": 1,
+    "temperature": 0.0,
+    "top_k": 1,
+    "ignore_eos": true
+  },
+  "code_sha256": "abe7139ba22af1b190d4962be1450db1971eb8834bda47b510a0d9028cb11b04",
+  "runtime_sha256": "f40676d4f8e0ff862bc3b0dc33c7afcdca1dc37f509e0918c8931d5791c3c229",
+  "trace_hashes": {
+    "mini_baseline.json": "c436060367a762aadf808fec58a6e3620851ca06ad19a0416ba9b345001806a3",
+    "mini_migration.json": "2bb03d821560ec661cdc161c7d4cca380313fa5d8c8b2a5cfbed73d42d3d45af"
+  },
+  "revision": 2,
+  "attempt_01": "attempt_01/result.json",
+  "logical_cpu_repair": {
+    "status": "confirmed_resource_booking_deadlock",
+    "reported_runtime_failure": "KeyboardInterrupt (intentional early stop after diagnosis)",
+    "observed_ray_status": {
+      "CPU_total": 12,
+      "CPU_used": 5,
+      "placement_group_CPU_reserved": 9,
+      "GPU_reserved": 3,
+      "GPU_total": 4,
+      "pending_placement_groups": [
+        {
+          "CPU": 3,
+          "GPU": 1,
+          "count": 1
+        }
+      ]
+    },
+    "source_requirements": {
+      "four_placement_groups": 12,
+      "Manager_num_cpus": 1,
+      "Scaler_num_cpus": 1,
+      "minimum_total": 14
+    },
+    "minimal_repair": "logical Ray CPU declaration 12 -> 16 in derived runtime only; same machine/models/GPUs",
+    "all_owned_processes_stopped": true,
+    "no_measurement_requests_sent": true,
+    "no_automatic_repeat": true
+  }
+}

@@ -1,0 +1,100 @@
+schema_version: real-pilot-v1
+scope: minimal feasibility amendment; no old full acceptance claim
+service:
+  base_url: http://127.0.0.1:18080
+  ray_port: 20000
+  ray_num_cpus: 12
+  ray_temp_dir: /tmp/rpm_1028084645
+  startup_timeout_sec: 600
+  model_path: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B
+  max_model_len: 2112
+  env:
+    HEAD_NODE_IP: 127.0.0.1
+    HEAD_NODE: '1'
+    CUDA_VISIBLE_DEVICES: 0,1,2,3
+    RAY_DEDUP_LOGS: '0'
+    PYTHONUNBUFFERED: '1'
+    LLUMNIX_WAIT_PLACEMENT_GROUP_TIMEOUT: '60'
+    LLUMNIX_INIT_INSTANCES_TIMEOUT: '270'
+    LLUMNIX_INSTANCE_READY_TIMEOUT: '1200'
+  server_argv:
+  - /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python
+  - -m
+  - llumnix.entrypoints.vllm.api_server
+  - --config-file
+  - /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_llumnix.yaml
+  - --host
+  - 127.0.0.1
+  - --port
+  - '18080'
+  - --model
+  - /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B
+  - --tensor-parallel-size
+  - '1'
+  - --worker-use-ray
+  - --migration-backend
+  - rayrpc
+  - --max-model-len
+  - '2112'
+  - --max-num-seqs
+  - '128'
+  - --gpu-memory-utilization
+  - '0.65'
+  - --dtype
+  - half
+  - --enforce-eager
+sampling:
+  n: 1
+  best_of: 1
+  temperature: 0.0
+  top_k: 1
+  ignore_eos: true
+smoke:
+  telemetry:
+    seed: 6101
+    qps: 0.2
+    arrival_sec: 20
+    drain_sec: 40
+    input_tokens: 256
+    output_tokens: 32
+    max_requests: 100
+  shadow:
+    seed: 6102
+    qps: 0.5
+    arrival_sec: 30
+    drain_sec: 30
+    input_tokens: 512
+    output_tokens: 256
+    max_requests: 100
+  active:
+    seed: 6103
+    qps: 1.0
+    arrival_sec: 120
+    drain_sec: 120
+    input_tokens: 1048
+    output_tokens: 1024
+    max_requests: 200
+    route_shares:
+    - 0.7
+    - 0.1
+    - 0.1
+    - 0.1
+  overhead:
+    seed: 6104
+    qps: 0.5
+    arrival_sec: 30
+    drain_sec: 30
+    input_tokens: 512
+    output_tokens: 128
+    max_requests: 100
+limits:
+  cleanup_sec: 60
+  cooldown_sec: 5
+  max_inflight_migrations: 1
+  state_max_age_sec: 2
+  cpu_decision_p95_max_ms: 100
+  smoke_active_min_terminals: 10
+  smoke_active_min_successes: 5
+  max_throughput_degradation: 0.05
+  max_ttft_p95_degradation: 0.1
+smoke_trace_manifest: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/traces/smoke05/manifest.json

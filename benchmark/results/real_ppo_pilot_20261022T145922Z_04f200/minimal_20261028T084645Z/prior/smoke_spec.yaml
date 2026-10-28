@@ -1,0 +1,133 @@
+schema_version: smoke-spec-v1
+status: retry_prepared_not_run
+scope: P1 telemetry and P2 engineering smoke only
+protocol_does_not_replace_P3_or_final_evaluation: true
+source_hash: f65c97a9d53abf3df6f1242b0970dfc077363c609030db2aab8b979826e9183e
+config_path: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml
+config_sha256: 6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882
+trace_manifest: traces/smoke05/manifest.json
+trace_manifest_sha256: 8e5125e46c0333144e388dac0b329ceecc4e4f824c2543bd00383f1f129f7068
+seeds:
+  telemetry: 6101
+  shadow: 6102
+  active: 6103
+  overhead: 6104
+seed_search: p2_evidence/smoke_seed_search.json
+cases:
+  telemetry:
+    seed: 6101
+    qps: 0.2
+    arrival_sec: 20
+    drain_sec: 40
+    input_tokens: 256
+    output_tokens: 32
+    max_requests: 100
+  shadow:
+    seed: 6102
+    qps: 0.5
+    arrival_sec: 30
+    drain_sec: 30
+    input_tokens: 512
+    output_tokens: 256
+    max_requests: 100
+  active:
+    seed: 6103
+    qps: 1.0
+    arrival_sec: 120
+    drain_sec: 120
+    input_tokens: 1048
+    output_tokens: 1024
+    max_requests: 200
+    route_shares:
+    - 0.7
+    - 0.1
+    - 0.1
+    - 0.1
+  overhead:
+    seed: 6104
+    qps: 0.5
+    arrival_sec: 30
+    drain_sec: 30
+    input_tokens: 512
+    output_tokens: 128
+    max_requests: 100
+sampling:
+  n: 1
+  best_of: 1
+  temperature: 0.0
+  top_k: 1
+  ignore_eos: true
+SLO:
+  TTFT_ms: 2000
+  request_TPOT_ms: 150
+  single_token: TTFT_only
+control:
+  policy: SR
+  directed_pairs: 12
+  global_inflight_limit: 1
+  cooldown_sec_from_confirmed_terminal: 5
+  max_state_age_sec: 2
+  destination_reserve: max(16 blocks, ceil(0.05 * total_blocks))
+  shadow_zero_actual_migrations_required: true
+  active_min_confirmed_terminals: 10
+  active_min_successes: 5
+  CPU_decision_path_P95_strictly_less_ms: 100
+route_disturbance:
+  active_only:
+  - 0.7
+  - 0.1
+  - 0.1
+  - 0.1
+  pre_generated_route_seed_per_request: true
+  verify_actual_initial_route: true
+  PPO_does_not_choose_route: true
+overhead:
+  sequence:
+  - 'OFF'
+  - 'ON'
+  - 'ON'
+  - 'OFF'
+  paired_repetitions: 2
+  same_frozen_trace: true
+  same_sampling_and_SLO: true
+  'OFF': lease+client telemetry; no per-second bridge snapshot/observation
+  'ON': shadow per-second bridge snapshots/observations; zero actual migration
+  instrumentation_elsewhere_constant: true
+  max_token_throughput_degradation: 0.05
+  max_TTFT_P95_degradation: 0.1
+  zero_baseline: incomplete; no relative pass
+budget:
+  persistent_ledger: experiment_clock.json
+  immutable_P0_input: budget.json
+  total_remaining_sec: 28800.0
+  P0_P3_remaining_sec: 7200.0
+  planned_total_max_sec: 6060
+  independent_cleanup_sec: 60
+  watchdog_starts_cleanup_when_remaining_sec: 60
+  startup_included: true
+  handoff_wait_included_after_first_GPU_start: true
+services:
+  supervisor_files: services/
+  bind: 127.0.0.1:18080
+  reuse_models_within_overhead_pairs: true
+  stop_task_services_after_each_command: true
+  never_stop_foreign_Ray_or_management_services: true
+prerequisites_before_execution:
+- 03 offline hashes intact
+- Astra review of 03 handoff and commands
+- future prompt explicitly authorizes GPU smoke
+- sufficient current persistent budget
+- no foreign Ray/GPU service and available private ports
+failure_rule: Stop on unknown action, event gap, incomplete cleanup or failed gate;
+  preserve evidence; do not alter seed/config/code during running stage.
+not_verified:
+- actual Llumnix/Ray object lifetime and worker flush
+- actual GPU transfer/cancellation
+- actual CPU latency/monitor overhead
+- budget watchdog under a real GPU failure
+ray_port_binding:
+  pilot_service_ray_port: 20000
+  llumnix_server_ray_cluster_port: 20000
+  matched: true
+  outside_default_worker_range_10002_19999: true
+previous_attempt: handoff/05.json (telemetry failed before requests; preserved)

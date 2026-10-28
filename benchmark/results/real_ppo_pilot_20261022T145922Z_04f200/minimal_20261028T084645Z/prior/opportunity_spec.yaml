@@ -1,0 +1,183 @@
+schema: real-opportunity-v1
+run_dir: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200
+runtime_config: /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml
+scope: 06 CPU preparation; 07 runs only on separate user instruction and sufficient
+  budget
+prerequisite_exception:
+  user_instruction: 跳过smoke，直接执行06_sol_p3_prepare.md
+  05_smoke: skipped_by_user
+  P1_P2_live_status: not_verified
+  reason: Explicit user override of the 06 live prerequisite; no synthetic passed
+    live gate
+  inherited_for_opportunity_protocol: true
+  GPU_started_in_06: false
+horizons:
+  arrival_sec: 120
+  drain_sec: 120
+  cleanup_sec: 60
+  decision_interval_sec: 1
+probe:
+  qps:
+  - 3
+  - 6
+  - 9
+  seeds:
+  - 7101
+  - 7102
+  - 7103
+  scenes:
+  - A
+  - B
+  arrival_sec: 30
+  drain_sec: 60
+  policy: Stay
+  runs: 6
+  order: qps ascending, A then B; no automatic retry or escalation beyond 9
+health:
+  min_completion_rate: 0.99
+  max_nonmanual_error_rate: 0.01
+  max_first_output_censored_fraction: 0.01
+  max_send_lateness_p95_ms: 1000.0
+  require_all_offered_sent: true
+  require_passed_score_cleanup_route_action_audits: true
+selection:
+  A: lower median of healthy normal probe QPS (sorted ascending)
+  B: largest healthy skew probe QPS with waiting>0 in at least half of last-third
+    arrival samples
+  missing_healthy_or_queued_scene: stop incomplete; do not tune workload or thresholds
+scenes:
+  A:
+    routing: native load dispatcher
+  B:
+    routing: fixed trace route seed into stable instance indices
+    route_shares:
+    - 0.7
+    - 0.1
+    - 0.1
+    - 0.1
+opportunity:
+  seeds:
+  - 2101
+  - 2102
+  - 2103
+  policies:
+  - Stay
+  - Balanced
+  runs: 12
+  pair_order: scene A then B, seeds ascending; policy order alternates by scene_index+seed_index
+  paired_trace_identical: true
+  same_sampling_and_finite_window: true
+  reuse_service: true
+workload:
+  arrival: piecewise Poisson with one initial request at t=0
+  input_budgets:
+  - 256
+  - 512
+  - 1048
+  output_budgets:
+  - 256
+  - 512
+  - 1048
+  profile_mix: all 9 Cartesian combinations equally likely
+  max_requests: 4096
+  max_tokens_are_budgets_not_realized_lengths: true
+  prompt_pool_seed: 8300
+  route_seed: seed*1000000+request_index
+  separate_profile_rng_offset: 100000
+balanced:
+  version: constrained-Balanced-remaining-capacity-SR-v1
+  load: (free_blocks-waiting_blocks)/(running+waiting), +inf only for measured empty
+    queue
+  threshold: 9000.0
+  source_load_at_most_threshold: true
+  destination_load_at_least_threshold: true
+  pairing: busiest sources (ascending numeric capacity/request) with least busy destinations,
+    stable ID ties
+  move: exact observed SR candidate; after-load uses its actual block count and one
+    running request
+  predicate: source_after < destination_after and 0 < abs(after_difference) < abs(before_difference)
+  relation_to_native: native remaining_steps threshold direction and Balanced sorting/predicate;
+    actual SR blocks replace stale last-queue estimate; native killed-request override
+    is not exposed and is not reproduced
+  control: same lease, one global migration, terminal cooldown 5s, reserve max(16,ceil(5%
+    total)), freshness <=2s
+slos:
+  ttft_ms: 2000.0
+  tpot_ms: 150.0
+  single_token: TTFT only; TPOT N/A
+metrics:
+  primary: SLO-goodput over fixed 240s
+  completion_denominator: all offered
+  errors: timeout/service_error client terminals by deadline; unknown invalid, manual
+    cancel excluded
+  censoring: first-output, terminal-outstanding and offered-not-sent fractions reported
+    separately
+  zero_denominators: null + incomplete; no infinite relative gain
+gate:
+  min_paired_relative_gain: 0.1
+  min_winning_seeds: 2
+  max_error_rate_increase_pp: 1.0
+  healthy_probe_selection_required: true
+  zero_Stay_goodput: report absolute delta; never relative-pass
+  majority_zero_scenes: incomplete if >=2 of 2 scenes both policies have zero mean
+    goodput
+reward:
+  weights:
+    good: 1.0
+    hold: 0.2
+    first: 0.5
+    gap: 0.2
+    attempt: 0.02
+    bad: 0.2
+    tail: 2.0
+  C_ref: null
+  N_ref: null
+  scale_status: unmeasured
+  scale_rule: pooled completed/seconds and outstanding-request-seconds/seconds from
+    healthy Stay opportunity only; each floor 1
+  gap_limit: max(1s,5*tpot_slo)
+  window_partition: left-closed right-open; final deadline included once
+  weight_revisions_before_training_max: 1
+  automatic_weight_revision: false
+final_burst:
+  seeds:
+  - 5101
+  - 5102
+  - 5103
+  not_for_training_or_selection: true
+  base_qps: selected scene A QPS, determined only by opportunity probes
+  arrival_sec: 120
+  drain_sec: 120
+  routing: native dispatcher
+  rate_segments:
+  - - 0
+    - 30
+    - 1
+  - - 30
+    - 45
+    - 3
+  - - 45
+    - 90
+    - 1
+  - - 90
+    - 105
+    - 3
+  - - 105
+    - 120
+    - 1
+  profiles: same frozen nine-profile distribution and prompt pool
+  generation_rule: same Poisson generator; freeze/hash traces after load selection,
+    before any final policy evaluation
+stop_rules:
+- first request/action/route/cleanup audit failure stops all later runs
+- unknown migration terminal is invalid, not failed/cancelled
+- no performance-based reruns, discarded seeds, workload changes or automatic retry
+- reserve complete probe+12-run maximum before service activation
+sampling:
+  n: 1
+  best_of: 1
+  temperature: 0.0
+  top_k: 1
+  ignore_eos: true
+runtime_config_hash: 6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882
+llumnix_config_hash: 428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3

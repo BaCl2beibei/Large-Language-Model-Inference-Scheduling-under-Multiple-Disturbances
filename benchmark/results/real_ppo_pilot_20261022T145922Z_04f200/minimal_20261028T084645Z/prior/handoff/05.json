@@ -1,0 +1,211 @@
+{
+  "stage": "05_live_smoke",
+  "status": "incomplete",
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "created_at_utc": "2026-10-22T17:53:15.669617+00:00",
+  "scope": "修正后的 05 固定命令清单完成四条 dry-run；没有执行真实 telemetry/shadow/active/overhead。",
+  "repair_summary": "Ray head 与 Llumnix client 均配置 20000，已离开默认 worker 端口 10002–19999；旧失败证据保留。",
+  "preconditions": {
+    "04_review_passed": true,
+    "current_hash_bindings_match": true,
+    "P1_telemetry_dryrun_ready": true,
+    "shadow_active_overhead_blocked_until_p1_live": true,
+    "GPU_idle": true,
+    "task_services_stopped": true
+  },
+  "budget": {
+    "remaining": {
+      "total_experiment_wall_time_sec": 27218.40094780922,
+      "P0_P3_sec": 5618.400947809219,
+      "P4_sec": 7200.0,
+      "P5_sec": 14400.0
+    },
+    "planned_total_max_sec": 6060,
+    "full_sequence_max_fits": false,
+    "live_start_allowed": false,
+    "reason": "当前持续 P0–P3 剩余预算低于固定清单 6060 秒最大值；不启动一个会挤占后续冻结步骤预算的真机序列。"
+  },
+  "actual_commands_and_exit_codes": [
+    {
+      "label": "telemetry",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "telemetry",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_telemetry_6101",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "ready_for_live": true,
+      "blocked_reasons": [],
+      "GPU_will_start": false,
+      "stdout_log": "reviews/portfix_02/05_dryrun_telemetry.stdout.log",
+      "stderr_log": "reviews/portfix_02/05_dryrun_telemetry.stderr.log"
+    },
+    {
+      "label": "shadow",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "shadow",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_shadow_6102",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "GPU_will_start": false,
+      "stdout_log": "reviews/portfix_02/05_dryrun_shadow.stdout.log",
+      "stderr_log": "reviews/portfix_02/05_dryrun_shadow.stderr.log"
+    },
+    {
+      "label": "active",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "active",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_active_6103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "GPU_will_start": false,
+      "stdout_log": "reviews/portfix_02/05_dryrun_active.stdout.log",
+      "stderr_log": "reviews/portfix_02/05_dryrun_active.stderr.log"
+    },
+    {
+      "label": "overhead",
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_ppo.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--stage",
+        "bridge",
+        "--mode",
+        "overhead",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "05_portfix2_overhead_6104",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "ready_for_live": false,
+      "blocked_reasons": [
+        "live prerequisites: [Errno 2] No such file or directory: '/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_live.json'"
+      ],
+      "GPU_will_start": false,
+      "stdout_log": "reviews/portfix_02/05_dryrun_overhead.stdout.log",
+      "stderr_log": "reviews/portfix_02/05_dryrun_overhead.stderr.log"
+    }
+  ],
+  "live_gates_present": {
+    "p1_live.json": false,
+    "p2_shadow_live.json": false,
+    "p2_active_live.json": false,
+    "p2_live.json": false
+  },
+  "gpu_started": false,
+  "ray_started": false,
+  "real_requests": 0,
+  "real_migrations": 0,
+  "source_hashes": {
+    "review": "7439262de396a9f5d5678f686b5c92d9fd291c9a7fd60baa66dd32b751844065"
+  },
+  "config_hashes": {
+    "budget.json": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983",
+    "experiment_spec.yaml": "095688b60ce963dab253178c8e247c8d85586d019945dfc0d13050efe3718fa0",
+    "rl_scheduler/configs/real_llumnix.yaml": "428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3",
+    "rl_scheduler/configs/real_pilot.yaml": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+    "services/real_ppo_fcda2e237b.conf": "a3ca789f3ab73bc912d4826ef1a27133e9ad8328507e744ad441b1f9d0efaa7c",
+    "services/real_ppo_fcda2e237b.sh": "a2b03e6560c7ee6f2aa240e970eb8dd194c8b5ee05d37f2b12f73cae3eb17672",
+    "services/real_ppo_guard_fcda2e237b.conf": "4e438a41de7629312fee957271299413564ca50bc3b2d23a09058c229a366850",
+    "services/real_ppo_guard_fcda2e237b.sh": "aa1cd524f91c8d7cf25c7aa53463b98a0c972b8f05278d46efdeeccc030ad798",
+    "smoke_spec.yaml": "1e455228f5d1ca562a95cf08d291e24124b5f9b084d656f42888f3d246514992",
+    "traces/smoke05/active.json": "517d2d5a639f85a2f25f98b079e5a07b676eaa33a747e824164e45baed578a42",
+    "traces/smoke05/manifest.json": "8e5125e46c0333144e388dac0b329ceecc4e4f824c2543bd00383f1f129f7068",
+    "traces/smoke05/overhead.json": "664b45e43685b1f0fae6739f1398a167bbecdfba25d47119447e227fa7ae4066",
+    "traces/smoke05/shadow.json": "dc34643fc1ae4664043fbebb67e0ffaf22ae0d718c3079e8743af8fd8da3a586",
+    "traces/smoke05/telemetry.json": "ee24eaaf5f50f4484533c75cb7919523bcd258e61a2aa5455db5d5aca629e581",
+    "commands/05_smoke.json": "6248867bb95fe689787887c9df052455474f387092b5a1e9ab54a76c185c57cb"
+  },
+  "hashes": {
+    "bridge_review_json": "9b9687696172818acefd3f8e6a6b13e006036277ab23a837d542fa318ccb89f2",
+    "bridge_review_markdown": "8688699213ba89638b8419e85756f928a13542c45abfba45a934599567262d99",
+    "source_hash": "7439262de396a9f5d5678f686b5c92d9fd291c9a7fd60baa66dd32b751844065",
+    "config_hash": "c3aab09c7ccd5046259b6a5b6c23bf413733af820404231e378ea968de871b40",
+    "pilot_config": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+    "llumnix_config": "428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3",
+    "smoke_spec": "1e455228f5d1ca562a95cf08d291e24124b5f9b084d656f42888f3d246514992",
+    "command_spec": "6248867bb95fe689787887c9df052455474f387092b5a1e9ab54a76c185c57cb",
+    "p1_offline_gate": "67e260bdc8ebc399f5cade2b565d761f915156f2800e9c89d721a771dd9c7ff9",
+    "p2_offline_gate": "8172791d79c2133de38d87a40ccac6fa923012913ff74610c8d2199afa20294d",
+    "dryrun_preflight": "fa165c0cc7441ab164cf45edda11c9dbf9a5ab7a569c3af0ae428658c6d867b7",
+    "prior_failed_handoff": "791420604b7967bd9a9facd1dc4e7ba48f6a1795306d00768445233a4832842e"
+  },
+  "changed_files": [
+    "smoke_spec.yaml",
+    "commands/05_smoke.json",
+    "reviews/bridge_review.json",
+    "reviews/bridge_review.md",
+    "gates/p1_offline_portfix_02.json",
+    "gates/p2_offline_portfix_02.json",
+    "handoff/04.json",
+    "handoff/04.md",
+    "handoff/05.json",
+    "handoff/05.md",
+    "handoff/repair_03.json",
+    "handoff/repair_03.md",
+    "active_run.json",
+    "repairs/ray_port_collision/"
+  ],
+  "limitations": [
+    "dry-run 证明 hash、配置、Trace 与依赖门控可解析，不证明 Ray/GPU 启动或模型推理成功",
+    "Telemetry 的固定 live 命令未启动；P1/P2 live gates 均不存在。"
+  ],
+  "next_step_executable": false,
+  "next_GPU_step_executable": false,
+  "next_step": "本 run 的 P0–P3 预算不足；不得重置账本或缩短冻结命令。交付预算阻塞状态。",
+  "remaining_budget_at_handoff": {
+    "total_experiment_wall_time_sec": 27180.185793161392,
+    "P0_P3_sec": 5580.185793161392,
+    "P4_sec": 7200.0,
+    "P5_sec": 14400.0
+  },
+  "final_verified_at_utc": "2026-10-22T17:53:53.883665+00:00"
+}
