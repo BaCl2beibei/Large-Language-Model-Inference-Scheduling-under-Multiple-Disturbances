@@ -1,0 +1,187 @@
+{
+  "status": "incomplete",
+  "status_scope": "07 preflight attempted; no opportunity probe or paired episode started",
+  "stage": "P3_opportunity",
+  "step": "07",
+  "run_id": "real_ppo_pilot_20261022T145922Z_04f200",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+  "updated_at_utc": "2026-10-28T09:18:23Z",
+  "user_followup": {
+    "instruction_1": "别管预算了，直接跑",
+    "instruction_2": "删掉硬预算校验",
+    "result": "formal fixed command was attempted; runner rejected before service activation. No source or protocol edits were made because downstream service/watchdog/episode checks and hash-bound gates make this a multi-file change, not a removable single preflight."
+  },
+  "preconditions": {
+    "handoff_06": {
+      "status": "passed",
+      "scope": "minimal live feasibility plus CPU readiness; opportunity not run; P1/P2 live unverified"
+    },
+    "p3_ready": {
+      "status": "passed",
+      "stage": "P3_CPU_preparation"
+    },
+    "live_gates": {
+      "missing": {
+        "gates/p1_live.json": true,
+        "gates/p2_live.json": true
+      },
+      "p1_p2_live_valid": false,
+      "evidence": "gates directory has only offline and p3_ready gates; handoff/06.json explicitly says p1_live/p2_live absent/unverified"
+    },
+    "budget": {
+      "remaining_sec": {
+        "total_experiment_wall_time_sec": 0.0,
+        "P0_P3_sec": 0.0,
+        "P4_sec": 7200.0,
+        "P5_sec": 14400.0
+      },
+      "effective_remaining_total_and_P0_P3_sec": 0,
+      "clock_last_recorded_utc": "2026-10-22T17:53:53Z",
+      "clock_last_recorded_elapsed_sec": 1619.8142068386078,
+      "elapsed_including_wait_sec": 489089.2923657894,
+      "boot_id_matches": false,
+      "clock_or_budget_modified": false,
+      "required_max_sec": 5760
+    }
+  },
+  "actual_commands_and_exit_codes": {
+    "manifest_dry_run": {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_opportunity.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--opportunity-spec",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml",
+        "--stage",
+        "opportunity",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "07_opportunity_2101_2102_2103",
+        "--dry-run"
+      ],
+      "exit_code": 0,
+      "ready_for_live": false,
+      "GPU_will_start": false,
+      "estimated_max_sec": 5760,
+      "blocked_reasons": [
+        "persistent P0-P3/total budget insufficient for complete 5760 second maximum"
+      ],
+      "remaining_budget_sec": {
+        "total_experiment_wall_time_sec": 0.0,
+        "P0_P3_sec": 0.0,
+        "P4_sec": 7200.0,
+        "P5_sec": 14400.0
+      },
+      "protocol_hash": "57dd82d5a458f3ff8289f3f2fd1b8abfa62ff7bfb65b5068d5b3fd04eefab9db",
+      "runtime_config_hash": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882"
+    },
+    "manifest_live_attempt": {
+      "argv": [
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/run_real_opportunity.py",
+        "--config",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/rl_scheduler/configs/real_pilot.yaml",
+        "--opportunity-spec",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml",
+        "--stage",
+        "opportunity",
+        "--output-dir",
+        "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/real_ppo_pilot_20261022T145922Z_04f200",
+        "--manage-services",
+        "--invocation-id",
+        "07_opportunity_2101_2102_2103"
+      ],
+      "exit_code": 2,
+      "stdout": "{\"status\": \"incomplete\", \"reason\": \"persistent P0-P3/total budget insufficient for complete 5760 second maximum\"}",
+      "service_activation_reached": false,
+      "GPU_will_start": false
+    }
+  },
+  "runtime_state": {
+    "task_services": "STOPPED",
+    "gpu_inventory": "4 x NVIDIA GeForce RTX 3060; each 0% utilization and 1 MiB allocated",
+    "opportunity_invocation_directory_created": false,
+    "opportunity_gate_created": false,
+    "probes_started": 0,
+    "paired_episodes_started": 0,
+    "no_live_service_or_ray_started_by_step_07": true
+  },
+  "hard_budget_check_removal_analysis": {
+    "checks": {
+      "benchmark/run_real_opportunity.py": [
+        "plan(): budget maximum block",
+        "main(): BudgetLedger.require(estimated_max_sec)"
+      ],
+      "rl_scheduler/real_service.py": [
+        "run_server(): BudgetLedger.activate(required startup reserve)",
+        "run_server(): BudgetLedger.require(60)",
+        "run_server(): remaining<=60 stops server",
+        "run_watchdog(): remaining/exhausted stops server"
+      ],
+      "rl_scheduler/real_env.py": [
+        "RealEnv.reset(): episode horizon reserve",
+        "RealEnv.step(): cleanup reserve"
+      ],
+      "benchmark/run_real_ppo.py": [
+        "wait_ready(): BudgetLedger.require(60), called by opportunity runner"
+      ],
+      "rl_scheduler/real_budget.py": [
+        "BudgetLedger.activate/require enforce persisted caps"
+      ]
+    },
+    "hash_bound_gate_effect": {
+      "p1_offline_portfix_02.json": "hash-binds real_budget.py, real_env.py, real_service.py, run_real_ppo.py",
+      "p2_offline_portfix_02.json": "hash-binds real_budget.py, real_env.py, real_service.py, run_real_ppo.py",
+      "reviews/bridge_review.json": "hash-binds real_budget.py, real_env.py, real_service.py, run_real_ppo.py",
+      "p3_ready.json": "hash-binds benchmark/run_real_opportunity.py"
+    },
+    "current_safe_execution_result": "removing only the opportunity CLI preflight is insufficient; server activation/watchdog/episode checks will still stop or reject the run. Removing the shared checks invalidates the existing offline gates and independent review, so those gates cannot be reused or hand-edited."
+  },
+  "source_config_evidence_sha256": {
+    "rl_scheduler/docs/real_ppo_model_prompts/07_luna_opportunity.md": "4fe5e724346fd814c8343422fd9cba66146c1c0dd802f773cafb5b6766259445",
+    "rl_scheduler/docs/real_cluster_ppo_execution_plan.md": "b344e6a36cd63072e0c99a6bd9012bd4442bef1071a10a74e634ad899616b145",
+    "benchmark/run_real_opportunity.py": "3503807aac176a8fe4cecbb18f56e1421f1fc89aa8802fd1428b5be2800a629b",
+    "rl_scheduler/real_reward.py": "550d00c5a73480207b4305f39b077809d29f53066ed660ed9547155468990d50",
+    "rl_scheduler/real_opportunity.py": "e00104b7dba0f1024a7abe9cdc256588ade854080d2cb50aceaad55889885dae",
+    "rl_scheduler/real_opportunity_runner.py": "27965cdf53e8401430e39175d9911026de2771930c07f1bcadb4e9bfbbf9a2a6",
+    "rl_scheduler/real_budget.py": "20ad5fda2bc3d25560477c30ceb135577a479a12ddafa7dd4ba14552f561be98",
+    "rl_scheduler/real_service.py": "9670106a3e2c919b25a3bd3f54b24d468c1879f0d22874d69021ae8a5309c2f1",
+    "rl_scheduler/real_env.py": "4fb71a73d4ddc29b8b6f335bbc0e6a6fa06d44ea0ab925c91d27fd482a07ea38",
+    "benchmark/run_real_ppo.py": "39771520aedf9f36b5b5c03f74e1cd213cf9c7700bc5e87f28930ae893c9c688",
+    "rl_scheduler/configs/real_pilot.yaml": "6e7ad9eb64f0a226275122b1d2f23cc644590605b1018d2343f4b85069612882",
+    "rl_scheduler/configs/real_llumnix.yaml": "428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/opportunity_spec.yaml": "f3bec01ce72171959ebcba2ed8a44e9e73343fc766c38182846624891f601325",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reward_initial.yaml": "d0d4872e264054f37dc44289b38b3817ef773ad867a6e888d4e65fd2395f53f9",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/final_burst_spec.yaml": "62d11a75c8c078c9d7f1d0cc2a2b1dd74e57dd9a7e57634645afb6c22953c117",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/commands/07_opportunity.json": "4479fda07ca3ad6b758d60fa3f7c5fd3eaf7ddc7867a22d417cdff366badd53b",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/handoff/05.json": "4631bff6ed3908dd5db58d003f02b295829007ea737691e8433c3a3c09c5f82e",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/handoff/06.json": "03de63ab3823bde656bb5b5caf839f6bf14d77954ebdee4f8aada3a242ad727e",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p1_offline_portfix_02.json": "67e260bdc8ebc399f5cade2b565d761f915156f2800e9c89d721a771dd9c7ff9",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p2_offline_portfix_02.json": "8172791d79c2133de38d87a40ccac6fa923012913ff74610c8d2199afa20294d",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/gates/p3_ready.json": "2dd4235cebb68452014b28132305cf6b739390f250ebf7b9c03cd09197e34777",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/reviews/bridge_review.json": "9b9687696172818acefd3f8e6a6b13e006036277ab23a837d542fa318ccb89f2",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/p3_evidence/user_override_06.json": "15b1d5ec7b1e030177fc8c7f4e322f8cf583fb89762fbc4b8559edb9b0644bfe",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/budget.json": "55358dd1f23ce2ce265a4feefe1230113b4fcfed419b832a691d0397a082e983",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/experiment_clock.json": "7ba946d09cb6e8eda45b165c6071e80a5e7eed1a14abf21d77335159276dec5b"
+  },
+  "changed_files": [
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/handoff/07.md",
+    "benchmark/results/real_ppo_pilot_20261022T145922Z_04f200/handoff/07.json",
+    "rl_scheduler/runs/real_ppo_handoff/active_run.json"
+  ],
+  "code_or_protocol_modified": false,
+  "tests_run": [],
+  "opportunity_runs": 0,
+  "opportunity_gate_status": "incomplete",
+  "remaining_budget": {
+    "total_experiment_wall_time_sec": 0.0,
+    "P0_P3_sec": 0.0,
+    "P4_sec": 7200.0,
+    "P5_sec": 14400.0
+  },
+  "next_GPU_step_executable": false,
+  "handoff_note": "No synthetic passed P1/P2 gates or opportunity_gate were created. Budget caps and experiment_clock bytes were not reset. This record captures both the explicit user request to ignore the budget and why the fixed runner still rejects the run."
+}
