@@ -1,0 +1,124 @@
+{
+  "schema": "migration-opportunity-scan-v1",
+  "status": "planned_single_seed_stay_vs_balanced_l_threshold_override",
+  "run_id": "migration_opportunity_q3_512x1084_threshold5_pair_20261103",
+  "created_utc": "2026-11-03T12:56:26.270271+00:00",
+  "code_hashes": {
+    "rl_scheduler/migration_scan.py": "2625c61c7f12dc1a84889804ece217e2581a0977f9a0286619e8ff1ad822a7e7",
+    "rl_scheduler/migration_scan_runner.py": "3696502c4a3d9d52dcac5e65eeeff3157c75c7a6acbc9b8c41d4215d395abee8",
+    "rl_scheduler/real_client.py": "66477c978f957a7aaefab736e2ac928e8df3b38615459839b4c1e54bd6c124e4",
+    "benchmark/run_migration_opportunity_scan.py": "17aa8468fd9742ddbf3612dae670453928cad8f0f08ff2be0fcc041b804bb3f5",
+    "rl_scheduler/migration_scan_analysis.py": "4e3748219814a686e123ff55cd2a807d583d10e9d4c90988d1b3428dc4f8b30d",
+    "rl_scheduler/real_bridge.py": "5d57e4bbf2b39691854280b53ab6113634c303aac905aa92a3c7c277f83f813e",
+    "rl_scheduler/real_env.py": "866d89c45cdc2fc74a3e2ba0553561d7205dbf5aef0ccaee8f489d78c6dfb64c",
+    "rl_scheduler/real_opportunity.py": "2ea5262ff25468e3fe37ca23bdfad0d19df819ec695378637e5a43fae0ac4348",
+    "rl_scheduler/real_opportunity_runner.py": "6d92bc7c66b9fe6ef0f63d9aa3aa1d61487c9d85914e5541942dcf8655baacc4",
+    "llumnix/backends/vllm/scheduler.py": "ebf6a5441cc588a38749d292dc7ddddbab4ddbdbd4eae76be22643e23af9aeb9",
+    "llumnix/backends/output_forwarder.py": "042286999cbb150180165f5ba63b1c04577855bca66beab4ad7668f132aa13a2",
+    "llumnix/backends/vllm/worker.py": "6e48c6cf523de1c1cb7e0cc49c448808508e6e0fac5e4dd88e336f3e494e6aec",
+    "llumnix/llumlet/llumlet.py": "9cfae565237ce49ee2c8e337daf1b6dc75d92d0f561d91cea2e411c66f599b45",
+    "llumnix/real_control.py": "e06d0236643aa820cb83bd247d9fb965a1c45286ea6c0d733b6d060538225e0d",
+    "llumnix/llumlet/migration_coordinator.py": "e174802a07c3b4c01ec1283e140d53d679b031a25bebdbd8482308f48d875457",
+    "llumnix/llumlet/local_migration_scheduler.py": "49ffa3569c9c66af44d583f38d9d35748f6eb047fd75cf36388e4f68000c0806",
+    "llumnix/entrypoints/vllm/api_server.py": "8b7d2ca5a92cfa0b949e8b274babdf65f60eb09328e243d7e4d9dd8084698b5b",
+    "llumnix/entrypoints/vllm/real_control_api.py": "1def0a4ce0076a4b09f5236a44f6d92ed37f9f836cb1cd116c5d1c2277a11e4e",
+    "llumnix/entrypoints/vllm/real_metrics_stream.py": "b2ec6d936ecb3a84c0693ad6ed972ff3ddd70b7f3f3f81bacc4a4c800229495d",
+    "rl_scheduler/configs/real_pilot.yaml": "a8ba0f5bc75c7f4a7e950621873dda0a15033a94944c5892bd5e37a57bd6ec26",
+    "rl_scheduler/configs/real_llumnix.yaml": "428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3",
+    "rl_scheduler/full_completion_service.py": "ae4a9c4a93ec63f5d5a37b0651a215ead436aef533fe9cd88d4cfcd236a504f2",
+    "rl_scheduler/real_service.py": "29b58de6b0c1408a5be7a5e707b59505c6c82e89869d4dd100892ca5273a1dac",
+    "rl_scheduler/full_completion.py": "431237071f18f57dcf0cd2f2f8add0b9725cbb718d48b2ad95097baa5279cfd2",
+    "benchmark/run_full_completion_balance.py": "bb10c3afcf00bf1fe6b1097ff8d8c962071bf44eef2d540056f0323afc006060"
+  },
+  "cases": [
+    {
+      "scenario": "i512_o1084_q3_s192_b4096",
+      "input_tokens": 512,
+      "output_tokens": 1084,
+      "qps": 3,
+      "max_num_seqs": 192,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.65,
+      "max_model_len": 2112
+    }
+  ],
+  "seeds": [
+    91000
+  ],
+  "scan_seed": 91000,
+  "arrival_sec": 120,
+  "drain_sec": 120,
+  "cleanup_sec": 240,
+  "route_shares": [
+    0.7,
+    0.1,
+    0.1,
+    0.1
+  ],
+  "slos": {
+    "ttft_ms": 2000,
+    "tpot_ms": 150
+  },
+  "policy": "constrained Balanced; native policy disabled",
+  "coarse_runs": 9,
+  "refinement_runs_per_candidate": 3,
+  "paired_runs_per_candidate": 12,
+  "threshold_rule": "finite nonidle arrival-phase F empirical quartiles; reject degeneracy",
+  "environment": {
+    "python": "/venv/main/bin/python",
+    "dependencies": {
+      "vllm": null,
+      "ray": null,
+      "aiohttp": null,
+      "transformers": null,
+      "psutil": "7.2.2",
+      "PyYAML": "6.0.3",
+      "matplotlib": null
+    },
+    "gpu": {
+      "exit_code": 0,
+      "stdout": "index, uuid, name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]\n0, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, NVIDIA GeForce RTX 3060, 12288 MiB, 1 MiB, 0 %\n1, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, NVIDIA GeForce RTX 3060, 12288 MiB, 1 MiB, 0 %\n2, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, NVIDIA GeForce RTX 3060, 12288 MiB, 1 MiB, 0 %\n3, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, NVIDIA GeForce RTX 3060, 12288 MiB, 1 MiB, 0 %",
+      "stderr": ""
+    },
+    "services": {
+      "exit_code": 3,
+      "stdout": "caddy                                    RUNNING   pid 677, uptime 5:12:33\ncohort_ppo_trainer_c03344c790            STOPPED   Not started\ncron                                     RUNNING   pid 678, uptime 5:12:33\nfc_balance_ray_screen_20261029T093554Z   STOPPED   Not started\nfc_balance_ray_smoke_20261029T071838Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073026Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073751Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029_062729     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063340     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063818     STOPPED   Not started\nfc_balance_ray_smoke_20261029_070700     STOPPED   Not started\nfull_completion_2e1ba5ee55               STOPPED   Nov 03 09:18 AM\ngithub_workspace_autosync                RUNNING   pid 682, uptime 5:12:33\ninstance_portal                          RUNNING   pid 687, uptime 5:12:33\njupyter                                  EXITED    Nov 03 07:04 AM\npyworker                                 EXITED    Nov 03 07:04 AM\nreal_ppo_252b0d3795                      STOPPED   Not started\nreal_ppo_fcda2e237b                      STOPPED   Not started\nreal_ppo_guard_252b0d3795                STOPPED   Not started\nreal_ppo_guard_fcda2e237b                STOPPED   Not started\nreal_ppo_op_11d493e944                   STOPPED   Not started\nreal_ppo_op_257e087e48                   STOPPED   Not started\nreal_ppo_op_4589eb4d4e                   STOPPED   Not started\nreal_ppo_op_5039845934                   STOPPED   Not started\nreal_ppo_op_570a6fd362                   STOPPED   Not started\nreal_ppo_op_722664927e                   STOPPED   Not started\nreal_ppo_op_ec9f5c8f86                   STOPPED   Not started\nreal_ppo_op_f6182eac97                   STOPPED   Not started\nreal_ppo_op_guard_11d493e944             STOPPED   Not started\nreal_ppo_op_guard_257e087e48             STOPPED   Not started\nreal_ppo_op_guard_4589eb4d4e             STOPPED   Not started\nreal_ppo_op_guard_5039845934             STOPPED   Not started\nreal_ppo_op_guard_570a6fd362             STOPPED   Not started\nreal_ppo_op_guard_722664927e             STOPPED   Not started\nreal_ppo_op_guard_ec9f5c8f86             STOPPED   Not started\nreal_ppo_op_guard_f6182eac97             STOPPED   Not started\nsyncthing                                RUNNING   pid 701, uptime 5:12:33\ntensorboard                              RUNNING   pid 704, uptime 5:12:33\ntunnel_manager                           RUNNING   pid 713, uptime 5:12:33",
+      "stderr": ""
+    },
+    "compute_processes": {
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "gpu_time_reservation": "unknown; invocation wall budget enforced by runner",
+    "cpu_affinity": 80
+  },
+  "execution_protocol": {
+    "scope": "one QPS=3 paired comparison: Stay vs Balanced-L at user-specified threshold F=5",
+    "scenario": "i512_o1084_q3_s192_b4096",
+    "seed": 91000,
+    "policies": [
+      "Stay",
+      "Balanced-L"
+    ],
+    "thresholds": {
+      "Balanced-L": 5
+    },
+    "measured_window_sec": 600,
+    "arrival_sec": 120,
+    "drain_sec": 480,
+    "warmup_sec": {
+      "arrival": 2,
+      "drain": 8
+    },
+    "trace_protocol": "same generated trace for both policy episodes",
+    "model": "Qwen2-1.5B",
+    "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+    "max_model_len": 2112,
+    "gpu_memory_utilization": 0.65,
+    "max_num_seqs": 192,
+    "max_num_batched_tokens": 4096,
+    "threshold_source": "explicit user override; not derived from this scenario Stay F quantiles",
+    "client_timeout_fix": "disable the legacy 360s total timeout so streams cover the 600s scoring window; keep 10s connect timeouts"
+  }
+}

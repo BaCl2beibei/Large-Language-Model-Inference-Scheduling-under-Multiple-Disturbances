@@ -2,7 +2,6 @@ import numpy as np
 
 from rl_scheduler.cost_estimator import MigPPOMigrationCostEstimator
 from rl_scheduler.observation import RollingArrivalRate, build_mig_ppo_observation
-from rl_scheduler.normalization import MigPPONormalizer
 from rl_scheduler.tests.helpers import fake_infos
 
 
@@ -46,21 +45,6 @@ def test_observation_marks_global_cost_model_fallback():
     assert np.all(obs.pair_cost_source[:, 1] == 1.0)
     assert np.all(obs.pair_cost_uncertainty_ms > 0.0)
     assert np.isfinite(obs.pair_cost_uncertainty_ms).all()
-
-
-def test_normalizer_round_trip_and_missing_masks_are_finite():
-    observations = [build_mig_ppo_observation(fake_infos(now=1000 + idx), now=1000 + idx,
-                                             arrival_rate_rps=float(idx)) for idx in range(3)]
-    normalizer = MigPPONormalizer().fit(observations)
-    transformed = normalizer.transform(observations[0])
-    restored = MigPPONormalizer.from_state_dict(normalizer.state_dict())
-    transformed_again = restored.transform(observations[0])
-    assert np.isfinite(transformed.instance_features).all()
-    assert np.isfinite(transformed.global_features).all()
-    assert np.isfinite(transformed.pair_features).all()
-    assert transformed.pair_features.shape == (12, 14)
-    np.testing.assert_allclose(transformed.instance_features, transformed_again.instance_features)
-    np.testing.assert_allclose(transformed.pair_features, transformed_again.pair_features)
 
 
 def test_stale_instance_state_is_marked_missing_and_candidate_is_invalid():

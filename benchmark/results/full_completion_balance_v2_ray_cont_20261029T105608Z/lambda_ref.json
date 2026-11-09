@@ -1,0 +1,48 @@
+{
+  "schema": "full-completion-lambda-ref-v1",
+  "profiles": {
+    "decode1536": {
+      "repeats_rps": [
+        1.3847017898589487,
+        1.1424921613778938,
+        1.2052789361140406
+      ],
+      "lambda_ref_rps": 1.2052789361140406
+    },
+    "bimodal_0.1": {
+      "repeats_rps": [
+        4.6244004527517895,
+        4.384735886467204,
+        3.971201328049992
+      ],
+      "lambda_ref_rps": 4.384735886467204
+    },
+    "bimodal_0.2": {
+      "repeats_rps": [
+        4.130552931519259,
+        4.038420070236886,
+        3.880790902442684
+      ],
+      "lambda_ref_rps": 4.038420070236886
+    },
+    "decode512": {
+      "repeats_rps": [
+        7.081839056636033,
+        6.642160826491836,
+        7.101774461686912
+      ],
+      "lambda_ref_rps": 7.081839056636033
+    },
+    "decode64": {
+      "repeats_rps": [
+        33.14878494887209,
+        41.44138830528636,
+        29.304846143070616
+      ],
+      "lambda_ref_rps": 33.14878494887209
+    }
+  },
+  "unit": "requests_per_sec",
+  "formula": "per profile: median(256/(last_client_terminal-first_scheduled))",
+  "interpretation": "finite uniform fixed-route synchronous cohort reference"
+}

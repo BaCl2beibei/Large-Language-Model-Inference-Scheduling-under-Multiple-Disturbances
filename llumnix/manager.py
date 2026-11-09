@@ -189,6 +189,10 @@ class Manager(ManagerControlMixin):
         else:
             prefill_instance_id, decode_instance_id, request_expected_steps = \
                 self.global_scheduler.dispatch(request_id, dispatch_context=kwargs)
+            route_selection = kwargs.pop('_llumnix_dispatch_audit', {})
+            from llumnix.metrics.causal_events import emit
+            emit('real_initial_route', request_id=str(request_id), instance_id=prefill_instance_id,
+                 route_source='native_llumnix_dispatch', selection=route_selection)
         target_instance_id = choose_destination_instance(prefill_instance_id, decode_instance_id, kwargs)
         request_processing_context.add_trace_timeline('manager_generate_timestamp')
         dispatch_task = asyncio.create_task(

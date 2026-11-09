@@ -16,6 +16,7 @@ from typing import List, Optional, Union, Iterable, Deque, Tuple, Dict, Any, Cor
 import asyncio
 import queue
 import gc
+import os
 from collections import defaultdict
 
 import ray
@@ -58,6 +59,7 @@ from llumnix.utils import (
 from llumnix.request_output import LlumnixRequestOuput
 from llumnix.metrics.causal_events import emit as emit_causal_event
 from llumnix.metrics.causal_events import emit_clock_sync as emit_causal_clock_sync
+from llumnix.metrics.causal_events import should_sample_output_update
 
 logger = init_logger(__name__)
 
@@ -238,23 +240,24 @@ class LLMEngineLlumnix(_AsyncLLMEngine):
             self._causal_output_counts[request_id] = output_tokens
             scheduler = self.scheduler[0] if self.scheduler else None
             batch_features = getattr(scheduler, "last_causal_batch_features", {}) or {}
-            emit_causal_event(
-                "engine_request_output",
-                request_id=request_id,
-                instance_id=self.instance_id,
-                batch_id=getattr(scheduler, "last_causal_batch_id", None),
-                input_tokens=len(request_output.prompt_token_ids or []),
-                output_tokens=output_tokens,
-                new_output_tokens=max(0, output_tokens - previous_tokens),
-                finished=bool(request_output.finished),
-                finish_reason=getattr(request_output.outputs[0], "finish_reason", None)
-                if request_output.outputs else None,
-                stop_reason=getattr(request_output.outputs[0], "stop_reason", None)
-                if request_output.outputs else None,
-                kv_utilization=batch_features.get("kv_utilization"),
-                running_requests=batch_features.get("num_running_requests"),
-                waiting_requests=batch_features.get("num_waiting_requests"),
-            )
+            if should_sample_output_update(request_id, output_tokens, bool(request_output.finished)):
+                emit_causal_event(
+                    "engine_request_output",
+                    request_id=request_id,
+                    instance_id=self.instance_id,
+                    batch_id=getattr(scheduler, "last_causal_batch_id", None),
+                    input_tokens=len(request_output.prompt_token_ids or []),
+                    output_tokens=output_tokens,
+                    new_output_tokens=max(0, output_tokens - previous_tokens),
+                    finished=bool(request_output.finished),
+                    finish_reason=getattr(request_output.outputs[0], "finish_reason", None)
+                    if request_output.outputs else None,
+                    stop_reason=getattr(request_output.outputs[0], "stop_reason", None)
+                    if request_output.outputs else None,
+                    kv_utilization=batch_features.get("kv_utilization"),
+                    running_requests=batch_features.get("num_running_requests"),
+                    waiting_requests=batch_features.get("num_waiting_requests"),
+                )
             if request_output.finished:
                 logger.info("Engine finished request {}".format(request_output.request_id))
                 if request_output.request_id in self.request_ids:
@@ -448,7 +451,12 @@ class BackendVLLM(BackendBaseInterface, BackendMigrationInterface):
         if len(self.worker_handle_list) + 1 == self.engine.parallel_config.world_size:
             self.worker_handle_list.insert(0, get_llumnix_actor_handle(LlumnixActor.INSTANCE, self.instance_id))
 
-        if self.migration_config.enable_migration:
+        # The real scan controller executes migrations through the same
+        # coordinator/backend as Llumnix, while disabling Llumnix's automatic
+        # migration policies. Initialize the worker-side transfer backend for
+        # that explicit control path as well.
+        scan_control_enabled = os.environ.get("LLUMNIX_SCAN_TELEMETRY") == "1"
+        if self.migration_config.enable_migration or scan_control_enabled:
             self._run_workers("init_migration", instance_id=instance_id,
                                                 migration_config=self.migration_config,
                                                 src_worker_handle_list=self.worker_handle_list,

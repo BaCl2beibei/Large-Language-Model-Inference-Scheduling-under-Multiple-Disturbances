@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import queue
 import threading
 import time
 import uuid
@@ -66,12 +67,14 @@ class Checkpoint:
 
 
 class EventJournal:
-    """One producer, ordered append + explicit durable watermark, no background sleep.
+    """One producer, ordered append + explicit durable watermark.
 
     The owner must stop/drain asynchronous work before acknowledging pending_delivery=0.
     A checkpoint asserts all occurrences <= through_ns have been emitted. This is
     automatic only for local events stamped by record(); reconstructed events must
-    not be appended behind an earlier watermark.
+    not be appended behind an earlier watermark. Event serialization and disk I/O
+    run on a dedicated writer so request-send timestamps do not wait behind a
+    synchronous fsync in the collector thread.
     """
     def __init__(self, path: Path, run_id: str, episode_id: str):
         self.path = Path(path)
@@ -83,11 +86,64 @@ class EventJournal:
         self._sequence = 0
         self._watermark = -1
         self._closed = False
+        self._writer_error = None
+        self._queue = queue.Queue(maxsize=65536)
+        self._writer = threading.Thread(target=self._write_loop,
+            name='request-event-journal-writer', daemon=True)
+        self._writer.start()
+
+    def _write_checkpoint(self, cp: Checkpoint):
+        self._stream.flush()
+        os.fsync(self._stream.fileno())
+        target = self.path.with_suffix(self.path.suffix + '.checkpoint.json')
+        temporary = target.with_suffix(target.suffix + '.tmp')
+        with temporary.open('w') as stream:
+            json.dump(asdict(cp), stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+
+    def _write_loop(self):
+        while True:
+            command = self._queue.get()
+            if command[0] == 'event':
+                if self._writer_error is None:
+                    try:
+                        self._stream.write((json.dumps(asdict(command[1]), allow_nan=False) + '\n').encode())
+                    except BaseException as exc:
+                        self._writer_error = exc
+            elif command[0] == 'checkpoint':
+                try:
+                    if self._writer_error is not None:
+                        raise RuntimeError('event journal writer failed') from self._writer_error
+                    self._write_checkpoint(command[1])
+                except BaseException as exc:
+                    self._writer_error = self._writer_error or exc
+                finally:
+                    command[2].set()
+            elif command[0] == 'close':
+                try:
+                    if self._writer_error is None:
+                        self._stream.flush()
+                        os.fsync(self._stream.fileno())
+                except BaseException as exc:
+                    self._writer_error = exc
+                finally:
+                    self._stream.close()
+                    command[1].set()
+                return
+
+    def _raise_writer_error(self):
+        if self._writer_error is not None:
+            raise RuntimeError('event journal writer failed') from self._writer_error
 
     def record(self, kind: str, request_id: str | None = None, *,
                occurred_ns: int | None = None, server_request_id: str | None = None,
                **data: Any) -> Event:
         with self._lock:
+            if self._closed:
+                raise RuntimeError('event journal is closed')
+            self._raise_writer_error()
             now = time.monotonic_ns()
             occurred = now if occurred_ns is None else occurred_ns
             if occurred <= self._watermark:
@@ -95,31 +151,35 @@ class EventJournal:
             event = Event(self.source, self._sequence + 1, kind, occurred, now,
                           self.run_id, self.episode_id, request_id,
                           server_request_id, data)
-            self._stream.write((json.dumps(asdict(event), allow_nan=False) + '\n').encode())
             self._sequence += 1
+            self._queue.put(('event', event))
             return event
 
     def checkpoint(self, *, pending_delivery: int | None = None) -> Checkpoint:
         with self._lock:
-            self._stream.flush()
-            os.fsync(self._stream.fileno())
+            if self._closed:
+                raise RuntimeError('event journal is closed')
+            self._raise_writer_error()
             now = time.monotonic_ns()
             self._watermark = now
             cp = Checkpoint(self.source, self._sequence, now, now, pending_delivery, True)
-            target = self.path.with_suffix(self.path.suffix + '.checkpoint.json')
-            temporary = target.with_suffix(target.suffix + '.tmp')
-            with temporary.open('w') as stream:
-                json.dump(asdict(cp), stream)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, target)
-            return cp
+            complete = threading.Event()
+            self._queue.put(('checkpoint', cp, complete))
+        complete.wait()
+        self._raise_writer_error()
+        return cp
 
     def close(self) -> None:
+        complete = None
         with self._lock:
             if not self._closed:
-                self._stream.close()
                 self._closed = True
+                complete = threading.Event()
+                self._queue.put(('close', complete))
+        if complete is not None:
+            complete.wait()
+            self._writer.join()
+        self._raise_writer_error()
 
 
 class EventCursor:
@@ -185,15 +245,20 @@ def _percentile(values: list[float], fraction: float) -> float | None:
 
 class RequestLedger:
     def __init__(self, run_id: str, episode_id: str, *, start_ns: int,
-                 arrival_end_ns: int, score_deadline_ns: int,
+                 arrival_end_ns: int, score_deadline_ns: int | None,
                  expected_sources: Iterable[str], ttft_slo_ms: float = 2000,
-                 tpot_slo_ms: float = 150, expected_request_ids: Iterable[str] | None = None):
-        if not start_ns < arrival_end_ns <= score_deadline_ns:
+                 tpot_slo_ms: float = 150, expected_request_ids: Iterable[str] | None = None,
+                 full_completion: bool = False):
+        if full_completion:
+            if score_deadline_ns is not None or not start_ns < arrival_end_ns:
+                raise ValueError('full-completion ledgers require arrivals and no score deadline')
+        elif score_deadline_ns is None or not start_ns < arrival_end_ns <= score_deadline_ns:
             raise ValueError('invalid scoring boundaries')
         if ttft_slo_ms < 0 or tpot_slo_ms < 0:
             raise ValueError('negative SLO')
         self.run_id, self.episode_id = run_id, episode_id
         self.start_ns, self.arrival_end_ns, self.deadline_ns = start_ns, arrival_end_ns, score_deadline_ns
+        self.full_completion = bool(full_completion)
         self.sources = frozenset(expected_sources)
         self.expected_request_ids = (frozenset(expected_request_ids)
                                      if expected_request_ids is not None else None)
@@ -224,7 +289,7 @@ class RequestLedger:
             cp = self.checkpoints.get(event.source)
             if cp and event.sequence > cp.last_sequence and event.occurred_ns <= cp.through_ns:
                 self.issues.add(f'event_behind_watermark:{key}')
-            if self._frozen and event.occurred_ns <= self.deadline_ns:
+            if self._frozen and (self.deadline_ns is None or event.occurred_ns <= self.deadline_ns):
                 self.issues.add(f'late_scoring_evidence_after_freeze:{key}')
             self.events[key] = deepcopy(event)
 
@@ -295,6 +360,10 @@ class RequestLedger:
                 if count > high:
                     outputs.append((event.occurred_ns, count - high))
                     high = count
+                elif count == high and high > 0 and event.data.get('finished') is True:
+                    # A final cumulative-count frame can repeat the last sampled
+                    # count; keep its exact completion-side timestamp for TPOT.
+                    outputs.append((event.occurred_ns, 0))
             row['actual_output_tokens'] = high
             row['token_increments'] = outputs
             engine_times = [e.occurred_ns for e in events
@@ -311,7 +380,8 @@ class RequestLedger:
                                                           'client_last_ns', 'client_terminal_ns'))
             if sent is None and any(by_kind[k] for k in ('accepted', 'client_output', 'client_terminal')):
                 problems.add(f'missing_sent:{request_id}')
-            if sent is not None and (sent < self.start_ns or sent > self.deadline_ns):
+            if sent is not None and (sent < self.start_ns or
+                                     self.deadline_ns is not None and sent > self.deadline_ns):
                 problems.add(f'send_outside_episode:{request_id}')
             if sent is not None and any(t is not None and t < sent for t in (first, terminal)):
                 problems.add(f'client_time_order:{request_id}')
@@ -331,7 +401,8 @@ class RequestLedger:
                  terminal_event.data.get('outcome') == 'cancelled'))
             row['outcome'] = self._outcome(terminal_event, row, confirmed_cancel)
             row['score_outcome'] = ('not_sent' if sent is None else
-                'censored' if terminal is None or terminal > self.deadline_ns else row['outcome'])
+                'censored' if terminal is None or
+                self.deadline_ns is not None and terminal > self.deadline_ns else row['outcome'])
             row['cleanup_outcome'] = ('not_sent' if sent is None else
                                       row['outcome'] if terminal is not None else 'unresolved')
             row['server_outcome'] = by_kind['server_terminal'][0].data.get('outcome', 'unknown') if by_kind['server_terminal'] else None
@@ -375,7 +446,8 @@ class RequestLedger:
                 'outstanding': sum(r['sent_ns'] is not None and r['client_terminal_ns'] is None for r in rows)}
 
     def audit(self, *, through_ns: int | None = None, require_cleanup: bool = False) -> dict:
-        through = self.deadline_ns if through_ns is None else through_ns
+        through = (time.monotonic_ns() if self.deadline_ns is None else self.deadline_ns) \
+            if through_ns is None else through_ns
         rows, problems = self._rows(occurred_by_ns=through)
         problems.update(self.issues)
         planned_ids = {r['request_id'] for r in rows if r['planned_ns'] is not None}
@@ -474,6 +546,8 @@ class RequestLedger:
                     if r['client_terminal_ns'] is not None and lo <= r['client_terminal_ns'] <= hi))}
 
     def freeze_score(self) -> dict:
+        if self.full_completion:
+            raise RuntimeError('full-completion ledgers use complete-cohort metrics, not fixed-window scoring')
         if self._frozen is not None:
             return deepcopy(self._frozen)
         audit = self.audit()

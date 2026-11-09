@@ -26,9 +26,12 @@ async def cancel_instance_request(owner, request_id):
     if len(engine.scheduler)!=1:
         raise RuntimeError('cancellation requires one v0 scheduler')
     scheduler = engine.scheduler[0]
-    if (getattr(owner, '_real_generating', set())
+    # A request's add_request fence is independent of other requests entering
+    # the same engine. Only the target must leave its add path before its KV
+    # blocks can be removed; unrelated admissions must not starve cleanup.
+    if (request_id in getattr(owner, '_real_generating', set())
             or getattr(owner, '_real_inbound_tasks', set())
-            or coordinator.migrating_out_request_id_set
+            or request_id in coordinator.migrating_out_request_id_set
             or getattr(owner, '_real_control_inflight', None)):
         return {'status':'unknown', 'reason':'request_operations_inflight'}
     # Reuse the engine's step/output-processing barrier before freeing storage.
@@ -39,8 +42,10 @@ async def cancel_instance_request(owner, request_id):
                        for queue in (scheduler.running,scheduler.waiting,scheduler.swapped)))
     if resident:
         await owner.backend_engine.remove_running_request(request_id)
-    if (getattr(owner, '_real_generating', set()) or getattr(owner, '_real_inbound_tasks', set())
-            or coordinator.migrating_out_request_id_set or getattr(owner, '_real_control_inflight', None)):
+    if (request_id in getattr(owner, '_real_generating', set())
+            or getattr(owner, '_real_inbound_tasks', set())
+            or request_id in coordinator.migrating_out_request_id_set
+            or getattr(owner, '_real_control_inflight', None)):
         return {'status':'unknown', 'reason':'request_operations_inflight'}
     await owner.backend_engine.abort_request({request_id})
     # No transfer is active now; paused and preallocated storage may be reclaimed.
@@ -63,10 +68,14 @@ async def cancel_instance_request(owner, request_id):
               and request_id not in coordinator.migrating_in_request_id_set
               and request_id not in coordinator.migrating_out_request_id_set
               and request_id not in coordinator.pending_migrate_in_request_time)
-    pending = engine.output_forwarder.thread_forwarder.real_pending_delivery()
+    forwarder = engine.output_forwarder.thread_forwarder
+    request_pending = getattr(forwarder, 'real_request_pending_delivery', None)
+    pending = request_pending(request_id) if request_pending else forwarder.real_pending_delivery()
     return {'status':'absent' if absent and pending==0 else 'unknown',
             'instance_id':owner.instance_id, 'epoch':instance_state(owner)['epoch'],
-            'pending_delivery':pending, 'fenced':True}
+            'pending_delivery':pending, 'fenced':True,
+            'reason':None if absent and pending==0 else
+                'request_output_delivery_pending' if absent else 'request_still_resident'}
 
 
 def instance_state(owner):
@@ -91,7 +100,10 @@ def instance_state(owner):
             'type': str(instance_type).lower(), 'is_migrating': coordinator.is_migrating(),
             'has_slot': coordinator.has_migration_slot(), 'total_blocks': info.num_total_gpu_blocks,
             'free_blocks': info.num_free_gpu_blocks, 'used_blocks': info.num_used_gpu_blocks,
+            # used = total - allocator free, including migration preallocation.
+            'reserved_blocks_not_in_used': 0,
             'waiting_blocks': info.num_blocks_all_waiting_requests,
+            'scan_counters': dict(getattr(scheduler, 'scan_counters', {})),
             'running': info.num_running_requests, 'waiting': info.num_waiting_requests,
             'head_wait_sec': info.waiting_time_first_waiting_request,
             'candidate_id': str(candidate.request_id) if candidate is not None else None,
@@ -99,7 +111,11 @@ def instance_state(owner):
             'candidate_stage': str(getattr(candidate.inference_type, 'value', '')).lower() if candidate is not None else None,
             'candidate_policy': coordinator.migration_scheduler.request_migration_policy,
             'output_tokens_total': getattr(engine, '_real_output_tokens_total', None),
-            'last_step_ms': getattr(engine.instance_info, 'last_inference_latency', None),
+            # Engine instance metrics are populated by the first scheduler step.
+            # A fresh, healthy idle engine has no instance_info yet, which is
+            # normal during the initial control-plane health snapshot.
+            'last_step_ms': getattr(getattr(engine, 'instance_info', None),
+                                    'last_inference_latency', None),
             'pending_delivery': engine.output_forwarder.thread_forwarder.real_pending_delivery(),
             'preallocated_requests': len(scheduler.pre_alloc_cache_dict),
             'paused_requests': len(scheduler.migrating_out_request_last_stage)}
@@ -212,11 +228,12 @@ class ManagerControlMixin:
                 return await actor.real_control_result.remote(receipt['decision_id']) if actor else None
             self._real_arbiter = ControlArbiter(states, dispatch, reconcile=reconcile,
                 native_idle=lambda: not getattr(self, '_real_native_tasks', set()) and not getattr(self, '_real_native_fault', False),
-                event_sink=lambda record: emit('real_control_receipt', record=record))
+                event_sink=lambda record: emit('real_control_receipt', record=record),
+                refresh_candidate_on_submit=True)
         return self._real_arbiter
 
     async def real_control(self, method, payload):
-        allowed = {'snapshot','acquire_controller','renew_controller','submit_migration',
+        allowed = {'snapshot','acquire_controller','renew_controller','renew_controller_nonblocking','submit_migration',
                    'query_receipt','release_controller'}
         if method not in allowed:
             raise ValueError('unsupported control method')
@@ -245,7 +262,8 @@ class ManagerControlMixin:
                           and ack.get('pending_delivery')==0
                           for instance_id,ack in zip(actors,acknowledgements))
         if not valid_roles:
-            return {'status':'unknown', 'instances':acknowledgements}
+            return {'status':'unknown', 'reason':'instance_cancel_unconfirmed',
+                    'instances':acknowledgements}
         current = await asyncio.gather(*(actor.real_control_state.remote() for actor in actors.values()))
         controller = getattr(self, '_real_arbiter', None)
         stable = (actors==self.instances and not getattr(self,'_real_native_fault',False)
@@ -256,4 +274,6 @@ class ManagerControlMixin:
                                and state.get('healthy') is True and state.get('type')=='neutral'
                                and state.get('is_migrating') is False
                                for state,ack in zip(current,acknowledgements))
-        return {'status':'absent' if known else 'unknown', 'instances':acknowledgements}
+        return {'status':'absent' if known else 'unknown',
+                'reason':None if known else 'manager_state_not_stable',
+                'instances':acknowledgements}

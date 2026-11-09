@@ -1,0 +1,9 @@
+# Frozen P2/P3 protocol
+
+Use accepted Qwen2-1.5B Q15-B only; no candidate search. Historical 141103 fit; all 141104 attempts one development validation group. Full replay pair only. Reward beta=gamma=lambda=1; T_ref recalculated from accepted replay Stay. All decisions contribute full returns; actor normalization/loss/entropy/KL/clip only eligible, critic all. Preserve voluntary Stay. Default legacy actor mode stays all.
+
+P3 hard checks: 128 unique complete requests; causal ownership; valid KV; identical real actor/normalizer/action/reward interface; no future state correction. Validation mean/P95/cost errors <=20%, outstanding-curve normalized absolute area error <=20%, migration count absolute error <=max(5,20% observed), transfer median error <=20%, P95 <=30% where available, positive mean/cost gain directions and gain differences <=10 percentage points. Q15-A negative sign diagnostic reported separately. No hardcoded gain multiplier. Zero to two documented revisions only. Data used for model selection remain development validation. Replay actions and closed-loop controls explicitly separate.
+
+Real sampling only after CPU checks pass and sim model/initial checkpoint are frozen: max2 complete128-request attempts, same frozen policy, zero intervening update, max1 real PPO update. Incomplete/measurement-only/mixed-policy data excluded. At least1 complete cohort,20 eligible decisions,1 verified successful KV migration. No Stay/Balanced or post-update real evaluation. GPU target30min,hard35min including cleanup; before each formal round reserve estimated full round +480s; startup<=480s; no progress120s. Independent supervisor watchdog owns only this batch.
+
+Initial exploration: retain existing bias unless conditional mean migration probability <1%; if necessary explicitly adjust only new initial policy toward mean .45 (.3-.6). Otherwise retain original bias even if below .3; not a profit predictor.

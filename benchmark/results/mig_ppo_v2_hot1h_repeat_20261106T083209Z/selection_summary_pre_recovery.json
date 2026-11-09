@@ -1,0 +1,59 @@
+{
+  "schema": "mig-ppo-v2-selection-summary-v1",
+  "status": "partial",
+  "global_failure": {
+    "environment_id": "HOT1-H",
+    "error": "IndexError: list index out of range",
+    "traceback": "Traceback (most recent call last):\n  File \"/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/mig_ppo_v2_multienv.py\", line 1042, in _collect_stage\n    backup = candidates[1] if timeout else candidates[2]\nIndexError: list index out of range\n"
+  },
+  "environments": [
+    {
+      "environment_id": "HOT1-H",
+      "role": "training_candidate",
+      "routing_mode": "fixed",
+      "hotspot_instance_index": 0,
+      "target_hotspot_fraction": 0.9,
+      "intensity_id": "H",
+      "status": "incomplete_global_failure",
+      "candidates": [
+        {
+          "candidate_id": "HOT1-H_repeat_n48_q1p0_s26110671",
+          "n": 48,
+          "target_qps": 1.0,
+          "arrival_time_domain_sec": 48.0,
+          "arrival_generator": "uniform_order_statistics_fixed_n",
+          "arrival_seed": 26110671,
+          "prompt_seed": 26110672,
+          "trace_path": "traces/selection/HOT1-H/HOT1-H_repeat_n48_q1p0_s26110671.json",
+          "base_trace_path": "base_traces/ef02f3a260b9b855a0b33b476546c6cb490693fb11b1c1d32d808ca898f42332.json",
+          "base_trace_hash": "ef02f3a260b9b855a0b33b476546c6cb490693fb11b1c1d32d808ca898f42332",
+          "full_trace_hash": "ac7994a056b74aeecec4a1e158d409132b15440744d4393c092cf6f716ba13dd",
+          "routing_mode": "fixed",
+          "hotspot_instance_index": 0,
+          "target_hotspot_fraction": 0.9,
+          "actual_hotspot_fraction": 0.8958333333333334,
+          "hotspot_request_count": 43,
+          "route_counts": {
+            "0": 43,
+            "1": 2,
+            "2": 2,
+            "3": 1
+          },
+          "branch": "fresh_seed_qps1_repeat",
+          "status": "preregistered"
+        }
+      ],
+      "selected_candidate_id": null,
+      "selection_passed": false,
+      "fit_status": "not_requested",
+      "independent_validation_status": "not_requested",
+      "global_failure": "IndexError: list index out of range"
+    }
+  ],
+  "evaluation_complete_before_unified_fit": true,
+  "fit_started_during_selection": false,
+  "selection_frozen_utc": "2026-11-06T08:41:40.983667+00:00",
+  "policy": "Constrained-Balanced",
+  "primary_cost": "mean(E2E)+exact-fractional-tail-CVaR95(E2E)",
+  "selection_sha256": "27a2469cabf1f5e54d539ecc8183eaba0b3a2bc75ef04e1a5e3fb4b9c0ff9e3a"
+}

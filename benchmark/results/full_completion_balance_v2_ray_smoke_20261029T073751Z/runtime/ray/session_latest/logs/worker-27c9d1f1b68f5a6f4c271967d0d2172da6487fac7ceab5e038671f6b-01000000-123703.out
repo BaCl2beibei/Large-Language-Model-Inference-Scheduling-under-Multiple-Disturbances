@@ -1,0 +1,38 @@
+:job_id:01000000
+:actor_name:Llumlet
+INFO 2026-10-29 07:39:15,638 ray_utils.py:361] Llumlet(actor_name=instance_712f95c7b31b4272ae40b7c2ba7a38bc, actor_id=fea30d963ba688307b04578601000000, placement_group_id=4e3ea155529c513e9bc386e9c8c301000000, namespace=llumnix, job_id=01000000, worker_id=27c9d1f1b68f5a6f4c271967d0d2172da6487fac7ceab5e038671f6b, node_id=dd6468258414e5b73714039417f2ebf65e4b9b3aeef0d5ca74f797d5, gpu_ids=['0'])
+INFO 2026-10-29 07:39:15,640 ray_utils.py:369] Llumlet(log_dir=['/tmp/fc_d00e84a4f5/session_2026-10-29_07-37-58_103729_120832/logs/worker-27c9d1f1b68f5a6f4c271967d0d2172da6487fac7ceab5e038671f6b-01000000-123703.out', '/tmp/fc_d00e84a4f5/session_2026-10-29_07-37-58_103729_120832/logs/worker-27c9d1f1b68f5a6f4c271967d0d2172da6487fac7ceab5e038671f6b-01000000-123703.err'])
+INFO 2026-10-29 07:39:15,640 llumlet.py:59] Llumlet(instance_id=712f95c7b31b4272ae40b7c2ba7a38bc, backend_type=vLLM, instance_type=neutral)
+WARNING 10-29 07:39:19 config.py:1668] Casting torch.bfloat16 to torch.float16.
+WARNING 10-29 07:39:42 arg_utils.py:1019] [DEPRECATED] Block manager v1 has been removed, and setting --use-v2-block-manager to True or False has no effect on vLLM behavior. Please remove --use-v2-block-manager in your engine argument. If your use case is not supported by SelfAttnBlockSpaceManager (i.e. block manager v2), please file an issue with detailed information.
+WARNING 10-29 07:39:42 config.py:395] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+INFO 10-29 07:39:42 llm_engine.py:237] Initializing an LLM engine (v0.6.3.post1) with config: model='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B', speculative_config=None, tokenizer='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, override_neuron_config=None, rope_scaling=None, rope_theta=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.float16, max_seq_len=2112, download_dir=None, load_format=LoadFormat.AUTO, tensor_parallel_size=1, pipeline_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto, quantization_param_path=None, device_config=cuda, decoding_config=DecodingConfig(guided_decoding_backend='outlines'), observability_config=ObservabilityConfig(otlp_traces_endpoint=None, collect_model_forward_time=False, collect_model_execute_time=False), seed=0, served_model_name=/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B, num_scheduler_steps=1, chunked_prefill_enabled=False multi_step_stream_outputs=True, enable_prefix_caching=False, use_async_output_proc=False, use_cached_outputs=False, mm_processor_kwargs=None)
+INFO 2026-10-29 07:39:45,932 executor.py:64] use_ray_spmd_worker: False
+DEBUG 2026-10-29 07:39:58,577 executor.py:103] workers: []
+DEBUG 2026-10-29 07:39:58,579 executor.py:104] driver_dummy_worker: Actor(RayWorkerWrapper, 34899e64aff5deecf1a2b45301000000)
+INFO 2026-10-29 07:39:58,838 ray_utils.py:361] MigrationWorker(actor_name=instance_712f95c7b31b4272ae40b7c2ba7a38bc, actor_id=fea30d963ba688307b04578601000000, placement_group_id=4e3ea155529c513e9bc386e9c8c301000000, namespace=llumnix, job_id=01000000, worker_id=27c9d1f1b68f5a6f4c271967d0d2172da6487fac7ceab5e038671f6b, node_id=dd6468258414e5b73714039417f2ebf65e4b9b3aeef0d5ca74f797d5, gpu_ids=['0'])
+INFO 2026-10-29 07:39:58,839 ray_utils.py:369] MigrationWorker(log_dir=['/tmp/fc_d00e84a4f5/session_2026-10-29_07-37-58_103729_120832/logs/worker-27c9d1f1b68f5a6f4c271967d0d2172da6487fac7ceab5e038671f6b-01000000-123703.out', '/tmp/fc_d00e84a4f5/session_2026-10-29_07-37-58_103729_120832/logs/worker-27c9d1f1b68f5a6f4c271967d0d2172da6487fac7ceab5e038671f6b-01000000-123703.err'])
+INFO 10-29 07:40:09 model_runner.py:1056] Starting to load model /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-0.5B...
+INFO 10-29 07:40:28 model_runner.py:1067] Loading model weights took 0.9381 GB
+INFO 10-29 07:40:39 distributed_gpu_executor.py:57] # GPU blocks: 31612, # CPU blocks: 21845
+INFO 10-29 07:40:39 distributed_gpu_executor.py:61] Maximum concurrency for 2112 tokens per request: 239.48x
+WARNING 10-29 07:41:42 config.py:1668] Casting torch.bfloat16 to torch.float16.
+WARNING 10-29 07:41:42 arg_utils.py:1019] [DEPRECATED] Block manager v1 has been removed, and setting --use-v2-block-manager to True or False has no effect on vLLM behavior. Please remove --use-v2-block-manager in your engine argument. If your use case is not supported by SelfAttnBlockSpaceManager (i.e. block manager v2), please file an issue with detailed information.
+WARNING 10-29 07:41:42 config.py:395] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+INFO 2026-10-29 07:42:08,325 llm_engine.py:462] engine 712f95c7b31b4272ae40b7c2ba7a38bc current state: INIT
+INFO 2026-10-29 07:42:08,330 llm_engine.py:482] engine 712f95c7b31b4272ae40b7c2ba7a38bc change state: INIT -> RUNNING
+INFO 10-29 07:42:08 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+:actor_name:Llumlet(iid=712f9, instance_type=neutral)
+INFO 2026-10-29 07:42:12,340 llm_engine.py:261] Engine finished request real-54348eb4fbc7639651c24604cb1fc243850d535d7bb5e6f5d2c345a0ae8c2f12
+INFO 10-29 07:42:13 metrics.py:349] Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 1.6 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 10-29 07:42:18 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 10-29 07:42:23 metrics.py:349] Avg prompt throughput: 203.5 tokens/s, Avg generation throughput: 44.5 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.3%, CPU KV cache usage: 0.0%.
+INFO 10-29 07:42:28 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 210.4 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.5%, CPU KV cache usage: 0.0%.
+INFO 2026-10-29 07:42:32,310 llm_engine.py:261] Engine finished request real-e79620095ff9d48c71236939c2a31d127b79f1a7936a4e839ffdb69df1c1f3bc
+INFO 2026-10-29 07:42:32,312 llm_engine.py:261] Engine finished request real-defa4596d5c3fbba35f9dcc3cffab19a369149308b7b726dcd0f42d2c3ed2813
+INFO 2026-10-29 07:42:32,312 llm_engine.py:261] Engine finished request real-a0c80fb4d2bdec72efafbb2dae939da10319d1a8754fd7e65bc86e2112de2a48
+INFO 2026-10-29 07:42:32,312 llm_engine.py:261] Engine finished request real-581aa9185a07b4bfb93c0b2f88d6ab071a9d62078b720e2236ec70a315e1ac4a
+INFO 2026-10-29 07:42:32,314 llm_engine.py:261] Engine finished request real-618a00407c4e095cabf1bf42c7a359db5fd613457560f889dc19294d0cdf62dc
+INFO 2026-10-29 07:42:32,314 llm_engine.py:261] Engine finished request real-1ebf7c17ef438138f6f631c0280efa24b5d1f4b4c53d281b8bb218f0b4f9f729
+INFO 2026-10-29 07:42:32,315 llm_engine.py:261] Engine finished request real-757687a9090544a99fe87e25a675a36f44f5aeef5f1f6368459da74f52bdc0d7
+INFO 2026-10-29 07:42:32,315 llm_engine.py:261] Engine finished request real-d3f87bb4dec55bb881a701d494cdc19b67949353393cd470ecbe44a1a61b8e3c

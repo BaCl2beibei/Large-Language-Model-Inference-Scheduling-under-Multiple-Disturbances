@@ -1,0 +1,50 @@
+{
+  "phase": "preflight",
+  "captured_utc": "2026-11-05T12:53:43.470680+00:00",
+  "gpu_inventory": {
+    "returncode": 0,
+    "stdout": "0, NVIDIA GeForce RTX 3060, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 00000000:01:00.0, 12288 MiB, 1 MiB, 0 %\n1, NVIDIA GeForce RTX 3060, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 00000000:04:00.0, 12288 MiB, 1 MiB, 0 %\n2, NVIDIA GeForce RTX 3060, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 00000000:83:00.0, 12288 MiB, 1 MiB, 0 %\n3, NVIDIA GeForce RTX 3060, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 00000000:84:00.0, 12288 MiB, 1 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "gpu_processes_before": {
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "supervisor_before": {
+    "returncode": 3,
+    "stdout": "caddy                                    RUNNING   pid 684, uptime 3:00:01\ncohort_ppo_trainer_c03344c790            STOPPED   Not started\ncron                                     RUNNING   pid 685, uptime 3:00:01\nfc_balance_ray_screen_20261029T093554Z   STOPPED   Not started\nfc_balance_ray_smoke_20261029T071838Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073026Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073751Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029_062729     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063340     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063818     STOPPED   Not started\nfc_balance_ray_smoke_20261029_070700     STOPPED   Not started\nfull_completion_2e1ba5ee55               STOPPED   Not started\ngithub_workspace_autosync                RUNNING   pid 686, uptime 3:00:01\ninstance_portal                          RUNNING   pid 687, uptime 3:00:01\njupyter                                  EXITED    Nov 05 09:53 AM\np0p1_controller_73da30ae85               STOPPED   Not started\np0p1_controller_ebcb8e6f82               STOPPED   Not started\np23_ca592ad0d1_controller                STOPPED   Not started\np23_ca592ad0d1_watchdog                  STOPPED   Not started\npyworker                                 EXITED    Nov 05 09:53 AM\nreal_ppo_252b0d3795                      STOPPED   Not started\nreal_ppo_fcda2e237b                      STOPPED   Not started\nreal_ppo_guard_252b0d3795                STOPPED   Not started\nreal_ppo_guard_fcda2e237b                STOPPED   Not started\nreal_ppo_op_11d493e944                   STOPPED   Not started\nreal_ppo_op_257e087e48                   STOPPED   Not started\nreal_ppo_op_4589eb4d4e                   STOPPED   Not started\nreal_ppo_op_5039845934                   STOPPED   Not started\nreal_ppo_op_570a6fd362                   STOPPED   Not started\nreal_ppo_op_722664927e                   STOPPED   Not started\nreal_ppo_op_ec9f5c8f86                   STOPPED   Not started\nreal_ppo_op_f6182eac97                   STOPPED   Not started\nreal_ppo_op_guard_11d493e944             STOPPED   Not started\nreal_ppo_op_guard_257e087e48             STOPPED   Not started\nreal_ppo_op_guard_4589eb4d4e             STOPPED   Not started\nreal_ppo_op_guard_5039845934             STOPPED   Not started\nreal_ppo_op_guard_570a6fd362             STOPPED   Not started\nreal_ppo_op_guard_722664927e             STOPPED   Not started\nreal_ppo_op_guard_ec9f5c8f86             STOPPED   Not started\nreal_ppo_op_guard_f6182eac97             STOPPED   Not started\nsyncthing                                RUNNING   pid 696, uptime 3:00:01\ntensorboard                              RUNNING   pid 701, uptime 3:00:01\ntunnel_manager                           RUNNING   pid 706, uptime 3:00:01\n",
+    "stderr": ""
+  },
+  "model_identity": {
+    "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+    "files_sha256": {
+      "config.json": "f8c6c681f7c28386e333775bb78de28f9de3ce6a676059dc35792022adcb7e36",
+      "tokenizer.json": "f7c9b2dba4a296b1aa76c16a34b8225c0c118978400d4bb66bff0902d702f5b8",
+      "model.safetensors": "6f3a62caedc5c5278275bf5eed428806eeac8df927a3d333c3c850402c24cdeb"
+    }
+  },
+  "expected_engine": {
+    "model": "Qwen2-1.5B",
+    "replicas": 4,
+    "tensor_parallel_size": 1,
+    "dtype": "half",
+    "enforce_eager": true,
+    "max_model_len": 2112,
+    "max_num_seqs": 128,
+    "max_num_batched_tokens": 2112,
+    "gpu_memory_utilization": 0.65,
+    "ray_num_cpus": 16,
+    "queue": "rayqueue",
+    "migration_backend": "rayrpc",
+    "migration_policy": "SR"
+  },
+  "expected_dispatch": {
+    "policy": "load",
+    "metric": "remaining_steps",
+    "topk_random_dispatch": 1,
+    "state_update_interval_sec": 0.05,
+    "random_seed": 271828,
+    "routine_migration": "control lease only"
+  }
+}

@@ -60,6 +60,8 @@ class MigrationWorker(Worker):
                     return {'status': 'incomplete', 'reason': 'pending_cuda_telemetry'}
         ack = flush(max(0., deadline-time.monotonic()))
         ack['pending_delivery'] = 0
+        ack['worker_pid'] = os.getpid()
+        ack['instance_id'] = self.instance_id
         return ack
 
     def __init__(self, *args, **kwargs) -> None:

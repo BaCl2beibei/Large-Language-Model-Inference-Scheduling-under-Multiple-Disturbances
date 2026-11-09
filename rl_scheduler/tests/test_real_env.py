@@ -135,7 +135,7 @@ class ObservationTests(unittest.TestCase):
         builder=RealObservationBuilder(s['mapping']);raw=builder.build(s,now_ns=clock(),ledger=ledger,
             episode_start_ns=clock(),arrival_end_ns=clock()+2_000_000_000,deadline_ns=clock()+4_000_000_000)
         normalizer=RealNormalizer();value=normalizer.transform(raw)
-        self.assertTrue(raw['instance_missing'][0][6]);self.assertTrue(raw['instance_missing'][0][7])
+        self.assertTrue(raw['instance_missing'][0][4]);self.assertTrue(raw['instance_missing'][0][5])
         self.assertFalse(any(raw['action_mask'][1:4]))
         self.assertEqual(RealNormalizer.from_state_dict(normalizer.state_dict()).transform(raw),value)
         with self.assertRaises(TypeError):normalizer.scales['running']=4
@@ -150,9 +150,9 @@ class ObservationTests(unittest.TestCase):
                              score_deadline_ns=clock()+20_000_000_000,expected_sources=['s'],expected_request_ids=[])
         def build(value):return builder.build(value,now_ns=clock(),ledger=ledger,episode_start_ns=100_000_000_000,
                                                arrival_end_ns=110_000_000_000,deadline_ns=120_000_000_000)
-        first=build(s);self.assertTrue(first['instance_missing'][0][9])
+        first=build(s);self.assertTrue(first['instance_missing'][0][6])
         clock.advance(5);s=snapshot(clock);s['instances'][0]['output_tokens_total']=50;s['instances'][0]['waiting']=10
-        raw=build(s);self.assertEqual(raw['instance_features'][0][9],10.);self.assertEqual(raw['instance_features'][0][10],2.)
+        raw=build(s);self.assertEqual(raw['instance_features'][0][6],10.);self.assertEqual(raw['instance_features'][0][7],2.)
         s['received_ns']=clock()+1
         with self.assertRaises(ValueError):build(s)
 

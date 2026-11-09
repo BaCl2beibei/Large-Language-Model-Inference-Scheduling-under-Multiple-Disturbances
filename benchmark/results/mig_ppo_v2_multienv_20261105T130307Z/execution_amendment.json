@@ -1,0 +1,76 @@
+{
+  "schema": "mig-ppo-v2-multienv-execution-amendment-v1",
+  "created_utc": "2026-11-05T13:31:23.298057+00:00",
+  "status": "posthoc_execution_order_amendment_before_affected_candidate_collection",
+  "user_instruction": "\u540e\u9762\u7684hot2\u30013\u30014h\u5168\u90e8\u90fd\u5148\u9a8c\u8bc1\u5907\u9009\u573a\u666f\uff0c\u56e0\u4e3a\u53ea\u6709\u5907\u9009\u662f\u6b63\u6536\u76ca\u7684\uff0c\u6362\u70ed\u70b9\u5b9e\u4f8b\u4e5f\u662f\u4e00\u6837\u7684",
+  "scope": [
+    "HOT2-H",
+    "HOT3-H",
+    "HOT4-H"
+  ],
+  "change": {
+    "first_candidate_branch": "backup_n48_q1p0",
+    "fallback_if_not_selected": "primary_n48_q0p6",
+    "maximum_pairs_per_affected_environment": 2,
+    "trace_seeds_and_candidate_trace_contents_changed": false,
+    "original_taskbook_sha256": "8b5a10ea4a18d9d7e79e537c14f802e7cf8a8d5701f9c5dd9a2968deaa52bc04"
+  },
+  "reasoning_evidence": {
+    "observed_environment": "HOT1-L",
+    "primary": {
+      "candidate_id": "HOT1-L_primary_s26110521",
+      "gain_C": -0.6834807435819058,
+      "selection_passed": false
+    },
+    "alternative": {
+      "candidate_id": "HOT1-L_backup_n48_q1p0_s26110523",
+      "gain_C": 0.010087589349078684,
+      "selection_passed": true
+    },
+    "limitation": "single paired trace in HOT1-L only; no positive-gain assumption or hotspot-position equivalence is inferred for HOT2-H/HOT3-H/HOT4-H"
+  },
+  "selection_interruption_recovery": {
+    "prior_partial_summary_sha256": "e62561e4ba261b03b16a69b0f2e526b782e9b0d095c69cb9886cece35f33a66c",
+    "collector_failure": {
+      "environment_id": "HOT1-H",
+      "error": "KeyError: 'selection_passed'",
+      "traceback": "Traceback (most recent call last):\n  File \"/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/mig_ppo_v2_multienv.py\", line 949, in _collect_stage\n    'N': len(trace), 'cvar95_tail_effective_sample_count': .05 * len(trace),\nKeyError: 'selection_passed'\n"
+    },
+    "recovered_candidate_id": "HOT1-H_primary_s26110521",
+    "recovered_episode_ids": [
+      "HOT1-H_HOT1-H_primary_s26110521_stay"
+    ],
+    "recovery_action": "preserve incomplete comparison and run its N32 backup; no replay of the started primary episode",
+    "gpu_cleanup_verified": true
+  },
+  "supersedes_plan_freeze_sha256": "bd5eeca14389cfffcfbc309374ec1b0936f08b9fc5b841197dd199decede256c",
+  "preflight_restart_failure": {
+    "observed_utc": "2026-11-05T13:33:08.921558+00:00",
+    "formal_candidate_started": false,
+    "failure": "FileExistsError: frozen ray_temp_dir already existed from the prior, stopped selection service",
+    "cleanup_verified": true,
+    "repair": "archive stale private Ray temp directory under a timestamped sibling before reusing the frozen config path; preserve all archived files"
+  },
+  "preflight_warmup_failure": {
+    "observed_utc": "2026-11-05T13:38:38.400570+00:00",
+    "formal_candidate_started": false,
+    "failure": "FileExistsError: selection_warmup episode directory already existed from the first collection attempt",
+    "cleanup_verified": true,
+    "repair": "use a unique warmup episode directory for each continuation; retain the original warmup artifacts"
+  },
+  "continuation_mapping_repair": {
+    "status": "included_before_any_formal_candidate_resumed",
+    "rule": "when service restart returns the same four GPU UUIDs in a different order, reorder logical instance mapping to the original UUID order and verify the join again",
+    "reason": "preserve the frozen hotspot instance index meaning across service restarts"
+  },
+  "hot1h_backup_attempt": {
+    "recorded_utc": "2026-11-05T13:49:50.408013+00:00",
+    "candidate_id": "HOT1-H_backup_n32_q0p6_s26110522",
+    "episode_id": "HOT1-H_HOT1-H_backup_n32_q0p6_s26110522_stay",
+    "episode_started_event_retained": true,
+    "client_request_events": 0,
+    "failure": "stable instance mapping validation failed before controller acquisition/request launch",
+    "retry": "not retried; the taskbook permits one attempt per candidate and the failed attempt is retained",
+    "continuation": "HOT1-H marked skipped_failed_candidate; continue with untouched environments after CPU-validated mapping fix"
+  }
+}

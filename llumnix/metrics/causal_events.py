@@ -23,12 +23,23 @@ from typing import Any, Iterable, Mapping
 
 
 SCHEMA_VERSION = 1
+CAUSAL_DIAGNOSTIC_SAMPLE_INTERVAL = 256
 _WRITER = None
 _WRITER_PID = None
 _WRITER_LOCK = threading.Lock()
 _SEQUENCE_LOCK = threading.Lock()
 _EVENT_SEQUENCE = 0
 _BATCH_SEQUENCE = 0
+_HIGH_FREQUENCY_DIAGNOSTICS = frozenset({
+    "scheduler_idle",
+    "kv_request_blocks_changed",
+    "batch_scheduled",
+    "executor_iteration_started",
+    "gpu_execution_completed",
+    "engine_iteration_completed",
+    "llm_engine_step_completed",
+})
+_EVENT_SAMPLE_COUNTS: dict[str, int] = defaultdict(int)
 _SCHEDULED_BATCHES: dict[tuple, deque[str]] = defaultdict(deque)
 _BATCH_FEATURES: dict[str, dict[str, Any]] = {}
 
@@ -188,12 +199,21 @@ def enabled() -> bool:
     return bool(os.environ.get("LLUMNIX_CAUSAL_TRACE_DIR"))
 
 
+OUTPUT_UPDATE_SAMPLE_INTERVAL = 64
+
+
+def output_update_sample_due(output_tokens: int, finished: bool) -> bool:
+    """Keep first, periodic cumulative counts, and final output updates."""
+    count = int(output_tokens)
+    return bool(finished or count == 1 or
+                (count > 0 and count % OUTPUT_UPDATE_SAMPLE_INTERVAL == 0))
+
+
 def should_sample_output_update(request_id: str, output_tokens: int, finished: bool) -> bool:
     """Sample first, every 64th, and final token updates for queue diagnostics."""
     if not enabled():
         return False
-    count = int(output_tokens)
-    return bool(finished or count == 1 or (count > 0 and count % 64 == 0))
+    return output_update_sample_due(output_tokens, finished)
 
 
 def emit(event: str, **fields: Any) -> int | None:
@@ -203,6 +223,12 @@ def emit(event: str, **fields: Any) -> int | None:
     if writer is None:
         return None
     with _SEQUENCE_LOCK:
+        if (os.environ.get("LLUMNIX_CAUSAL_SAMPLE_HIGH_FREQ") == "1" and
+                event in _HIGH_FREQUENCY_DIAGNOSTICS):
+            _EVENT_SAMPLE_COUNTS[event] += 1
+            sample_count = _EVENT_SAMPLE_COUNTS[event]
+            if sample_count != 1 and sample_count % CAUSAL_DIAGNOSTIC_SAMPLE_INTERVAL != 0:
+                return None
         mono_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
         wall_ns = time.time_ns()
         _EVENT_SEQUENCE += 1

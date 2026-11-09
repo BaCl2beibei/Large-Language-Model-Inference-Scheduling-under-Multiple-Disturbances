@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from fastapi import Request
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 
 def install_real_control_routes(app, get_client, metric_states, flush):
@@ -18,7 +21,13 @@ def install_real_control_routes(app, get_client, metric_states, flush):
                 cluster=await client.manager.real_control_flush.remote()
                 local=await asyncio.to_thread(flush,5.)
                 queue=client.request_output_queue
-                pending=queue.qsize()+len(client.request_stream)+sum(not s['done'].is_set() for s in metric_states.values())
+                underlying_queue=getattr(queue,'queue',queue)
+                ray_actor=getattr(underlying_queue,'actor',None)
+                if ray_actor is not None:
+                    queue_pending=await ray_actor.qsize.remote()
+                else:
+                    queue_pending=queue.qsize()
+                pending=queue_pending+len(client.request_stream)+sum(not s['done'].is_set() for s in metric_states.values())
                 local['pending_delivery']=pending
                 return JSONResponse({'cluster':cluster,'api':local})
             if method=='release_episode':
@@ -33,4 +42,6 @@ def install_real_control_routes(app, get_client, metric_states, flush):
         except (RuntimeError,ValueError,KeyError) as exc:
             return JSONResponse({'error':str(exc)},status_code=409)
         except Exception as exc:
-            return JSONResponse({'error':'uncertain control RPC: '+type(exc).__name__},status_code=503)
+            logger.exception('Uncertain real-control RPC: %s', method)
+            detail = (type(exc).__name__ + ': ' + str(exc))[:8000]
+            return JSONResponse({'error':'uncertain control RPC: '+detail},status_code=503)

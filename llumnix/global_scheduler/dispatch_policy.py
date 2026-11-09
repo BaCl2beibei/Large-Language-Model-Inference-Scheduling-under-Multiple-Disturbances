@@ -13,6 +13,7 @@
 
 from typing import Dict, List, Tuple, Union, Optional
 from abc import ABC, abstractmethod
+import math
 import random
 import hashlib
 import array
@@ -136,6 +137,27 @@ class Load(DispatchPolicy):
         sorted_instance_infos = sort_instance_infos(available_instance_infos.values(), dispatch_load_metric)
         instance_info_chosen = self.random_choice_from_top_k(sorted_instance_infos)
         instance_id = instance_info_chosen.instance_id
+        def audit_value(info):
+            value = getattr(info, dispatch_load_metric)
+            value = getattr(value, dispatch_load_metric, value)
+            try:
+                value = float(value)
+            except (TypeError, ValueError, OverflowError):
+                return None
+            return value if math.isfinite(value) else None
+        dispatch_context['_llumnix_dispatch_audit'] = {
+            'dispatch_policy': 'load',
+            'dispatch_load_metric': dispatch_load_metric,
+            'selection_algorithm': 'sort_instance_infos_then_random_choice_from_top_k',
+            'topk_random_dispatch': self.topk_random_dispatch,
+            'candidate_scores': [
+                {'instance_id': info.instance_id,
+                 'metric_value': audit_value(info),
+                 'instance_num_requests_before': int(instance_num_requests.get(info.instance_id, 0))}
+                for info in sorted_instance_infos],
+            'top_k_candidates': [info.instance_id for info in sorted_instance_infos[:self.topk_random_dispatch]],
+            'selected_instance_id': instance_id,
+        }
         logger.info("dispatch request to {}, load: {}".format(instance_id, getattr(instance_info_chosen, dispatch_load_metric)))
         return instance_id
 

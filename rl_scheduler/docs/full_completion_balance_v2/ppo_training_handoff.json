@@ -1,0 +1,108 @@
+{
+  "schema": "ppo-workload-scenario-handoff-v1",
+  "language": "en",
+  "purpose": "Workload definitions for trace-driven Mig-PPO training and evaluation. The Balance-vs-Stay results are development evidence, not PPO results.",
+  "source": {
+    "experiment_spec": "rl_scheduler/docs/full_completion_balance_v2/experiment_spec.yaml",
+    "candidate_matrix": "rl_scheduler/docs/full_completion_balance_v2/candidate_matrix.json",
+    "screening_summary": "benchmark/results/full_completion_balance_v2_ray_cont_20261029T105608Z/screening_summary.json",
+    "previous_run_candidate_ledger": "benchmark/results/full_completion_balance_v2_ray_screen_20261029T093554Z/candidate_ledger.jsonl"
+  },
+  "common": {
+    "cluster": {
+      "model": "Qwen2-0.5B",
+      "instances": 4,
+      "tensor_parallel_size": 1,
+      "max_model_len_tokens": 2112,
+      "runtime_must_match_or_be_recalibrated": true
+    },
+    "episode": {
+      "screening_cohort_size": 128,
+      "arrival_window_sec": "N / average_target_qps_rps",
+      "wait_until_all_requests_complete": true,
+      "latency_cutoff_sec": null,
+      "normal_cancellation": false,
+      "same_exogenous_trace_for_all_policies": true,
+      "screening_development_seeds": [82001, 82002],
+      "screening_seeds_are_independent_validation": false
+    },
+    "request_profiles": {
+      "decode1536": {"input_tokens": 128, "output_tokens": 1536},
+      "decode512": {"input_tokens": 128, "output_tokens": 512},
+      "decode64": {"input_tokens": 128, "output_tokens": 64},
+      "bimodal_0.1": {"input_tokens": 128, "short_output_tokens": 128, "long_output_tokens": 1536, "long_fraction": 0.1},
+      "bimodal_0.2": {"input_tokens": 128, "short_output_tokens": 128, "long_output_tokens": 1536, "long_fraction": 0.2}
+    },
+    "generation": {
+      "n": 1,
+      "best_of": 1,
+      "temperature": 0.0,
+      "ignore_eos": true,
+      "exact_input_and_output_lengths_required": true,
+      "tokenizer_verify_prompt_length": true,
+      "max_tokens_alone_proves_actual_output_length": false
+    },
+    "arrival_generation": {
+      "homogeneous_families": "Draw N uniform timestamps on [0, N / lambda], sort ascending; lambda is average_target_qps_rps.",
+      "burst_family": "Use inverse normalized piecewise cumulative intensity, keeping N and average rate fixed.",
+      "freeze_trace_before_policy_runs": true
+    },
+    "routing_generation": {
+      "hot_gpu": "Rotate across the four physical instances by seed block; keep the same hot GPU for paired policies.",
+      "s1_and_c1": "Round half up hot_fraction*N requests to the hot GPU; seeded shuffle determines request identities; distribute remaining requests round-robin over the other three GPUs.",
+      "s2": "Assign exactly N/4 requests to each GPU first; put round_half_up(0.8*long_count) long requests on the hot GPU; distribute the remaining long requests over other GPUs using the seeded permutation.",
+      "s3": "For each request, choose the active hotspot from its scheduled arrival time; route with probability 0.8 to hotspot and 0.2 evenly over other GPUs.",
+      "c0": "Fixed uniform route: request i goes to instance i mod 4."
+    },
+    "control_reference": {
+      "stay": "No migration; retain the same observations and control/measurement work.",
+      "measured_heuristic": "Balanced-9000-SR-v1; current-sequence-length SR candidate; one global in-flight migration; 1.0 second decision interval; 5 second terminal cooldown; 2 second maximum state age; capacity reserve max(16, ceil(0.05*total_blocks)).",
+      "ppo_action_space": "Stay plus every currently valid directed (request, destination-instance) migration action.",
+      "action_mask": "Enforce current feasibility, destination capacity, fresh state, migration-in-progress, and cooldown constraints. Do not reveal future request length, future arrivals, future hot-GPU changes, or future tail identity to the policy."
+    },
+    "ppo_objective": {
+      "formula": "mean(L)/T_ref + beta*CVaR95(L)/T_ref",
+      "beta_initial": 1.0,
+      "T_ref": "Freeze from development Stay data before PPO training.",
+      "dense_reward": "- outstanding_request_count * dt / (N*T_ref)",
+      "terminal_reward": "After every request completes, add -beta*CVaR95(L)/T_ref.",
+      "gamma": 1.0,
+      "normal_terminal": "The complete frozen cohort has finished; rollout-buffer boundaries are not episode terminals.",
+      "independent_metrics": ["mean client E2E", "P99 client E2E", "schedule-relative E2E", "CVaR95", "send lag"],
+      "delay_threshold_gate": null
+    },
+    "training_protocol": {
+      "scenario_sampling": "Sample from all 16 definitions; retain positive and non-positive cases. Do not train only on the nine heuristic winners or use their win labels as reward.",
+      "trace_seeds": "Use new training seeds. Seeds 82001/82002 reproduce the development screen only.",
+      "reserved_confirmation_seeds": [83001, 83002, 83003, 83004, 83005],
+      "reserved_independent_validation_seeds": [93001, 93002, 93003, 93004, 93005, 93006, 93007, 93008, 93009, 93010],
+      "do_not_use_reserved_seeds_for_training": true,
+      "screening_N_is_not_large_cohort_validation": "The measured gains below used N=128. Changing N changes the episode duration and evidence; report new-N results separately."
+    }
+  },
+  "lambda_ref_rps": {
+    "decode1536": 1.2052789361140406,
+    "bimodal_0.1": 4.384735886467204,
+    "bimodal_0.2": 4.038420070236886,
+    "decode512": 7.081839056636033,
+    "decode64": 33.14878494887209
+  },
+  "scenarios": [
+    {"id":"S1_01","family":"S1","role":"search_nonwinner","profile":"decode1536","rho":0.35,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.4218476276399142,"routing":"fixed_seeded_hotspot","hot_fraction":0.70,"winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[-79.41,6.65],"p99_gain_pct_by_seed":[-74.20,8.69]},
+    {"id":"S1_02","family":"S1","role":"exploratory_winner","profile":"decode1536","rho":0.35,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.4218476276399142,"routing":"fixed_seeded_hotspot","hot_fraction":0.90,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[16.34,13.66],"p99_gain_pct_by_seed":[11.71,10.43]},
+    {"id":"S1_03","family":"S1","role":"exploratory_winner","profile":"decode1536","rho":0.55,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.6629034148627224,"routing":"fixed_seeded_hotspot","hot_fraction":0.70,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[4.34,1.89],"p99_gain_pct_by_seed":[2.17,1.31]},
+    {"id":"S1_04","family":"S1","role":"exploratory_winner","profile":"decode1536","rho":0.55,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.6629034148627224,"routing":"fixed_seeded_hotspot","hot_fraction":0.90,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[12.82,11.41],"p99_gain_pct_by_seed":[8.11,6.68]},
+    {"id":"S1_05","family":"S1","role":"exploratory_winner","profile":"decode1536","rho":0.75,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.9039592020855305,"routing":"fixed_seeded_hotspot","hot_fraction":0.70,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[3.87,5.48],"p99_gain_pct_by_seed":[2.56,8.71]},
+    {"id":"S1_06","family":"S1","role":"exploratory_winner","profile":"decode1536","rho":0.75,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.9039592020855305,"routing":"fixed_seeded_hotspot","hot_fraction":0.90,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[10.20,9.61],"p99_gain_pct_by_seed":[5.01,4.85]},
+    {"id":"S2_07","family":"S2","role":"exploratory_winner","profile":"bimodal_0.1","rho":0.55,"lambda_ref_rps":4.384735886467204,"average_target_qps_rps":2.4116047375569623,"routing":"equal_request_counts_correlated_lengths","long_fraction":0.10,"long_hot_share":0.80,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[2.91,1.19],"p99_gain_pct_by_seed":[3.66,2.01]},
+    {"id":"S2_08","family":"S2","role":"exploratory_winner","profile":"bimodal_0.2","rho":0.55,"lambda_ref_rps":4.038420070236886,"average_target_qps_rps":2.2211310386302876,"routing":"equal_request_counts_correlated_lengths","long_fraction":0.20,"long_hot_share":0.80,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[1.46,4.95],"p99_gain_pct_by_seed":[1.84,5.27]},
+    {"id":"S2_09","family":"S2","role":"search_nonwinner","profile":"bimodal_0.1","rho":0.75,"lambda_ref_rps":4.384735886467204,"average_target_qps_rps":3.2885519148504025,"routing":"equal_request_counts_correlated_lengths","long_fraction":0.10,"long_hot_share":0.80,"winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[2.98,-0.14],"p99_gain_pct_by_seed":[4.07,1.53]},
+    {"id":"S2_10","family":"S2","role":"exploratory_winner","profile":"bimodal_0.2","rho":0.75,"lambda_ref_rps":4.038420070236886,"average_target_qps_rps":3.0288150526776647,"routing":"equal_request_counts_correlated_lengths","long_fraction":0.20,"long_hot_share":0.80,"winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[4.95,4.12],"p99_gain_pct_by_seed":[6.73,4.28]},
+    {"id":"S3_11","family":"S3","role":"exploratory_winner","profile":"decode512","rho":0.55,"lambda_ref_rps":7.081839056636033,"average_target_qps_rps":3.8950114811498184,"routing":"rotating_fixed_hotspot","hot_fraction":0.80,"burst_multiplier":2,"segments":[{"normalized_time":[0.0,0.25],"raw_intensity_multiplier":1},{"normalized_time":[0.25,0.75],"raw_intensity_multiplier":2},{"normalized_time":[0.75,1.0],"raw_intensity_multiplier":1}],"rate_normalization":"divide segment multipliers by 1.5 to preserve average_target_qps_rps","winner_both_mean_and_p99":true,"mean_gain_pct_by_seed":[1.88,5.34],"p99_gain_pct_by_seed":[0.76,4.50]},
+    {"id":"S3_12","family":"S3","role":"search_nonwinner","profile":"decode512","rho":0.55,"lambda_ref_rps":7.081839056636033,"average_target_qps_rps":3.8950114811498184,"routing":"rotating_fixed_hotspot","hot_fraction":0.80,"burst_multiplier":4,"segments":[{"normalized_time":[0.0,0.25],"raw_intensity_multiplier":1},{"normalized_time":[0.25,0.75],"raw_intensity_multiplier":4},{"normalized_time":[0.75,1.0],"raw_intensity_multiplier":1}],"rate_normalization":"divide segment multipliers by 2.5 to preserve average_target_qps_rps","winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[0.40,-1.34],"p99_gain_pct_by_seed":[3.46,-3.04]},
+    {"id":"S3_13","family":"S3","role":"search_nonwinner","profile":"decode512","rho":0.75,"lambda_ref_rps":7.081839056636033,"average_target_qps_rps":5.3113792924770244,"routing":"rotating_fixed_hotspot","hot_fraction":0.80,"burst_multiplier":2,"segments":[{"normalized_time":[0.0,0.25],"raw_intensity_multiplier":1},{"normalized_time":[0.25,0.75],"raw_intensity_multiplier":2},{"normalized_time":[0.75,1.0],"raw_intensity_multiplier":1}],"rate_normalization":"divide segment multipliers by 1.5 to preserve average_target_qps_rps","winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[0.78,4.18],"p99_gain_pct_by_seed":[-1.58,5.51]},
+    {"id":"S3_14","family":"S3","role":"search_nonwinner","profile":"decode512","rho":0.75,"lambda_ref_rps":7.081839056636033,"average_target_qps_rps":5.3113792924770244,"routing":"rotating_fixed_hotspot","hot_fraction":0.80,"burst_multiplier":4,"segments":[{"normalized_time":[0.0,0.25],"raw_intensity_multiplier":1},{"normalized_time":[0.25,0.75],"raw_intensity_multiplier":4},{"normalized_time":[0.75,1.0],"raw_intensity_multiplier":1}],"rate_normalization":"divide segment multipliers by 2.5 to preserve average_target_qps_rps","winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[2.20,-3.07],"p99_gain_pct_by_seed":[2.91,-4.73]},
+    {"id":"C0_15","family":"C0","role":"negative_control","profile":"decode1536","rho":0.55,"lambda_ref_rps":1.2052789361140406,"average_target_qps_rps":0.6629034148627224,"routing":"uniform_fixed","winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[0.38,4.69],"p99_gain_pct_by_seed":[-3.09,13.17]},
+    {"id":"C1_16","family":"C1","role":"negative_control","profile":"decode64","rho":0.55,"lambda_ref_rps":33.14878494887209,"average_target_qps_rps":18.23183172187965,"routing":"fixed_seeded_hotspot","hot_fraction":0.90,"winner_both_mean_and_p99":false,"mean_gain_pct_by_seed":[-13.81,8.48],"p99_gain_pct_by_seed":[-14.50,13.06]}
+  ]
+}

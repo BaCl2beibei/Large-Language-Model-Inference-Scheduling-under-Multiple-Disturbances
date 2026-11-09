@@ -8,21 +8,39 @@ from types import MappingProxyType
 
 from .real_bridge import PAIRS, digest, eligible_pair
 
-SCHEMA_VERSION='real-observation-v1'
-INSTANCE_FEATURES=('running','waiting','head_wait_sec','used_fraction','free_fraction',
-                   'candidate_length','candidate_blocks','last_step_ms','state_age_sec',
+SCHEMA_VERSION='real-observation-v2'
+INSTANCE_FEATURES=('running','waiting','head_wait_sec','used_fraction',
+                   'candidate_blocks','last_step_ms',
                    'tokens_per_sec_5s','waiting_slope_5s','used_fraction_slope_5s')
-GLOBAL_FEATURES=('arrival_phase','drain_phase','remaining_arrival_sec','remaining_total_sec',
+GLOBAL_FEATURES=('remaining_arrival_sec','remaining_total_sec',
                  'outstanding','overdue_first','output_stalled','client_tokens_per_sec_5s',
-                 'busy','cooldown_remaining_sec','healthy_instances')
-PAIR_FEATURES=('running_difference','used_fraction_difference','destination_available_blocks')
-SCALES={'running':64.,'waiting':64.,'head_wait_sec':2.,'used_fraction':1.,'free_fraction':1.,
-        'candidate_length':2048.,'candidate_blocks':128.,'last_step_ms':100.,'state_age_sec':2.,
+                 'busy','cooldown_remaining_sec')
+PAIR_FEATURES=('waiting_difference','remaining_kv_blocks_difference')
+SCALES={'running':64.,'waiting':64.,'head_wait_sec':2.,'used_fraction':1.,
+        'candidate_blocks':128.,'last_step_ms':100.,
         'tokens_per_sec_5s':128.,'waiting_slope_5s':16.,'used_fraction_slope_5s':1.,
-        'arrival_phase':1.,'drain_phase':1.,'remaining_arrival_sec':120.,'remaining_total_sec':240.,
+        'remaining_arrival_sec':120.,'remaining_total_sec':3600.,
         'outstanding':64.,'overdue_first':64.,'output_stalled':64.,'client_tokens_per_sec_5s':512.,
-        'busy':1.,'cooldown_remaining_sec':5.,'healthy_instances':4.,
-        'running_difference':64.,'used_fraction_difference':1.,'destination_available_blocks':128.}
+        'busy':1.,'cooldown_remaining_sec':5.,
+        'waiting_difference':64.,'remaining_kv_blocks_difference':8192.}
+
+
+def effective_used_blocks(state):
+    # Allocator used already includes preallocated migration blocks in vLLM.
+    # Only a separately reported reservation outside used can be added here.
+    used = state.get('used_blocks')
+    reserved = state.get('reserved_blocks_not_in_used', 0.)
+    return used + reserved if _finite(used) and _finite(reserved) else None
+
+
+def used_fraction(state):
+    used, total = effective_used_blocks(state), state.get('total_blocks')
+    return used / total if _finite(used) and _finite(total) and total > 0 else None
+
+
+def remaining_kv_blocks(state):
+    used, total = effective_used_blocks(state), state.get('total_blocks')
+    return total - used if _finite(used) and _finite(total) and total > 0 else None
 
 
 def _finite(value):
@@ -40,7 +58,7 @@ class RealObservationBuilder:
         if len(self.mapping)!=4 or len(set(self.mapping))!=4:
             raise ValueError('four stable instance epochs required')
         self.ttft_sec=ttft_slo_ms/1000
-        self.gap_sec=max(1.,5*tpot_slo_ms/1000)
+        self.gap_sec=tpot_slo_ms/1000
         self.max_age_sec,self.cooldown_sec=max_age_sec,cooldown_sec
         self.history=deque()
 
@@ -60,19 +78,17 @@ class RealObservationBuilder:
         dt=(now_ns-old_ns)/1e9
         features,missing=[],[]
         for instance_id,epoch in self.mapping:
-            s=states[instance_id]; total=s.get('total_blocks'); used=s.get('used_blocks'); free=s.get('free_blocks')
-            ratio=(used/total if _finite(used) and _finite(total) and total>0 else None)
-            free_ratio=(free/total if _finite(free) and _finite(total) and total>0 else None)
+            s=states[instance_id]
+            ratio=used_fraction(s)
             prior=old.get(instance_id,{})
             def delta(name):
                 a,b=s.get(name),prior.get(name)
                 return (a-b)/dt if dt>0 and _finite(a) and _finite(b) and a>=0 and b>=0 else None
             throughput=delta('output_tokens_total')
             if throughput is not None and throughput<0:throughput=None
-            old_ratio=(prior.get('used_blocks')/prior['total_blocks'] if prior.get('total_blocks') and _finite(prior.get('used_blocks')) else None)
-            age=(now_ns-s['measured_ns'])/1e9 if s.get('measured_ns') is not None else None
-            vals=[s.get('running'),s.get('waiting'),s.get('head_wait_sec'),ratio,free_ratio,
-                  s.get('candidate_length'),s.get('candidate_blocks'),s.get('last_step_ms'),age,
+            old_ratio=used_fraction(prior)
+            vals=[s.get('running'),s.get('waiting'),s.get('head_wait_sec'),ratio,
+                  s.get('candidate_blocks'),s.get('last_step_ms'),
                   throughput,delta('waiting'),(ratio-old_ratio)/dt if dt>0 and ratio is not None and old_ratio is not None else None]
             row,mask=_pack(vals);features.append(row);missing.append(mask)
         outstanding=[r for r in visible if r['sent_ns'] is not None and r['client_terminal_ns'] is None]
@@ -81,10 +97,9 @@ class RealObservationBuilder:
         window_sec=min(5.,max(0.,(now_ns-episode_start_ns)/1e9))
         tokens=sum(n for r in visible for t,n in r['token_increments'] if now_ns-5e9<t<=now_ns)
         cooldown=max(0.,self.cooldown_sec-(now_ns-snapshot['last_terminal_ns'])/1e9) if snapshot.get('last_terminal_ns') is not None else 0.
-        global_values=[float(now_ns<arrival_end_ns),float(arrival_end_ns<=now_ns<deadline_ns),
-                       max(0.,(arrival_end_ns-now_ns)/1e9),max(0.,(deadline_ns-now_ns)/1e9),
+        global_values=[max(0.,(arrival_end_ns-now_ns)/1e9),max(0.,(deadline_ns-now_ns)/1e9),
                        len(outstanding),overdue,stalled,tokens/window_sec if window_sec>0 else None,
-                       float(snapshot['busy']),cooldown,sum(s.get('healthy') is True for s in states.values())]
+                       float(snapshot['busy']),cooldown]
         global_features,global_missing=_pack(global_values)
         pair_features,pair_missing,mask=[],[],[True]
         for src,dst in PAIRS:
@@ -95,11 +110,8 @@ class RealObservationBuilder:
             def difference(name):
                 x,y=a.get(name),b.get(name)
                 return x-y if _finite(x) and _finite(y) else None
-            def used_ratio(s):
-                return s['used_blocks']/s['total_blocks'] if _finite(s.get('used_blocks')) and s.get('total_blocks',0)>0 else None
-            x,y=used_ratio(a),used_ratio(b)
-            avail=(b['free_blocks']-b['waiting_blocks'] if _finite(b.get('free_blocks')) and _finite(b.get('waiting_blocks')) else None)
-            row,missing_row=_pack([difference('running'),x-y if x is not None and y is not None else None,avail])
+            x,y=remaining_kv_blocks(a),remaining_kv_blocks(b)
+            row,missing_row=_pack([difference('waiting'),x-y if x is not None and y is not None else None])
             pair_features.append(row);pair_missing.append(missing_row)
         return {'schema':SCHEMA_VERSION,'instance_feature_names':list(INSTANCE_FEATURES),
                 'global_feature_names':list(GLOBAL_FEATURES),'pair_feature_names':list(PAIR_FEATURES),
@@ -112,7 +124,7 @@ class RealObservationBuilder:
 
 class RealNormalizer:
     """Named schema-bound scales; immutable within and across rollout/evaluation."""
-    version='real-normalizer-v1'
+    version='real-normalizer-v2'
     def __setattr__(self,name,value):
         if getattr(self,'_frozen',False):raise AttributeError('real normalizer is frozen')
         object.__setattr__(self,name,value)

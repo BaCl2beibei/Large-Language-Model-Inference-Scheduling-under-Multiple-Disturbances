@@ -15,12 +15,12 @@ class RealEnvConfig:
     arrival_sec: float=120.
     drain_sec: float=120.
     decision_interval_sec: float=1.
-    cleanup_sec: float=60.
+    cleanup_sec: float=240.
     ttft_slo_ms: float=2000.
     tpot_slo_ms: float=150.
 
     def __post_init__(self):
-        if self.arrival_sec<=0 or self.drain_sec<0 or self.decision_interval_sec<=0 or not 0<self.cleanup_sec<=60:
+        if self.arrival_sec<=0 or self.drain_sec<0 or self.decision_interval_sec<=0 or not 0<self.cleanup_sec<=300:
             raise ValueError('invalid finite episode/cleanup horizons')
 
 
@@ -54,12 +54,13 @@ class RealEnv:
     """
     def __init__(self,bridge,io,budget,*,run_id,episode_id,ledger_factory,
                  config=RealEnvConfig(),normalizer=None,clock=time.monotonic_ns,
-                 decision_sink=lambda record:None):
+                 decision_sink=lambda record:None,external_lease_heartbeat=False):
         self.bridge,self.io,self.budget=bridge,io,budget
         self.run_id,self.episode_id=run_id,episode_id
         self.ledger_factory,self.config,self.clock=ledger_factory,config,clock
         self.normalizer=normalizer or RealNormalizer()
         self.decision_sink=decision_sink
+        self.external_lease_heartbeat=bool(external_lease_heartbeat)
         self.state='new';self.invalid_reasons=[];self.decisions=[];self.receipts={}
         self.baseline=None;self.lease=None;self.previous_decision_ns=None
         self.finalised=False
@@ -114,7 +115,12 @@ class RealEnv:
             if now>=self.deadline_ns:
                 self.state='deadline'
                 return None,0.,True,False,{'phase':self.state,'finalised':False}
-            await self.bridge.renew_controller()
+            # P3's independent nonblocking heartbeat renews the lease every
+            # five seconds. Avoid a duplicate blocking RPC here: after the
+            # policy sees its snapshot, every extra await widens the window in
+            # which the live SR candidate can change before submission.
+            if not self.external_lease_heartbeat:
+                await self.bridge.renew_controller()
             observation=self.current_observation
             now=self.clock();raw=observation['raw']
             if type(action) is not int or not 0<=action<=12:raise ValueError('action must be 0..12')

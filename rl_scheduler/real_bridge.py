@@ -73,10 +73,12 @@ class ControlArbiter:
     """
     def __init__(self, state_provider, dispatch, *, reconcile=None, native_idle=lambda: True,
                  clock=time.monotonic_ns, event_sink=lambda record: None,
-                 lease_sec=30., cooldown_sec=5., max_age_sec=2.):
+                 lease_sec=30., cooldown_sec=5., max_age_sec=2.,
+                 refresh_candidate_on_submit=False):
         self.state_provider, self.dispatch, self.reconcile = state_provider, dispatch, reconcile
         self.native_idle, self.clock, self.event_sink = native_idle, clock, event_sink
         self.lease_sec, self.cooldown_sec, self.max_age_sec = lease_sec, cooldown_sec, max_age_sec
+        self.refresh_candidate_on_submit = bool(refresh_candidate_on_submit)
         self.epoch = uuid.uuid4().hex
         self.lease = None
         self.slot = None
@@ -123,13 +125,17 @@ class ControlArbiter:
                            'received_ns': now, 'instances': sorted(states, key=lambda s: s['instance_id']),
                            'mapping': [list(x) for x in mapping], 'busy': self.slot is not None,
                            'last_terminal_ns': self.last_terminal_ns,
+                           'cooldown_sec': self.lease['cooldown_sec'] if self.lease else self.cooldown_sec,
                            'lease_expired': self.lease is not None and now > self.lease['expires_ns'],
                            'invalid_reasons': list(self.invalid_reasons)}
             return deepcopy(self.latest)
 
-    async def acquire_controller(self, run_id, controller_version, episode_id, mode='active'):
+    async def acquire_controller(self, run_id, controller_version, episode_id, mode='active', cooldown_sec=None):
         if mode not in ('active', 'shadow', 'stay'):
             raise ValueError('unsupported control mode')
+        cooldown_sec = self.cooldown_sec if cooldown_sec is None else cooldown_sec
+        if not isinstance(cooldown_sec, (int, float)) or not math.isfinite(cooldown_sec) or cooldown_sec < 0:
+            raise ValueError('finite nonnegative controller cooldown required')
         async with self._lock:
             if self.lease is not None or self.slot is not None or not self.native_idle():
                 raise RuntimeError('controller or native migration still owns cluster')
@@ -149,7 +155,7 @@ class ControlArbiter:
             self.lease = {'lease_id': f'{self.epoch}-{uuid.uuid4().hex}', 'run_id': run_id,
                           'episode_id': episode_id, 'controller_version': controller_version,
                           'mapping': [list(x) for x in mapping], 'expires_ns': now+int(self.lease_sec*1e9),
-                          'mode': mode}
+                          'mode': mode, 'cooldown_sec': cooldown_sec}
             self.invalid_reasons = []
             self.release_requested = False
             return deepcopy(self.lease)
@@ -160,6 +166,19 @@ class ControlArbiter:
                 raise RuntimeError('expired or unknown lease; cleanup before takeover')
             self.lease['expires_ns'] = self.clock()+int(self.lease_sec*1e9)
             return deepcopy(self.lease)
+
+    async def renew_controller_nonblocking(self, lease_id):
+        """Heartbeat path for a P3 client while a snapshot awaits remote state.
+
+        This method intentionally does not take ``_lock``.  It performs no await
+        between lease validation and expiry update, so the operation is atomic
+        on the Manager event loop and cannot queue behind a slow state provider.
+        The regular request/decision path continues to use renew_controller().
+        """
+        if not self._lease_valid(lease_id):
+            raise RuntimeError('expired or unknown lease; cleanup before takeover')
+        self.lease['expires_ns'] = self.clock()+int(self.lease_sec*1e9)
+        return deepcopy(self.lease)
 
     async def submit_migration(self, lease_id, decision_id, src_id, dst_id,
                                expected_candidate_id, snapshot_version):
@@ -175,7 +194,9 @@ class ControlArbiter:
                 return deepcopy(self.receipts[decision_id])
             receipt = {**payload, 'receipt_status': 'rejected', 'rejection_reason': None,
                        'migration_id': None, 'terminal_status': 'rejected',
-                       'accepted_ns': None, 'terminal_ns': self.clock()}
+                       'accepted_ns': None, 'terminal_ns': self.clock(),
+                       'snapshot_candidate_id': expected_candidate_id,
+                       'candidate_refreshed': False}
             self.fingerprints[decision_id] = fingerprint
             self.receipts[decision_id] = receipt
             def reject(reason):
@@ -191,7 +212,7 @@ class ControlArbiter:
             if self.slot is not None or not self.native_idle():
                 return reject('global_slot_busy')
             now = self.clock()
-            if self.last_terminal_ns is not None and now-self.last_terminal_ns < self.cooldown_sec*1e9:
+            if self.last_terminal_ns is not None and now-self.last_terminal_ns < self.lease['cooldown_sec']*1e9:
                 return reject('cooldown')
             if not self.latest or self.latest['version'] != snapshot_version:
                 return reject('snapshot_version_changed')
@@ -211,8 +232,16 @@ class ControlArbiter:
             if src_id not in by_id or dst_id not in by_id:
                 return reject('unknown_instance')
             source, destination = by_id[src_id], by_id[dst_id]
-            if source.get('candidate_id') != expected_candidate_id:
-                return reject('SR_candidate_changed')
+            live_candidate_id = source.get('candidate_id')
+            if live_candidate_id != expected_candidate_id:
+                if not self.refresh_candidate_on_submit:
+                    return reject('SR_candidate_changed')
+                # The policy action names a source/destination pair. SR may
+                # reorder its request candidate between the observation and
+                # submission, so bind the action to the current candidate and
+                # retain the snapshot candidate separately for audit.
+                receipt['expected_candidate_id'] = live_candidate_id
+                receipt['candidate_refreshed'] = True
             valid, reason = eligible_pair(source, destination, self.clock(), self.max_age_sec)
             if not valid:
                 return reject(reason)
@@ -298,34 +327,100 @@ class ControlArbiter:
             return {'status': 'released'}
 
 
+def _apply_instance_order(snapshot, instance_order):
+    """Present the same physical instances in a frozen logical index order."""
+    expected = tuple(tuple(row) for row in instance_order)
+    current = tuple(tuple(row) for row in snapshot.get('mapping', ()))
+    if len(expected) != 4 or set(expected) != set(current):
+        raise RuntimeError('snapshot no longer contains the frozen four-instance mapping')
+    states = {row['instance_id']: row for row in snapshot.get('instances', ())}
+    if any(instance_id not in states for instance_id, _epoch in expected):
+        raise RuntimeError('snapshot instance states do not match the frozen mapping')
+    snapshot['mapping'] = [list(row) for row in expected]
+    snapshot['instances'] = [states[instance_id] for instance_id, _epoch in expected]
+    return snapshot
+
+
 class RealBridge:
     """HTTP transport: single submission, query on uncertainty, never blind retry."""
-    def __init__(self, base_url, session):
+    def __init__(self, base_url, session, *, instance_order=None):
         parsed = urlparse(base_url)
         if parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1', 'localhost', '::1'):
             raise ValueError('control transport must be loopback HTTP')
         self.base_url, self.session = base_url.rstrip('/'), session
+        self.instance_order = (None if instance_order is None else
+                               tuple(tuple(row) for row in instance_order))
         self.lease = None
         self.pending = {}
         self.unresolved = set()
+        self.on_controller_acquired = None
+        self.before_controller_release = None
 
     async def call(self, method, **payload):
         async with self.session.post(self.base_url+'/real_control/'+method, json=payload) as response:
             result = await response.json()
             if response.status >= 500:
-                raise ConnectionError('uncertain control RPC')
+                raise ConnectionError('uncertain control RPC: ' +
+                                      str(result.get('error', 'server returned HTTP ' +
+                                                      str(response.status))))
             if response.status != 200:
                 raise RuntimeError(result.get('error', 'control RPC failed'))
             return result
 
+    async def flush(self):
+        """Retry the idempotent producer barrier after transient transport errors."""
+        import aiohttp
+        last_error = None
+        for attempt in range(3):
+            try:
+                return await self.call('flush')
+            except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError, OSError) as exc:
+                last_error = exc
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(.05 * (attempt + 1))
+        raise last_error
+
+    async def release_episode(self, run_id, episode_id):
+        """Retry the idempotent episode-metric cleanup after a dropped response."""
+        import aiohttp
+        last_error = None
+        for attempt in range(3):
+            try:
+                return await self.call('release_episode', run_id=run_id, episode_id=episode_id)
+            except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError, OSError) as exc:
+                last_error = exc
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(.05 * (attempt + 1))
+        raise last_error
+
     async def snapshot(self):
-        result = await self.call('snapshot')
+        """Retry transient transport failures for the read-only state snapshot."""
+        import aiohttp
+        last_error = None
+        for attempt in range(3):
+            try:
+                result = await self.call('snapshot')
+                break
+            except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError, OSError) as exc:
+                last_error = exc
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(.05 * (attempt + 1))
+        else:  # pragma: no cover - loop either succeeds or re-raises
+            raise last_error
+        if self.instance_order is not None:
+            result = _apply_instance_order(result, self.instance_order)
         result['received_ns'] = time.monotonic_ns()
         return result
 
-    async def acquire_controller(self, run_id, controller_version, episode_id, mode='active'):
+    async def acquire_controller(self, run_id, controller_version, episode_id, mode='active', cooldown_sec=None):
+        options = {} if cooldown_sec is None else {'cooldown_sec': cooldown_sec}
         self.lease = await self.call('acquire_controller',run_id=run_id,
-                                    controller_version=controller_version,episode_id=episode_id,mode=mode)
+                                    controller_version=controller_version,episode_id=episode_id,mode=mode,**options)
+        if self.on_controller_acquired is not None:
+            self.on_controller_acquired()
         return self.lease
 
     async def renew_controller(self):
@@ -366,6 +461,8 @@ class RealBridge:
     async def release_controller(self):
         if not self.lease:
             return {'status':'released'}
+        if self.before_controller_release is not None:
+            await self.before_controller_release()
         result=await self.call('release_controller',lease_id=self.lease['lease_id'])
         if result['status']=='released':
             self.lease=None

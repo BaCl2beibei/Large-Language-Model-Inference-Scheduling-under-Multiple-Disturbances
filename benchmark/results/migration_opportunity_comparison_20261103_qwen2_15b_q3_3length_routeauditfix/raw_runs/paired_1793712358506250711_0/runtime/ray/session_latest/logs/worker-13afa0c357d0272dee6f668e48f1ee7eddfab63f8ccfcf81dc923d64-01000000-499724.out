@@ -1,0 +1,27 @@
+:job_id:01000000
+:actor_name:Llumlet
+INFO 2026-11-03 13:26:52,057 ray_utils.py:361] Llumlet(actor_name=instance_ffcc0c7dd5bc435ca9be8f68d3e32699, actor_id=274a6ebbeece9d226cc5d0d801000000, placement_group_id=055a07528bf4d2fadd4f9df6bd3b01000000, namespace=llumnix, job_id=01000000, worker_id=13afa0c357d0272dee6f668e48f1ee7eddfab63f8ccfcf81dc923d64, node_id=51f4d98a95baecd2a9182fe2c66c92c848ccc3267f1e29bc385e08ec, gpu_ids=['3'])
+INFO 2026-11-03 13:26:52,060 ray_utils.py:369] Llumlet(log_dir=['/tmp/ms_1d8f90727fa0/session_2026-11-03_13-26-02_342131_497013/logs/worker-13afa0c357d0272dee6f668e48f1ee7eddfab63f8ccfcf81dc923d64-01000000-499724.out', '/tmp/ms_1d8f90727fa0/session_2026-11-03_13-26-02_342131_497013/logs/worker-13afa0c357d0272dee6f668e48f1ee7eddfab63f8ccfcf81dc923d64-01000000-499724.err'])
+INFO 2026-11-03 13:26:52,060 llumlet.py:60] Llumlet(instance_id=ffcc0c7dd5bc435ca9be8f68d3e32699, backend_type=vLLM, instance_type=neutral)
+WARNING 11-03 13:26:54 config.py:1668] Casting torch.bfloat16 to torch.float16.
+ERROR 11-03 13:27:16 registry.py:267] Error in inspecting model architecture 'Qwen2ForCausalLM'
+ERROR 11-03 13:27:16 registry.py:267] Traceback (most recent call last):
+ERROR 11-03 13:27:16 registry.py:267]   File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/vllm/model_executor/models/registry.py", line 429, in _run_in_subprocess
+ERROR 11-03 13:27:16 registry.py:267]     returned.check_returncode()
+ERROR 11-03 13:27:16 registry.py:267]   File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.python-runtime-recovered/cpython-3.10.12-linux-x86_64-gnu/lib/python3.10/subprocess.py", line 457, in check_returncode
+ERROR 11-03 13:27:16 registry.py:267]     raise CalledProcessError(self.returncode, self.args, self.stdout,
+ERROR 11-03 13:27:16 registry.py:267] subprocess.CalledProcessError: Command '['/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/bin/python', '-m', 'vllm.model_executor.models.registry']' died with <Signals.SIGTERM: 15>.
+ERROR 11-03 13:27:16 registry.py:267] 
+ERROR 11-03 13:27:16 registry.py:267] The above exception was the direct cause of the following exception:
+ERROR 11-03 13:27:16 registry.py:267] 
+ERROR 11-03 13:27:16 registry.py:267] Traceback (most recent call last):
+ERROR 11-03 13:27:16 registry.py:267]   File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/vllm/model_executor/models/registry.py", line 265, in _try_inspect_model_cls
+ERROR 11-03 13:27:16 registry.py:267]     return model.inspect_model_cls()
+ERROR 11-03 13:27:16 registry.py:267]   File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/vllm/model_executor/models/registry.py", line 227, in inspect_model_cls
+ERROR 11-03 13:27:16 registry.py:267]     return _run_in_subprocess(
+ERROR 11-03 13:27:16 registry.py:267]   File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/vllm/model_executor/models/registry.py", line 432, in _run_in_subprocess
+ERROR 11-03 13:27:16 registry.py:267]     raise RuntimeError(f"Error raised in subprocess:\n"
+ERROR 11-03 13:27:16 registry.py:267] RuntimeError: Error raised in subprocess:
+ERROR 11-03 13:27:16 registry.py:267] /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.python-runtime-recovered/cpython-3.10.12-linux-x86_64-gnu/lib/python3.10/runpy.py:126: RuntimeWarning: 'vllm.model_executor.models.registry' found in sys.modules after import of package 'vllm.model_executor.models', but prior to execution of 'vllm.model_executor.models.registry'; this may result in unpredictable behaviour
+ERROR 11-03 13:27:16 registry.py:267]   warn(RuntimeWarning(msg))
+ERROR 11-03 13:27:16 registry.py:267] 

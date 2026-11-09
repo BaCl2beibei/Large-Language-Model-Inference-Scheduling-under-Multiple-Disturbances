@@ -534,6 +534,13 @@ class LlumnixMigrationEnv:
         self.migration_replay_results = []
         self._trace_routes = {str(key): str(value) for key, value in
                               (options or {}).get("request_routes", {}).items()}
+        self._native_dispatch_enabled = bool((options or {}).get("native_dispatch", False))
+        self._native_dispatch_update_interval_sec = float(
+            (options or {}).get("native_dispatch_update_interval_sec", 0.05))
+        if self._native_dispatch_update_interval_sec <= 0:
+            raise ValueError("native dispatch update interval must be positive")
+        self._native_dispatch_last_update_sec = -math.inf
+        self._native_dispatch_scores = {}
         self.next_arrival = self._sample_next_arrival()
         instance_ids = (options or {}).get("instance_ids")
         if instance_ids:
@@ -595,6 +602,44 @@ class LlumnixMigrationEnv:
                 dst.next_step_time = self.now
             self._record_lifecycle_event("waiting", request, dst, timestamp_source="arrival_event",
                                          queue_position=len(dst.waiting), forced_route=True)
+            return
+        if self._native_dispatch_enabled:
+            if (self.now - self._native_dispatch_last_update_sec
+                    >= self._native_dispatch_update_interval_sec - 1e-9):
+                scores = {}
+                for instance in candidates:
+                    count = len(instance.running) + len(instance.waiting)
+                    available = instance.free_blocks - sum(
+                        self._blocks_for_tokens(waiting.request_len) for waiting in instance.waiting)
+                    scores[instance.instance_id] = math.inf if count == 0 else available / count
+                self._native_dispatch_scores = scores
+                self._native_dispatch_last_update_sec = self.now
+            # Llumnix RemainingStepsLoad sorts the highest free-blocks-per-
+            # request value first. topk_random_dispatch=1 makes selection
+            # deterministic; ties follow the instance_id sort key.
+            ranked = sorted(candidates, key=lambda instance: (
+                -self._native_dispatch_scores.get(instance.instance_id, -math.inf),
+                instance.instance_id))
+            dst = ranked[0]
+            self._record_lifecycle_event(
+                "native_dispatch", request, dst, timestamp_source="simulated_manager_dispatch",
+                dispatch_policy="load", dispatch_load_metric="remaining_steps",
+                topk_random_dispatch=1,
+                state_updated_sec=self._native_dispatch_last_update_sec,
+                state_age_ms=(self.now-self._native_dispatch_last_update_sec)*1000,
+                candidate_scores=[{'instance_id': instance.instance_id,
+                                   'metric_value': (value if math.isfinite(value) else None)}
+                                  for instance in ranked
+                                  for value in [self._native_dispatch_scores.get(instance.instance_id, -math.inf)]],
+                selected_instance_id=dst.instance_id)
+            request.waiting_since = self.now
+            dst.waiting.append(request)
+            self.requests[request.request_id] = request
+            if not math.isfinite(dst.next_step_time):
+                dst.next_step_time = self.now
+            self._record_lifecycle_event("waiting", request, dst, timestamp_source="arrival_event",
+                                         queue_position=len(dst.waiting), forced_route=False,
+                                         routing_mode="native")
             return
         skew = 0.0 if self.scenario == "low" else self.config.routing_skew_probability
         if self.rng.random() < skew:
@@ -863,15 +908,11 @@ class LlumnixMigrationEnv:
         if self.config.service_model_mode == "calibrated" and batch_model:
             engine_execution_ms = max(
                 self.config.min_engine_step_ms,
-                predict_service_model(batch_model, batch_features) * instance.capacity_scale,  # type: ignore[arg-type]
+                self._predict_batch_execution_ms(instance, batch_features),
             )
         else:
             engine_execution_ms = max(self.config.min_engine_step_ms, prefill_ms, decode_token_interval_ms)
-        output_cadence_ms = 0.0
-        if (decoders and self.config.service_model_mode == "calibrated"
-                and self.config.decode_token_interval_model):
-            output_cadence_ms = sample_qps_quantile_model(
-                self.config.decode_token_interval_model, self.arrival_rate, self.cadence_rng)
+        output_cadence_ms = self._predict_output_cadence_ms(instance, batch_features) if decoders else 0.0
         # API-visible token intervals include engine execution. Use the larger
         # measured duration instead of adding the two and counting GPU work twice.
         step_ms = max(engine_execution_ms, output_cadence_ms)
@@ -952,6 +993,17 @@ class LlumnixMigrationEnv:
         instance.pending_step_start_time = step_start
         instance.pending_step_end_time = step_end
         instance.next_step_time = step_end
+
+    def _predict_batch_execution_ms(self, instance: _SimInstance, features: Mapping[str, float]) -> float:
+        """Predict after admission, using the actual scheduled batch composition."""
+        model = (self.config.service_time_model or {})['batch_execution']
+        return predict_service_model(model, features) * instance.capacity_scale
+
+    def _predict_output_cadence_ms(self, instance: _SimInstance, features: Mapping[str, float]) -> float:
+        if self.config.service_model_mode == 'calibrated' and self.config.decode_token_interval_model:
+            return sample_qps_quantile_model(
+                self.config.decode_token_interval_model, self.arrival_rate, self.cadence_rng)
+        return 0.0
 
     def _record_token(self, request: _Request, timestamp: float, metrics: MigPPORewardMetrics,
                       window_start: float, window_end: float) -> None:
@@ -1240,7 +1292,8 @@ class LlumnixMigrationEnv:
         if blocks > dst.free_blocks:
             return "destination_capacity_mismatch"
         duration_ms = max(1.0, float(event.get("cost_ms", 1.0)))
-        pause_stage_ms = min(duration_ms, max(0.0, float(event.get("pause_stage_ms") or duration_ms)))
+        pause = event.get("pause_stage_ms")
+        pause_stage_ms = min(duration_ms, max(0.0, float(duration_ms if pause is None else pause)))
         recovery_ms = max(0.0, float(event.get("recovery_after_resume_ms") or 0.0))
         self.action_count += 1
         src.is_migrating = True

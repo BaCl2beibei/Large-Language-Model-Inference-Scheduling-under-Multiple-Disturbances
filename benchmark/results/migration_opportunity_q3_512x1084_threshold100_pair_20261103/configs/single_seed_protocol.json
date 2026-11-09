@@ -1,0 +1,28 @@
+{
+  "scope": "one QPS=3 paired comparison: Stay vs Balanced-L at user-specified threshold 100",
+  "scenario": "i512_o1084_q3_s192_b4096",
+  "seed": 91000,
+  "policies": [
+    "Stay",
+    "Balanced-L"
+  ],
+  "thresholds": {
+    "Balanced-L": 100
+  },
+  "measured_window_sec": 600,
+  "arrival_sec": 120,
+  "drain_sec": 480,
+  "warmup_sec": {
+    "arrival": 2,
+    "drain": 8
+  },
+  "trace_protocol": "same generated trace for both policy episodes",
+  "model": "Qwen2-1.5B",
+  "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+  "max_model_len": 2112,
+  "gpu_memory_utilization": 0.65,
+  "max_num_seqs": 192,
+  "max_num_batched_tokens": 4096,
+  "threshold_source": "explicit user override; not derived from this scenario Stay F quantiles",
+  "client_timeout_fix": "disable the legacy 360s total timeout so streams cover the 600s scoring window; keep 10s connect timeouts"
+}

@@ -71,7 +71,7 @@ class OwnedProcesses:
             data['processes']=list(by_identity.values())
         return data
 
-    def stop(self,timeout=20.):
+    def stop(self,timeout=45.):
         import psutil
         data=self.capture_children();owned=[]
         for record in data['processes']:
@@ -89,7 +89,7 @@ class OwnedProcesses:
             if identity_alive(identity):
                 try:proc.kill()
                 except psutil.NoSuchProcess:pass
-        _,alive=psutil.wait_procs(alive,timeout=2.)
+        _,alive=psutil.wait_procs(alive,timeout=5.)
         if alive:raise RuntimeError('owned process cleanup not confirmed')
 
 

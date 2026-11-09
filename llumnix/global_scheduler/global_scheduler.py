@@ -14,6 +14,9 @@
 
 from typing import Dict, List, Tuple, Union, Iterable, Set
 import math
+import os
+import random
+import time
 
 from llumnix.logging.logger import init_logger
 from llumnix.internal_config import GlobalSchedulerConfig
@@ -35,6 +38,11 @@ class GlobalScheduler:
     ) -> None:
         self.backend_type = backend_type
         self.global_scheduler_config = global_scheduler_config
+        seed_value = os.environ.get('LLUMNIX_DISPATCH_RANDOM_SEED')
+        self.dispatch_random_seed = int(seed_value) if seed_value is not None else None
+        if self.dispatch_random_seed is not None:
+            random.seed(self.dispatch_random_seed)
+        self.last_instance_info_update_ns = 0
         self.num_instances = 0
 
         self.instance_id_set: Set[str] = set()
@@ -78,6 +86,7 @@ class GlobalScheduler:
 
     # TODO(baizhuoyan): Since dispatch_load_metric is no longer available, it is temporarily replaced with remaining_steps.
     def update_instance_infos(self, instance_infos: List[InstanceInfo]) -> None:
+        self.last_instance_info_update_ns = time.monotonic_ns()
         for instance_info in instance_infos:
             self.global_scheduler_metrics.dispatch_load.observe(
                 value=instance_info.remaining_steps,
@@ -120,6 +129,18 @@ class GlobalScheduler:
         dispatch_context: Dict,
     ) -> Tuple[str, str, int]:
         # instance_num_requests will be updated inplace in dispatch_scheduler.dispatch
+        dispatch_started_ns = time.monotonic_ns()
+        dispatch_context['_llumnix_dispatch_context'] = {
+            'dispatch_started_ns': dispatch_started_ns,
+            'state_updated_ns': self.last_instance_info_update_ns,
+            'state_age_ms': ((dispatch_started_ns - self.last_instance_info_update_ns) / 1e6
+                             if self.last_instance_info_update_ns else None),
+            'dispatch_policy': self.global_scheduler_config.dispatch_policy,
+            'dispatch_load_metric': self.global_scheduler_config.dispatch_load_metric_config.dispatch_load_metric,
+            'topk_random_dispatch': self.global_scheduler_config.topk_random_dispatch,
+            'dispatch_random_seed': self.dispatch_random_seed,
+            'instance_num_requests_before': dict(self.instance_num_requests),
+        }
         if not self.enable_pd:
             no_constrains_instance_id = self.dispatch_scheduler.dispatch_no_constrains(
                 self.instance_info,
@@ -160,6 +181,16 @@ class GlobalScheduler:
         if self.global_scheduler_config.enable_pd_disagg and \
             self.instance_info[prefill_instance_id].instance_type != InstanceType.DECODE:
             request_expected_steps = 1
+
+        selection = dispatch_context.pop('_llumnix_dispatch_audit', None)
+        context_audit = dispatch_context.pop('_llumnix_dispatch_context', {})
+        if selection is not None:
+            selection.update(context_audit)
+            selection['selected_instance_id'] = prefill_instance_id
+        dispatch_context['_llumnix_dispatch_audit'] = selection or {
+            **context_audit, 'selected_instance_id': prefill_instance_id,
+            'selection_algorithm': type(self.dispatch_scheduler.dispatch_policy).__name__,
+        }
 
         self._log_request_dispatch_info(
             request_id=request_id,

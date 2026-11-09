@@ -14,15 +14,7 @@ from pathlib import Path
 import time
 
 
-def atomic_json(path,value):
-    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
-    temporary=path.with_name(path.name+f'.{os.getpid()}.tmp')
-    with temporary.open('w') as stream:
-        json.dump(value,stream,indent=2,allow_nan=False);stream.write('\n');stream.flush();os.fsync(stream.fileno())
-    os.replace(temporary,path)
-    descriptor=os.open(str(path.parent),os.O_RDONLY)
-    try:os.fsync(descriptor)
-    finally:os.close(descriptor)
+from .portable_io import atomic_json
 
 
 class BudgetExhausted(RuntimeError):pass

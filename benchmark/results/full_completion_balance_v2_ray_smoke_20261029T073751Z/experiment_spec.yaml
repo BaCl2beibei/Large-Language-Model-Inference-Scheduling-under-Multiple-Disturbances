@@ -1,0 +1,148 @@
+schema: balance-full-completion-design-v2
+status: design_ready_implementation_pending
+local_date: '2026-10-28'
+timezone: Asia/Shanghai
+scope: design_only_no_GPU_execution
+completion:
+  unit: frozen_finite_request_cohort
+  completion_time_limit_sec: null
+  experiment_wall_time_limit_sec: null
+  HTTP_total_completion_timeout_sec: null
+  normal_cancel: false
+  drop_unsent_at_arrival_end: false
+  exclude_late_accepts: false
+  normal_terminal: every_frozen_request_succeeded_and_evidence_reconciled
+  all_requests_same_ID_set_required: true
+  fault_result: entire_run_incomplete_headline_latency_null
+  no_progress: diagnostic_alert_not_automatic_cancellation
+runtime_reference:
+  model: existing_Qwen2_0.5B
+  instances: 4
+  tensor_parallel_size: 1
+  max_model_len: 2112
+  ray_num_cpus_previously_verified: 16
+  status: revalidate_before_implementation_or_live_run
+  old_invocation_lease: closed_do_not_reuse
+  old_run_directory: missing_after_initial_read_in_this_session
+policies:
+  Stay:
+    migration: false
+    telemetry_and_control: same_as_Balanced
+  Balanced:
+    version: Balanced-9000-SR-v1
+    function_reference: rl_scheduler.real_opportunity.balanced_action
+    threshold: 9000.0
+    candidate: SR_current_sequence_length_not_remaining_length_oracle
+    decision_interval_sec: 1.0
+    global_inflight_limit: 1
+    terminal_cooldown_sec: 5.0
+    snapshot_max_age_sec: 2.0
+    capacity_reserve: max(16,ceil(0.05*total_blocks))
+    unknown_action: query_same_ID_before_new_migrations
+  variants: separately_named_development_experiments_original_baseline_retained
+profiles:
+  decode1536: {input_tokens: 128, output_tokens: 1536}
+  decode512: {input_tokens: 128, output_tokens: 512}
+  decode64: {input_tokens: 128, output_tokens: 64}
+  bimodal_0.1: {input_tokens: 128, short_output_tokens: 128, long_output_tokens: 1536, long_fraction: 0.1}
+  bimodal_0.2: {input_tokens: 128, short_output_tokens: 128, long_output_tokens: 1536, long_fraction: 0.2}
+workload:
+  arrivals: conditional_Poisson_fixed_N_uniform_times_sorted_in_0_to_N_over_lambda
+  segmented_arrivals: inverse_normalized_piecewise_cumulative_intensity
+  S3_segments: [[0, 0.25, 1], [0.25, 0.75, burst_multiplier], [0.75, 1, 1]]
+  S3_hotspot_switch_fraction: 0.5
+  S2_per_instance_count: N/4
+  S2_long_count: floor(N*long_fraction+0.5)
+  S2_hot_long_count: floor(total_long*0.8+0.5)
+  S2_remainder: evenly_among_other_three_instances_with_seeded_remainder
+  hot_GPU: seed_index_modulo_4_same_for_paired_policies
+  prompt_lengths: tokenizer_verified_including_template_and_special_tokens
+  actual_output_lengths: exactly_matched_and_audited_between_policies
+  sampling: {n: 1, best_of: 1, temperature: 0.0, ignore_eos: true}
+  max_tokens_alone_is_actual_length_proof: false
+calibration:
+  concurrency: [1, 4, 16, 32]
+  reference_cohort_N: 256
+  reference_repeats: 3
+  reference_policy: Stay
+  reference_routing: uniform_fixed
+  reference_arrival: synchronous_release
+  lambda_ref: median(N/(last_client_terminal-first_scheduled))_per_profile
+  interpretation: finite_batch_reference_not_stable_capacity
+  migration_cost: measured_using_original_coordinator_at_multiple_current_lengths
+search:
+  matrix: candidate_matrix.json
+  screening:
+    N: 128
+    seeds: [82001, 82002]
+    candidates: 16
+    policies_per_seed: 2
+    planned_episodes: 64
+  confirmation:
+    N: 2048
+    seeds: [83001, 83002, 83003, 83004, 83005]
+    candidates_up_to: 3
+    planned_episodes_up_to: 30
+  ranking: min(median_mean_gain,median_P95_gain)_descending_then_CVaR95_then_ID
+  pruning: between_complete_pairs_only
+  expansion: versioned_mechanism_guided_development_search_not_holdout_tuning
+  no_candidate_is_guaranteed_to_win: true
+validation:
+  N: 2048
+  seeds: [93001, 93002, 93003, 93004, 93005, 93006, 93007, 93008, 93009, 93010]
+  seed_status: proposed_reserved_verify_no_historical_use_before_freeze
+  scenes: [selected_scene, matched_uniform_control, selected_rho_times_0.8, selected_rho_times_1.2]
+  policies: [Stay, Balanced]
+  planned_episodes: 80
+  order: balanced_AB_BA_frozen_before_results
+  retry_until_significant: false
+metrics:
+  co_primary: [mean_client_E2E, P99_client_E2E]
+  client_E2E: client_terminal_minus_HTTP_call_start
+  schedule_E2E: client_terminal_minus_planned_release
+  TTFT: client_first_minus_HTTP_call_start
+  TPOT: last_token_minus_first_token_divided_by_actual_tokens_minus_one
+  quantile: Type7_linear_interpolation
+  CVaR95: min_eta(eta+sum(max(L_i-eta,0))/(0.05*N))
+  report: [mean, median, P90, P95, P99, max, CVaR95, ECDF, CCDF, send_lag, migration_cost, all_cohort_errors]
+  sample_unit: complete_paired_seed
+  headline_requires_full_cohort: true
+  old_fixed_window_goodput_primary: false
+measurement_quality:
+  cohort_ID_set_exact: true
+  actual_output_lengths_matched: true
+  send_lag_P99_ms: 100
+  send_lag_max_ms: 500
+  violating_run: retain_all_requests_load_invalid_not_filtered
+success:
+  both_geometric_mean_B_over_S_point_estimates_at_most: 0.95
+  bootstrap_replicates: 10000
+  bootstrap_seed: 94001
+  bootstrap_unit: complete_paired_seed
+  upper_bound_one_sided_confidence_each: 0.975
+  multiplicity: Bonferroni_two_co_primary_endpoints
+  both_upper_ratio_bounds_less_than: 1.0
+  schedule_E2E_point_estimate_not_reversed: true
+  all_prespecified_validation_pairs_required: true
+  controls_and_neighbors_always_reported: true
+PPO_followup:
+  trained_in_this_task: false
+  objective: mean(L)/T_ref+beta*CVaR95(L)/T_ref
+  beta_initial: 1.0
+  T_ref: null
+  T_ref_source: development_Stay_frozen_before_training
+  dense_mean_reward: -integral(outstanding)/(N*T_ref)
+  terminal_tail_reward: -beta*CVaR95(L)/T_ref_after_all_complete
+  gamma_for_exact_undiscounted_objective: 1.0
+  normal_terminal: cohort_complete_not_buffer_boundary
+  old_censored_request_constant_penalty: removed
+implementation:
+  full_completion_runner: pending
+  cohort_ledger_and_metrics: pending
+  HTTP_completion_semantics: pending
+  variable_horizon_reward: pending
+  live_experiments: not_run
+  Balance_beats_Stay: not_established
+references:
+- https://www.usenix.org/system/files/osdi24-sun-biao.pdf
+- https://docs.vllm.ai/en/latest/benchmarking/cli/

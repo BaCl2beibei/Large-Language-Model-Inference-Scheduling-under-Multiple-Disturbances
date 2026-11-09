@@ -25,7 +25,11 @@ from llumnix.queue.queue_client_base import QueueClientBase
 from llumnix.server_info import ServerInfo
 from llumnix.ray_utils import LlumnixActor, log_actor_ray_info, get_llumnix_actor_handle
 from llumnix.request_output import LlumnixRequestOuput, LlumnixRequestOutputs
-from llumnix.metrics.causal_events import emit as emit_causal_event, should_sample_output_update
+from llumnix.metrics.causal_events import (
+    emit as emit_causal_event,
+    output_update_sample_due,
+    should_sample_output_update,
+)
 from llumnix.queue.utils import init_request_output_queue_client
 from llumnix.constants import NUM_GPUS_BLADELLM_GPU_ACTOR
 from llumnix.utils import (
@@ -42,6 +46,58 @@ from llumnix.queue.queue_type import QueueType
 logger = init_logger(__name__)
 
 LlumnixRequestOutputsType = Union[List[LlumnixRequestOuput], LlumnixRequestOutputs]
+REAL_METRICS_REQUEST_PREFIX = "real-"
+
+
+def _coalesce_real_metrics_outputs(server_request_outputs):
+    """Forward only measured cumulative samples for the private metrics route.
+
+    The real-metrics HTTP stream consumes the first, each 64th, and final
+    cumulative token counts. Queueing every intermediate engine update for
+    those requests adds no measurement information and can overwhelm the API
+    output queue at large cohort sizes. Ordinary inference IDs keep every
+    update unchanged.
+    """
+    sampled = {}
+    for server_id, request_outputs in server_request_outputs.items():
+        if isinstance(request_outputs, (list, tuple)):
+            outputs = request_outputs
+        else:
+            try:
+                outputs = list(request_outputs)
+            except TypeError:
+                outputs = [request_outputs]
+        if not any(
+                str(getattr(output, "request_id", "")).startswith(REAL_METRICS_REQUEST_PREFIX)
+                for output in outputs):
+            sampled[server_id] = request_outputs
+            continue
+        kept = []
+        for wrapped_output in outputs:
+            request_id = str(getattr(wrapped_output, "request_id", ""))
+            if not request_id.startswith(REAL_METRICS_REQUEST_PREFIX):
+                kept.append(wrapped_output)
+                continue
+            get_engine_output = getattr(wrapped_output, "get_engine_output", None)
+            if get_engine_output is None:
+                kept.append(wrapped_output)
+                continue
+            try:
+                engine_output = get_engine_output()
+                sequences = getattr(engine_output, "outputs", None) or []
+                output_tokens = max(
+                    (len(sequence.token_ids) for sequence in sequences), default=0
+                )
+                finished = bool(getattr(engine_output, "finished", False))
+            except Exception:
+                # Keep malformed/unknown output intact; telemetry must fail open.
+                kept.append(wrapped_output)
+                continue
+            if output_update_sample_due(output_tokens, finished):
+                kept.append(wrapped_output)
+        if kept:
+            sampled[server_id] = kept
+    return sampled
 
 
 def _record_output_forwarder_stage(
@@ -201,11 +257,17 @@ class ThreadOutputForwarder(BaseOutputForwarder):
         self.forwarder_loop = start_asyncio_thread("thread_output_forwarder")
         self._real_pending_lock = threading.Lock()
         self._real_pending = 0
+        self._real_pending_by_request = {}
         self._real_delivery_error = False
 
     def real_pending_delivery(self):
         with self._real_pending_lock:
             return None if self._real_delivery_error else self._real_pending
+
+    def real_request_pending_delivery(self, request_id):
+        """Return in-flight output-forwarder batches that contain one request."""
+        with self._real_pending_lock:
+            return None if self._real_delivery_error else self._real_pending_by_request.get(request_id, 0)
 
 
     def put_nowait_to_servers(
@@ -213,11 +275,17 @@ class ThreadOutputForwarder(BaseOutputForwarder):
         server_request_outputs: Dict[str, LlumnixRequestOutputsType],
         server_info_dict: Dict[str, ServerInfo]
     ) -> None:
+        server_request_outputs = _coalesce_real_metrics_outputs(server_request_outputs)
+        if not server_request_outputs:
+            return
         _record_output_forwarder_stage("output_forwarder_submit", server_request_outputs)
         for req_outputs in server_request_outputs.values():
             self.add_trace_timeline(req_outputs, trace_name="engine_thread_put_queue_timestamp")
+        request_ids = tuple(server_request_outputs)
         with self._real_pending_lock:
             self._real_pending += 1
+            for request_id in request_ids:
+                self._real_pending_by_request[request_id] = self._real_pending_by_request.get(request_id, 0) + 1
         future = asyncio.run_coroutine_threadsafe(
             self._put_nowait_to_servers(
                 server_request_outputs,
@@ -228,6 +296,12 @@ class ThreadOutputForwarder(BaseOutputForwarder):
         def completed(result):
             with self._real_pending_lock:
                 self._real_pending -= 1
+                for request_id in request_ids:
+                    pending = self._real_pending_by_request.get(request_id, 0) - 1
+                    if pending > 0:
+                        self._real_pending_by_request[request_id] = pending
+                    else:
+                        self._real_pending_by_request.pop(request_id, None)
                 if result.cancelled() or result.exception() is not None:
                     self._real_delivery_error = True
         future.add_done_callback(completed)

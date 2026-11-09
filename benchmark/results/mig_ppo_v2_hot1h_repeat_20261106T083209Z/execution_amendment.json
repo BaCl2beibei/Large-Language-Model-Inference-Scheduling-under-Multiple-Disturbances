@@ -1,0 +1,21 @@
+{
+  "schema": "mig-ppo-v2-hot1-repeat-recovery-v1",
+  "created_utc": "2026-11-06T08:45:49.344055+00:00",
+  "cause": "collector default backup branch indexed candidate 3 after a complete singleton HOT1-H pair",
+  "collector_error": {
+    "environment_id": "HOT1-H",
+    "error": "IndexError: list index out of range",
+    "traceback": "Traceback (most recent call last):\n  File \"/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/mig_ppo_v2_multienv.py\", line 1042, in _collect_stage\n    backup = candidates[1] if timeout else candidates[2]\nIndexError: list index out of range\n"
+  },
+  "preserved_completed_comparison": "comparisons/HOT1-H_repeat_n48_q1p0_s26110671.json",
+  "hot1_pair_replayed": false,
+  "pair_evidence": {
+    "Stay_complete": true,
+    "Balanced_complete": true,
+    "route_audits_passed": true,
+    "execution_audits_passed": true,
+    "balanced_successful_migrations": 26
+  },
+  "recovery_action": "rehydrate selection summary from immutable comparison artifact; no new data collected",
+  "collector_fix": "guard backup index against candidate list length; single-candidate row closes after its first complete pair"
+}

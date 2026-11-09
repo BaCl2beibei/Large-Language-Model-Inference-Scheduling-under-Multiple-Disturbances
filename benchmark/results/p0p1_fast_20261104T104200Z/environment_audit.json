@@ -1,0 +1,490 @@
+{
+  "before": {
+    "wall": 1793788950.6545305,
+    "gpu": {
+      "returncode": 0,
+      "stdout": "Wed Nov  4 10:42:30 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 3060        On  |   00000000:01:00.0 Off |                  N/A |\n|  0%   44C    P8             13W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  NVIDIA GeForce RTX 3060        On  |   00000000:04:00.0 Off |                  N/A |\n| 34%   49C    P8             17W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   2  NVIDIA GeForce RTX 3060        On  |   00000000:83:00.0 Off |                  N/A |\n| 35%   55C    P8             13W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   3  NVIDIA GeForce RTX 3060        On  |   00000000:84:00.0 Off |                  N/A |\n| 38%   57C    P8             16W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n",
+      "stderr": ""
+    },
+    "gpu_uuids": {
+      "returncode": 0,
+      "stdout": "index, uuid, name, memory.total [MiB]\n0, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, NVIDIA GeForce RTX 3060, 12288 MiB\n1, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, NVIDIA GeForce RTX 3060, 12288 MiB\n2, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, NVIDIA GeForce RTX 3060, 12288 MiB\n3, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, NVIDIA GeForce RTX 3060, 12288 MiB\n",
+      "stderr": ""
+    },
+    "gpu_processes": {
+      "returncode": 0,
+      "stdout": "pid, gpu_uuid, used_gpu_memory [MiB]\n",
+      "stderr": ""
+    },
+    "supervisor": {
+      "returncode": 3,
+      "stdout": "caddy                                    RUNNING   pid 397, uptime 1:52:26\ncohort_ppo_trainer_c03344c790            STOPPED   Not started\ncron                                     RUNNING   pid 398, uptime 1:52:26\nfc_balance_ray_screen_20261029T093554Z   STOPPED   Not started\nfc_balance_ray_smoke_20261029T071838Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073026Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073751Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029_062729     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063340     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063818     STOPPED   Not started\nfc_balance_ray_smoke_20261029_070700     STOPPED   Not started\nfull_completion_2e1ba5ee55               STOPPED   Not started\ngithub_workspace_autosync                RUNNING   pid 399, uptime 1:52:26\ninstance_portal                          RUNNING   pid 400, uptime 1:52:26\njupyter                                  EXITED    Nov 04 08:50 AM\np0p1_controller_ebcb8e6f82               RUNNING   pid 143834, uptime 0:00:03\npyworker                                 EXITED    Nov 04 08:50 AM\nreal_ppo_252b0d3795                      STOPPED   Not started\nreal_ppo_fcda2e237b                      STOPPED   Not started\nreal_ppo_guard_252b0d3795                STOPPED   Not started\nreal_ppo_guard_fcda2e237b                STOPPED   Not started\nreal_ppo_op_11d493e944                   STOPPED   Not started\nreal_ppo_op_257e087e48                   STOPPED   Not started\nreal_ppo_op_4589eb4d4e                   STOPPED   Not started\nreal_ppo_op_5039845934                   STOPPED   Not started\nreal_ppo_op_570a6fd362                   STOPPED   Not started\nreal_ppo_op_722664927e                   STOPPED   Not started\nreal_ppo_op_ec9f5c8f86                   STOPPED   Not started\nreal_ppo_op_f6182eac97                   STOPPED   Not started\nreal_ppo_op_guard_11d493e944             STOPPED   Not started\nreal_ppo_op_guard_257e087e48             STOPPED   Not started\nreal_ppo_op_guard_4589eb4d4e             STOPPED   Not started\nreal_ppo_op_guard_5039845934             STOPPED   Not started\nreal_ppo_op_guard_570a6fd362             STOPPED   Not started\nreal_ppo_op_guard_722664927e             STOPPED   Not started\nreal_ppo_op_guard_ec9f5c8f86             STOPPED   Not started\nreal_ppo_op_guard_f6182eac97             STOPPED   Not started\nsyncthing                                RUNNING   pid 408, uptime 1:52:26\ntensorboard                              RUNNING   pid 413, uptime 1:52:26\ntunnel_manager                           RUNNING   pid 420, uptime 1:52:26\n",
+      "stderr": ""
+    },
+    "versions": {
+      "torch": "2.4.0",
+      "ray": "2.47.1",
+      "vllm": "0.6.3.post1",
+      "tokenizers": "0.20.3"
+    },
+    "cpu_affinity_count": 80
+  },
+  "after_warmup": {
+    "wall": 1793789206.4418788,
+    "gpu": {
+      "returncode": 0,
+      "stdout": "Wed Nov  4 10:46:46 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 3060        On  |   00000000:01:00.0 Off |                  N/A |\n|  0%   51C    P2             34W /  170W |    7075MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  NVIDIA GeForce RTX 3060        On  |   00000000:04:00.0 Off |                  N/A |\n| 34%   52C    P2             36W /  170W |    7075MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   2  NVIDIA GeForce RTX 3060        On  |   00000000:83:00.0 Off |                  N/A |\n| 38%   58C    P2             34W /  170W |    7075MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   3  NVIDIA GeForce RTX 3060        On  |   00000000:84:00.0 Off |                  N/A |\n| 42%   61C    P2             37W /  170W |    7075MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A          147615      C   ray::Llumlet                           7052MiB |\n|    1   N/A  N/A          147677      C   ray::Llumlet                           7052MiB |\n|    2   N/A  N/A          147798      C   ray::Llumlet                           7052MiB |\n|    3   N/A  N/A          147676      C   ray::Llumlet                           7052MiB |\n+-----------------------------------------------------------------------------------------+\n",
+      "stderr": ""
+    },
+    "gpu_uuids": {
+      "returncode": 0,
+      "stdout": "index, uuid, name, memory.total [MiB]\n0, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, NVIDIA GeForce RTX 3060, 12288 MiB\n1, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, NVIDIA GeForce RTX 3060, 12288 MiB\n2, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, NVIDIA GeForce RTX 3060, 12288 MiB\n3, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, NVIDIA GeForce RTX 3060, 12288 MiB\n",
+      "stderr": ""
+    },
+    "gpu_processes": {
+      "returncode": 0,
+      "stdout": "pid, gpu_uuid, used_gpu_memory [MiB]\n147615, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 7052 MiB\n147677, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 7052 MiB\n147798, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 7052 MiB\n147676, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 7052 MiB\n",
+      "stderr": ""
+    },
+    "supervisor": {
+      "returncode": 3,
+      "stdout": "caddy                                    RUNNING   pid 397, uptime 1:56:42\ncohort_ppo_trainer_c03344c790            STOPPED   Not started\ncron                                     RUNNING   pid 398, uptime 1:56:42\nfc_balance_ray_screen_20261029T093554Z   STOPPED   Not started\nfc_balance_ray_smoke_20261029T071838Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073026Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073751Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029_062729     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063340     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063818     STOPPED   Not started\nfc_balance_ray_smoke_20261029_070700     STOPPED   Not started\nfull_completion_2e1ba5ee55               STOPPED   Not started\nfull_completion_ebcb8e6f82               RUNNING   pid 144020, uptime 0:04:16\ngithub_workspace_autosync                RUNNING   pid 399, uptime 1:56:42\ninstance_portal                          RUNNING   pid 400, uptime 1:56:42\njupyter                                  EXITED    Nov 04 08:50 AM\np0p1_controller_ebcb8e6f82               RUNNING   pid 143834, uptime 0:04:19\npyworker                                 EXITED    Nov 04 08:50 AM\nreal_ppo_252b0d3795                      STOPPED   Not started\nreal_ppo_fcda2e237b                      STOPPED   Not started\nreal_ppo_guard_252b0d3795                STOPPED   Not started\nreal_ppo_guard_fcda2e237b                STOPPED   Not started\nreal_ppo_op_11d493e944                   STOPPED   Not started\nreal_ppo_op_257e087e48                   STOPPED   Not started\nreal_ppo_op_4589eb4d4e                   STOPPED   Not started\nreal_ppo_op_5039845934                   STOPPED   Not started\nreal_ppo_op_570a6fd362                   STOPPED   Not started\nreal_ppo_op_722664927e                   STOPPED   Not started\nreal_ppo_op_ec9f5c8f86                   STOPPED   Not started\nreal_ppo_op_f6182eac97                   STOPPED   Not started\nreal_ppo_op_guard_11d493e944             STOPPED   Not started\nreal_ppo_op_guard_257e087e48             STOPPED   Not started\nreal_ppo_op_guard_4589eb4d4e             STOPPED   Not started\nreal_ppo_op_guard_5039845934             STOPPED   Not started\nreal_ppo_op_guard_570a6fd362             STOPPED   Not started\nreal_ppo_op_guard_722664927e             STOPPED   Not started\nreal_ppo_op_guard_ec9f5c8f86             STOPPED   Not started\nreal_ppo_op_guard_f6182eac97             STOPPED   Not started\nsyncthing                                RUNNING   pid 408, uptime 1:56:42\ntensorboard                              RUNNING   pid 413, uptime 1:56:42\ntunnel_manager                           RUNNING   pid 420, uptime 1:56:42\n",
+      "stderr": ""
+    },
+    "versions": {
+      "torch": "2.4.0",
+      "ray": "2.47.1",
+      "vllm": "0.6.3.post1",
+      "tokenizers": "0.20.3"
+    },
+    "cpu_affinity_count": 80
+  },
+  "capacity_snapshot": {
+    "version": "a01ee1d31de04e5da158b60906b6003b:12",
+    "measured_ns": 790581060683970,
+    "received_ns": 790581063639523,
+    "instances": [
+      {
+        "instance_id": "02e8c7b3c28747c49f7685dcece00719",
+        "epoch": "34ac3767b6f5414f860894377da866ac",
+        "measured_ns": 790581059276628,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 38.2536849938333,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      },
+      {
+        "instance_id": "39bac9c3aa274cfc853c39c22ab99a4d",
+        "epoch": "98692c5e15f34cb59cd043f6d2a04c8b",
+        "measured_ns": 790581059188059,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 38.02446008194238,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      },
+      {
+        "instance_id": "61cab135c16f4e839c4378bff1ab92dc",
+        "epoch": "e7e42accc12d4c1aad889ce8b2bd0209",
+        "measured_ns": 790581058555123,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 33.816040959209204,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      },
+      {
+        "instance_id": "cc538d69a1944793b13b3e815a6a880e",
+        "epoch": "c70a2d30450f4800910341c13acf4d3e",
+        "measured_ns": 790581058574793,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 31.137099023908377,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      }
+    ],
+    "mapping": [
+      [
+        "02e8c7b3c28747c49f7685dcece00719",
+        "34ac3767b6f5414f860894377da866ac"
+      ],
+      [
+        "39bac9c3aa274cfc853c39c22ab99a4d",
+        "98692c5e15f34cb59cd043f6d2a04c8b"
+      ],
+      [
+        "61cab135c16f4e839c4378bff1ab92dc",
+        "e7e42accc12d4c1aad889ce8b2bd0209"
+      ],
+      [
+        "cc538d69a1944793b13b3e815a6a880e",
+        "c70a2d30450f4800910341c13acf4d3e"
+      ]
+    ],
+    "busy": false,
+    "last_terminal_ns": null,
+    "lease_expired": false,
+    "invalid_reasons": []
+  },
+  "worker_flush": {
+    "cluster": {
+      "manager": {
+        "status": "passed",
+        "source": "5d430c52a833-146874-e1e6bf22cc6c4e1e9f2960e01203926f",
+        "last_sequence": 4,
+        "through_ns": 790581784811514,
+        "received_ns": 790581785045119,
+        "durable": true,
+        "reason": null,
+        "pending_delivery": 0
+      },
+      "instances": [
+        {
+          "local": {
+            "status": "passed",
+            "source": "5d430c52a833-147798-9754c92fb85d45d78393fb29d79dd60e",
+            "last_sequence": 29,
+            "through_ns": 790581782221090,
+            "received_ns": 790581782409152,
+            "durable": true,
+            "reason": null,
+            "pending_delivery": 0
+          },
+          "workers": [
+            {
+              "status": "passed",
+              "source": "5d430c52a833-147798-9754c92fb85d45d78393fb29d79dd60e",
+              "last_sequence": 29,
+              "through_ns": 790581779287579,
+              "received_ns": 790581781909161,
+              "durable": true,
+              "reason": null,
+              "pending_delivery": 0,
+              "worker_pid": 147798,
+              "instance_id": "cc538d69a1944793b13b3e815a6a880e"
+            }
+          ],
+          "state": {
+            "instance_id": "cc538d69a1944793b13b3e815a6a880e",
+            "epoch": "c70a2d30450f4800910341c13acf4d3e",
+            "measured_ns": 790581782751742,
+            "healthy": true,
+            "type": "neutral",
+            "is_migrating": false,
+            "has_slot": true,
+            "total_blocks": 8565,
+            "free_blocks": 8565,
+            "used_blocks": 0,
+            "waiting_blocks": 0,
+            "scan_counters": {},
+            "running": 0,
+            "waiting": 0,
+            "head_wait_sec": 0,
+            "candidate_id": null,
+            "candidate_blocks": null,
+            "candidate_length": null,
+            "candidate_stage": null,
+            "candidate_policy": "SR",
+            "output_tokens_total": 8,
+            "last_step_ms": 31.137099023908377,
+            "pending_delivery": 0,
+            "preallocated_requests": 0,
+            "paused_requests": 0
+          }
+        },
+        {
+          "local": {
+            "status": "passed",
+            "source": "5d430c52a833-147677-f0c2283adb3e439593779a798e1f81b3",
+            "last_sequence": 29,
+            "through_ns": 790581782086720,
+            "received_ns": 790581782353371,
+            "durable": true,
+            "reason": null,
+            "pending_delivery": 0
+          },
+          "workers": [
+            {
+              "status": "passed",
+              "source": "5d430c52a833-147677-f0c2283adb3e439593779a798e1f81b3",
+              "last_sequence": 29,
+              "through_ns": 790581780215681,
+              "received_ns": 790581781714012,
+              "durable": true,
+              "reason": null,
+              "pending_delivery": 0,
+              "worker_pid": 147677,
+              "instance_id": "61cab135c16f4e839c4378bff1ab92dc"
+            }
+          ],
+          "state": {
+            "instance_id": "61cab135c16f4e839c4378bff1ab92dc",
+            "epoch": "e7e42accc12d4c1aad889ce8b2bd0209",
+            "measured_ns": 790581782735542,
+            "healthy": true,
+            "type": "neutral",
+            "is_migrating": false,
+            "has_slot": true,
+            "total_blocks": 8565,
+            "free_blocks": 8565,
+            "used_blocks": 0,
+            "waiting_blocks": 0,
+            "scan_counters": {},
+            "running": 0,
+            "waiting": 0,
+            "head_wait_sec": 0,
+            "candidate_id": null,
+            "candidate_blocks": null,
+            "candidate_length": null,
+            "candidate_stage": null,
+            "candidate_policy": "SR",
+            "output_tokens_total": 8,
+            "last_step_ms": 33.816040959209204,
+            "pending_delivery": 0,
+            "preallocated_requests": 0,
+            "paused_requests": 0
+          }
+        },
+        {
+          "local": {
+            "status": "passed",
+            "source": "5d430c52a833-147615-583d52b5013041f9bb5abd92f9e8241c",
+            "last_sequence": 18,
+            "through_ns": 790581782131993,
+            "received_ns": 790581782440761,
+            "durable": true,
+            "reason": null,
+            "pending_delivery": 0
+          },
+          "workers": [
+            {
+              "status": "passed",
+              "source": "5d430c52a833-147615-583d52b5013041f9bb5abd92f9e8241c",
+              "last_sequence": 18,
+              "through_ns": 790581780411020,
+              "received_ns": 790581781756932,
+              "durable": true,
+              "reason": null,
+              "pending_delivery": 0,
+              "worker_pid": 147615,
+              "instance_id": "39bac9c3aa274cfc853c39c22ab99a4d"
+            }
+          ],
+          "state": {
+            "instance_id": "39bac9c3aa274cfc853c39c22ab99a4d",
+            "epoch": "98692c5e15f34cb59cd043f6d2a04c8b",
+            "measured_ns": 790581782804296,
+            "healthy": true,
+            "type": "neutral",
+            "is_migrating": false,
+            "has_slot": true,
+            "total_blocks": 8565,
+            "free_blocks": 8565,
+            "used_blocks": 0,
+            "waiting_blocks": 0,
+            "scan_counters": {},
+            "running": 0,
+            "waiting": 0,
+            "head_wait_sec": 0,
+            "candidate_id": null,
+            "candidate_blocks": null,
+            "candidate_length": null,
+            "candidate_stage": null,
+            "candidate_policy": "SR",
+            "output_tokens_total": 8,
+            "last_step_ms": 38.02446008194238,
+            "pending_delivery": 0,
+            "preallocated_requests": 0,
+            "paused_requests": 0
+          }
+        },
+        {
+          "local": {
+            "status": "passed",
+            "source": "5d430c52a833-147676-a4a199889ba04d7c8360e8a5d3d1479f",
+            "last_sequence": 18,
+            "through_ns": 790581782140970,
+            "received_ns": 790581782393964,
+            "durable": true,
+            "reason": null,
+            "pending_delivery": 0
+          },
+          "workers": [
+            {
+              "status": "passed",
+              "source": "5d430c52a833-147676-a4a199889ba04d7c8360e8a5d3d1479f",
+              "last_sequence": 18,
+              "through_ns": 790581779975382,
+              "received_ns": 790581781762268,
+              "durable": true,
+              "reason": null,
+              "pending_delivery": 0,
+              "worker_pid": 147676,
+              "instance_id": "02e8c7b3c28747c49f7685dcece00719"
+            }
+          ],
+          "state": {
+            "instance_id": "02e8c7b3c28747c49f7685dcece00719",
+            "epoch": "34ac3767b6f5414f860894377da866ac",
+            "measured_ns": 790581782814429,
+            "healthy": true,
+            "type": "neutral",
+            "is_migrating": false,
+            "has_slot": true,
+            "total_blocks": 8565,
+            "free_blocks": 8565,
+            "used_blocks": 0,
+            "waiting_blocks": 0,
+            "scan_counters": {},
+            "running": 0,
+            "waiting": 0,
+            "head_wait_sec": 0,
+            "candidate_id": null,
+            "candidate_blocks": null,
+            "candidate_length": null,
+            "candidate_stage": null,
+            "candidate_policy": "SR",
+            "output_tokens_total": 8,
+            "last_step_ms": 38.2536849938333,
+            "pending_delivery": 0,
+            "preallocated_requests": 0,
+            "paused_requests": 0
+          }
+        }
+      ]
+    },
+    "api": {
+      "status": "passed",
+      "source": "5d430c52a833-144717-0044e88f701843bfba803c2ac4868c80",
+      "last_sequence": 21,
+      "through_ns": 790581787244190,
+      "received_ns": 790581787501838,
+      "durable": true,
+      "reason": null,
+      "pending_delivery": 0
+    }
+  },
+  "instance_gpu_uuid": {
+    "cc538d69a1944793b13b3e815a6a880e": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+    "61cab135c16f4e839c4378bff1ab92dc": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+    "39bac9c3aa274cfc853c39c22ab99a4d": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+    "02e8c7b3c28747c49f7685dcece00719": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee"
+  },
+  "after_cleanup": {
+    "wall": 1793791253.4178107,
+    "gpu": {
+      "returncode": 0,
+      "stdout": "Wed Nov  4 11:20:53 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 3060        On  |   00000000:01:00.0 Off |                  N/A |\n| 34%   51C    P0             41W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   1  NVIDIA GeForce RTX 3060        On  |   00000000:04:00.0 Off |                  N/A |\n| 41%   55C    P8             18W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   2  NVIDIA GeForce RTX 3060        On  |   00000000:83:00.0 Off |                  N/A |\n| 50%   64C    P8             14W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n|   3  NVIDIA GeForce RTX 3060        On  |   00000000:84:00.0 Off |                  N/A |\n| 49%   64C    P5             44W /  170W |       1MiB /  12288MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n",
+      "stderr": ""
+    },
+    "gpu_uuids": {
+      "returncode": 0,
+      "stdout": "index, uuid, name, memory.total [MiB]\n0, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, NVIDIA GeForce RTX 3060, 12288 MiB\n1, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, NVIDIA GeForce RTX 3060, 12288 MiB\n2, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, NVIDIA GeForce RTX 3060, 12288 MiB\n3, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, NVIDIA GeForce RTX 3060, 12288 MiB\n",
+      "stderr": ""
+    },
+    "gpu_processes": {
+      "returncode": 0,
+      "stdout": "pid, gpu_uuid, used_gpu_memory [MiB]\n",
+      "stderr": ""
+    },
+    "supervisor": {
+      "returncode": 3,
+      "stdout": "caddy                                    RUNNING   pid 397, uptime 2:30:48\ncohort_ppo_trainer_c03344c790            STOPPED   Not started\ncron                                     RUNNING   pid 398, uptime 2:30:48\nfc_balance_ray_screen_20261029T093554Z   STOPPED   Not started\nfc_balance_ray_smoke_20261029T071838Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073026Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073751Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029_062729     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063340     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063818     STOPPED   Not started\nfc_balance_ray_smoke_20261029_070700     STOPPED   Not started\nfull_completion_2e1ba5ee55               STOPPED   Not started\ngithub_workspace_autosync                RUNNING   pid 399, uptime 2:30:48\ninstance_portal                          RUNNING   pid 400, uptime 2:30:48\njupyter                                  EXITED    Nov 04 08:50 AM\np0p1_controller_ebcb8e6f82               RUNNING   pid 143834, uptime 0:38:25\npyworker                                 EXITED    Nov 04 08:50 AM\nreal_ppo_252b0d3795                      STOPPED   Not started\nreal_ppo_fcda2e237b                      STOPPED   Not started\nreal_ppo_guard_252b0d3795                STOPPED   Not started\nreal_ppo_guard_fcda2e237b                STOPPED   Not started\nreal_ppo_op_11d493e944                   STOPPED   Not started\nreal_ppo_op_257e087e48                   STOPPED   Not started\nreal_ppo_op_4589eb4d4e                   STOPPED   Not started\nreal_ppo_op_5039845934                   STOPPED   Not started\nreal_ppo_op_570a6fd362                   STOPPED   Not started\nreal_ppo_op_722664927e                   STOPPED   Not started\nreal_ppo_op_ec9f5c8f86                   STOPPED   Not started\nreal_ppo_op_f6182eac97                   STOPPED   Not started\nreal_ppo_op_guard_11d493e944             STOPPED   Not started\nreal_ppo_op_guard_257e087e48             STOPPED   Not started\nreal_ppo_op_guard_4589eb4d4e             STOPPED   Not started\nreal_ppo_op_guard_5039845934             STOPPED   Not started\nreal_ppo_op_guard_570a6fd362             STOPPED   Not started\nreal_ppo_op_guard_722664927e             STOPPED   Not started\nreal_ppo_op_guard_ec9f5c8f86             STOPPED   Not started\nreal_ppo_op_guard_f6182eac97             STOPPED   Not started\nsyncthing                                RUNNING   pid 408, uptime 2:30:48\ntensorboard                              RUNNING   pid 413, uptime 2:30:48\ntunnel_manager                           RUNNING   pid 420, uptime 2:30:48\n",
+      "stderr": ""
+    },
+    "versions": {
+      "torch": "2.4.0",
+      "ray": "2.47.1",
+      "vllm": "0.6.3.post1",
+      "tokenizers": "0.20.3"
+    },
+    "cpu_affinity_count": 80
+  },
+  "service_stopped": {
+    "stopped_wall": 1793791252.303335,
+    "signal_or_child_exit": true,
+    "cleanup_error": null
+  },
+  "effective_engine_parameters": {
+    "evidence": "api_server.log engine_args",
+    "raw": "INFO 2026-11-04 10:42:54,173 arg_utils.py:159] engine_args: AsyncEngineArgs(model='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B', served_model_name=None, tokenizer='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B', skip_tokenizer_init=False, tokenizer_mode='auto', trust_remote_code=False, download_dir=None, load_format='auto', config_format=<ConfigFormat.AUTO: 'auto'>, dtype='half', kv_cache_dtype='auto', quantization_param_path=None, seed=0, max_model_len=2112, worker_use_ray=True, distributed_executor_backend=None, pipeline_parallel_size=1, tensor_parallel_size=1, max_parallel_loading_workers=None, block_size=16, enable_prefix_caching=False, disable_sliding_window=False, use_v2_block_manager=False, swap_space=4, cpu_offload_gb=0, gpu_memory_utilization=0.65, max_num_batched_tokens=2112, max_num_seqs=128, max_logprobs=20, disable_log_stats=False, revision=None, code_revision=None, rope_scaling=None, rope_theta=None, tokenizer_revision=None, quantization=None, enforce_eager=True, max_context_len_to_capture=None, max_seq_len_to_capture=8192, disable_custom_all_reduce=False, tokenizer_pool_size=0, tokenizer_pool_type='ray', tokenizer_pool_extra_config=None, limit_mm_per_prompt=None, enable_lora=False, max_loras=1, max_lora_rank=16, enable_prompt_adapter=False, max_prompt_adapters=1, max_prompt_adapter_token=0, fully_sharded_loras=False, lora_extra_vocab_size=256, long_lora_scaling_factors=None, lora_dtype='auto', max_cpu_loras=None, device='auto', num_scheduler_steps=1, multi_step_stream_outputs=True, ray_workers_use_nsight=False, num_gpu_blocks_override=None, num_lookahead_slots=0, model_loader_extra_config=None, ignore_patterns=[], preemption_mode=None, scheduler_delay_factor=0.0, enable_chunked_prefill=False, guided_decoding_backend='outlines', speculative_model=None, speculative_model_quantization=None, speculative_draft_tensor_parallel_size=None, num_speculative_tokens=None, speculative_disable_mqa_scorer=False, speculative_max_model_len=None, speculative_disable_by_batch_size=None, ngram_prompt_lookup_max=None, ngram_prompt_lookup_min=None, spec_decoding_acceptance_method='rejection_sampler', typical_acceptance_sampler_posterior_threshold=None, typical_acceptance_sampler_posterior_alpha=None, qlora_adapter_name_or_path=None, disable_logprobs_during_spec_decoding=None, otlp_traces_endpoint=None, collect_detailed_traces=None, disable_async_output_proc=False, override_neuron_config=None, mm_processor_kwargs=None, scheduling_policy='fcfs', disable_log_requests=False)",
+    "batch_tokens_2112_confirmed": true,
+    "model_and_tokenizer_same_15b_confirmed": true,
+    "four_capacities": [
+      8565,
+      8565,
+      8565,
+      8565
+    ]
+  }
+}

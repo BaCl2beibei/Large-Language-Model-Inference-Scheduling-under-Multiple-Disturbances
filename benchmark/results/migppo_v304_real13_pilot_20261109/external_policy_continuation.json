@@ -1,0 +1,28 @@
+{
+  "purpose": "resume only the untouched HOT2-H pilot trace and retain prior NATIVE rows",
+  "base_runner_sha256": "5975e8228f392c437794b0dd7db7638322d7033fe39d8ed86e23e95aea501950",
+  "continuation_runner_sha256": "a73fe81dde7e768e19c1c135d85006dec9235cfea7e1479f2a1cbe01daf160ce",
+  "prior_results_sha256": "00f2346f434a37c54e4886c1ded5e93ec8e8ed2ea1014723cbf1c486236299fd",
+  "hot2h_trace_sha256": "cdc19cccf9d220c9de789fae535d8287484bdefd8d9ba1205ec976de6586c950",
+  "prior_native_episode_ids": [
+    "v304_NATIVE_stay",
+    "v304_NATIVE_balanced",
+    "v304_NATIVE_ppo"
+  ],
+  "method_order_for_hot2h": [
+    "PPO",
+    "Stay",
+    "Balanced"
+  ],
+  "behavior_changes": [
+    "skip already completed NATIVE environment",
+    "finish all pilot strategies after an invalid pilot episode",
+    "subtract prior GPU-active time from the pilot and total deadlines",
+    "use a unique warmup episode ID when resuming the same run directory"
+  ],
+  "previous_resume_attempt": {
+    "failed_before_HOT2H": "FileExistsError on existing warmup episode directory",
+    "gpu_cleanup_verified": true,
+    "next_warmup_episode_id": "v304_real_test_warmup_hot2h_resume"
+  }
+}

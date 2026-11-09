@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import asyncio
+import os
 from typing import List, Tuple, Union, Iterable, Any, Optional
 
 import ray
@@ -76,7 +77,11 @@ class Llumlet:
 
         self.enable_routine_migration = instance_args.enable_routine_migration
         self.enable_pre_stop_migration = instance_args.enable_pre_stop_migration
-        if self.enable_routine_migration or self.enable_pre_stop_migration:
+        # The constrained real-scan controller disables Llumnix's native
+        # migration scheduler, but still needs the coordinator's live state,
+        # capacity guards, and explicit migration execution path.
+        scan_control_enabled = os.environ.get("LLUMNIX_SCAN_TELEMETRY") == "1"
+        if self.enable_routine_migration or self.enable_pre_stop_migration or scan_control_enabled:
             self.migration_coordinator = MigrationCoordinator(
                 self.instance_id,
                 self.backend_engine,

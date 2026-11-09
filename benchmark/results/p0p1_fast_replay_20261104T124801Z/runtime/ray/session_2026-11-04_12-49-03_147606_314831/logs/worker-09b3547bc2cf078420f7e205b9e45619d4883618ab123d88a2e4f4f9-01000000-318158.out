@@ -1,0 +1,240 @@
+:job_id:01000000
+:actor_name:Llumlet
+INFO 2026-11-04 12:49:58,755 ray_utils.py:361] Llumlet(actor_name=instance_9c15b95f652d4da49af27e905610d420, actor_id=8ca6970927e9f0b2f945885201000000, placement_group_id=3521f29b0ca1a600e5940fc1ba9f01000000, namespace=llumnix, job_id=01000000, worker_id=09b3547bc2cf078420f7e205b9e45619d4883618ab123d88a2e4f4f9, node_id=e1bba4ca585628a46a2595e9330e7af3aed4e0cdc382595f0daad76b, gpu_ids=['2'])
+INFO 2026-11-04 12:49:58,756 ray_utils.py:369] Llumlet(log_dir=['/tmp/p0p1_replay_73da30ae85/session_2026-11-04_12-49-03_147606_314831/logs/worker-09b3547bc2cf078420f7e205b9e45619d4883618ab123d88a2e4f4f9-01000000-318158.out', '/tmp/p0p1_replay_73da30ae85/session_2026-11-04_12-49-03_147606_314831/logs/worker-09b3547bc2cf078420f7e205b9e45619d4883618ab123d88a2e4f4f9-01000000-318158.err'])
+INFO 2026-11-04 12:49:58,756 llumlet.py:60] Llumlet(instance_id=9c15b95f652d4da49af27e905610d420, backend_type=vLLM, instance_type=neutral)
+WARNING 11-04 12:50:00 config.py:1668] Casting torch.bfloat16 to torch.float16.
+WARNING 11-04 12:50:32 arg_utils.py:1019] [DEPRECATED] Block manager v1 has been removed, and setting --use-v2-block-manager to True or False has no effect on vLLM behavior. Please remove --use-v2-block-manager in your engine argument. If your use case is not supported by SelfAttnBlockSpaceManager (i.e. block manager v2), please file an issue with detailed information.
+WARNING 11-04 12:50:32 config.py:395] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+INFO 11-04 12:50:32 llm_engine.py:237] Initializing an LLM engine (v0.6.3.post1) with config: model='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B', speculative_config=None, tokenizer='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, override_neuron_config=None, rope_scaling=None, rope_theta=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.float16, max_seq_len=2112, download_dir=None, load_format=LoadFormat.AUTO, tensor_parallel_size=1, pipeline_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto, quantization_param_path=None, device_config=cuda, decoding_config=DecodingConfig(guided_decoding_backend='outlines'), observability_config=ObservabilityConfig(otlp_traces_endpoint=None, collect_model_forward_time=False, collect_model_execute_time=False), seed=0, served_model_name=/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B, num_scheduler_steps=1, chunked_prefill_enabled=False multi_step_stream_outputs=True, enable_prefix_caching=False, use_async_output_proc=False, use_cached_outputs=False, mm_processor_kwargs=None)
+INFO 2026-11-04 12:50:35,271 executor.py:64] use_ray_spmd_worker: False
+DEBUG 2026-11-04 12:50:48,213 executor.py:103] workers: []
+DEBUG 2026-11-04 12:50:48,215 executor.py:104] driver_dummy_worker: Actor(RayWorkerWrapper, 76d224467d5c4410d457e9f301000000)
+INFO 2026-11-04 12:50:48,452 ray_utils.py:361] MigrationWorker(actor_name=instance_9c15b95f652d4da49af27e905610d420, actor_id=8ca6970927e9f0b2f945885201000000, placement_group_id=3521f29b0ca1a600e5940fc1ba9f01000000, namespace=llumnix, job_id=01000000, worker_id=09b3547bc2cf078420f7e205b9e45619d4883618ab123d88a2e4f4f9, node_id=e1bba4ca585628a46a2595e9330e7af3aed4e0cdc382595f0daad76b, gpu_ids=['2'])
+INFO 2026-11-04 12:50:48,452 ray_utils.py:369] MigrationWorker(log_dir=['/tmp/p0p1_replay_73da30ae85/session_2026-11-04_12-49-03_147606_314831/logs/worker-09b3547bc2cf078420f7e205b9e45619d4883618ab123d88a2e4f4f9-01000000-318158.out', '/tmp/p0p1_replay_73da30ae85/session_2026-11-04_12-49-03_147606_314831/logs/worker-09b3547bc2cf078420f7e205b9e45619d4883618ab123d88a2e4f4f9-01000000-318158.err'])
+INFO 11-04 12:50:55 model_runner.py:1056] Starting to load model /workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B...
+INFO 11-04 12:51:48 model_runner.py:1067] Loading model weights took 2.9104 GB
+INFO 11-04 12:51:56 distributed_gpu_executor.py:57] # GPU blocks: 8565, # CPU blocks: 9362
+INFO 11-04 12:51:56 distributed_gpu_executor.py:61] Maximum concurrency for 2112 tokens per request: 64.89x
+WARNING 11-04 12:52:59 config.py:1668] Casting torch.bfloat16 to torch.float16.
+WARNING 11-04 12:52:59 arg_utils.py:1019] [DEPRECATED] Block manager v1 has been removed, and setting --use-v2-block-manager to True or False has no effect on vLLM behavior. Please remove --use-v2-block-manager in your engine argument. If your use case is not supported by SelfAttnBlockSpaceManager (i.e. block manager v2), please file an issue with detailed information.
+WARNING 11-04 12:52:59 config.py:395] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+INFO 2026-11-04 12:53:06,583 llm_engine.py:468] engine 9c15b95f652d4da49af27e905610d420 current state: INIT
+INFO 2026-11-04 12:53:06,585 llm_engine.py:488] engine 9c15b95f652d4da49af27e905610d420 change state: INIT -> RUNNING
+INFO 11-04 12:53:06 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+:actor_name:Llumlet(iid=9c15b, instance_type=neutral)
+INFO 2026-11-04 12:53:10,550 llm_engine.py:262] Engine finished request real-c2358dc28f03184b2f29ca5af95332354a6bc6767b8d17bce9d2a9258015fd8c
+INFO 11-04 12:53:11 metrics.py:349] Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 1.6 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:16 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:21 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:26 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:31 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:53:36,257 worker.py:171] Recv kv cache done, num_blocks: 10, total_kv_cache_size: 4.38 MB, time: 0.12s, speed: 0.03497GB/s.
+INFO 2026-11-04 12:53:36,267 llm_engine.py:533] pop request real-30ffa870345c20b988116ea914032d1fe2f7cb71e541e78f2280d9ee065c5893 from pre-allocated cache
+INFO 2026-11-04 12:53:36,267 llm_engine.py:535] add seq 1 to block table
+INFO 11-04 12:53:36 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 1.4 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:41 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 28.9 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.2%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:53:42,374 worker.py:171] Recv kv cache done, num_blocks: 9, total_kv_cache_size: 3.94 MB, time: 0.11s, speed: 0.03653GB/s.
+INFO 2026-11-04 12:53:42,384 llm_engine.py:533] pop request real-16e27c0392b52834b4917f1542b96c139c28967cdee85898d628a0db6a1fa17b from pre-allocated cache
+INFO 2026-11-04 12:53:42,384 llm_engine.py:535] add seq 2 to block table
+INFO 11-04 12:53:46 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.9 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.5%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:51 metrics.py:349] Avg prompt throughput: 25.4 tokens/s, Avg generation throughput: 34.7 tokens/s, Running: 3 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:53:56 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 50.0 tokens/s, Running: 3 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.9%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:54:00,635 worker.py:171] Recv kv cache done, num_blocks: 9, total_kv_cache_size: 3.94 MB, time: 0.11s, speed: 0.03555GB/s.
+INFO 2026-11-04 12:54:00,646 llm_engine.py:533] pop request real-3ac9a8b82b1437e0df6a042bf3ebe1a6b91f9a74bf468ea40e3d66d7a6cc0ac8 from pre-allocated cache
+INFO 2026-11-04 12:54:00,646 llm_engine.py:535] add seq 4 to block table
+INFO 11-04 12:54:01 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 54.3 tokens/s, Running: 4 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:06 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 67.4 tokens/s, Running: 4 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:11 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 65.1 tokens/s, Running: 4 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:16 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 61.9 tokens/s, Running: 4 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.9%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:54:19,070 worker.py:171] Recv kv cache done, num_blocks: 9, total_kv_cache_size: 3.94 MB, time: 0.10s, speed: 0.04030GB/s.
+INFO 2026-11-04 12:54:19,079 llm_engine.py:533] pop request real-a5eb572faebb6bfb9be296943816cd6cf7255a7977c3239e8c41e470aa8a8530 from pre-allocated cache
+INFO 2026-11-04 12:54:19,080 llm_engine.py:535] add seq 5 to block table
+INFO 11-04 12:54:21 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 77.9 tokens/s, Running: 5 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 2.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:26 metrics.py:349] Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 89.1 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 2.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:32 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 89.3 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:37 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 90.2 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:42 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 91.0 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:47 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 91.2 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:52 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 91.3 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:54:57 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 92.9 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:55:02 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 88.0 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.0%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:07,187 llm_engine.py:262] Engine finished request real-30ffa870345c20b988116ea914032d1fe2f7cb71e541e78f2280d9ee065c5893
+INFO 11-04 12:55:07 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 87.4 tokens/s, Running: 5 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.2%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:09,090 worker.py:171] Recv kv cache done, num_blocks: 9, total_kv_cache_size: 3.94 MB, time: 0.10s, speed: 0.03778GB/s.
+INFO 2026-11-04 12:55:09,108 llm_engine.py:533] pop request real-930ea864fa4f17d6c31ecaff106acd4f6aba6ba15fa997996ed24a00c4cf9d0e from pre-allocated cache
+INFO 2026-11-04 12:55:09,108 llm_engine.py:535] add seq 7 to block table
+INFO 11-04 12:55:12 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 84.4 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.6%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:15,340 worker.py:171] Recv kv cache done, num_blocks: 10, total_kv_cache_size: 4.38 MB, time: 0.11s, speed: 0.03916GB/s.
+INFO 2026-11-04 12:55:15,349 llm_engine.py:533] pop request real-1d82ecee8504812d7585c2bb484102ec1c7205b79ce4fddd41abf831f9c53456 from pre-allocated cache
+INFO 2026-11-04 12:55:15,350 llm_engine.py:535] add seq 8 to block table
+INFO 11-04 12:55:17 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 95.5 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.0%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:19,408 llm_engine.py:262] Engine finished request real-16e27c0392b52834b4917f1542b96c139c28967cdee85898d628a0db6a1fa17b
+INFO 2026-11-04 12:55:21,577 worker.py:171] Recv kv cache done, num_blocks: 9, total_kv_cache_size: 3.94 MB, time: 0.10s, speed: 0.03814GB/s.
+INFO 2026-11-04 12:55:21,587 llm_engine.py:533] pop request real-423855dcf11c1a7d0e728b92e644afe81b3f07e0db41ff2919203d05584dbcb3 from pre-allocated cache
+INFO 2026-11-04 12:55:21,588 llm_engine.py:535] add seq 9 to block table
+INFO 11-04 12:55:22 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 99.0 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:55:27 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 104.3 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.7%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:30,598 llm_engine.py:262] Engine finished request real-4ccab6e38ae711f3d5b82ee51e5cbd76629321b619ecf9450125235f1e1c39d4
+INFO 11-04 12:55:32 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 100.3 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.8%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:34,221 worker.py:171] Recv kv cache done, num_blocks: 10, total_kv_cache_size: 4.38 MB, time: 0.15s, speed: 0.02929GB/s.
+INFO 2026-11-04 12:55:34,230 llm_engine.py:533] pop request real-974c8f9c7c6854685a3c633067642ccb5890045fcb3524b0d7926c4f7c1291eb from pre-allocated cache
+INFO 2026-11-04 12:55:34,230 llm_engine.py:535] add seq 10 to block table
+INFO 11-04 12:55:37 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 101.0 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.3%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:40,116 llm_engine.py:262] Engine finished request real-3ac9a8b82b1437e0df6a042bf3ebe1a6b91f9a74bf468ea40e3d66d7a6cc0ac8
+INFO 11-04 12:55:42 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 98.4 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:55:47 metrics.py:349] Avg prompt throughput: 25.3 tokens/s, Avg generation throughput: 106.5 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:55:52 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 110.6 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.3%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:53,036 worker.py:171] Recv kv cache done, num_blocks: 9, total_kv_cache_size: 3.94 MB, time: 0.09s, speed: 0.04270GB/s.
+INFO 2026-11-04 12:55:53,053 llm_engine.py:533] pop request real-7213a6921129ba17fcc5416dbabb70fedda22e9407bb43842a75a3b5426ae8a4 from pre-allocated cache
+INFO 2026-11-04 12:55:53,053 llm_engine.py:535] add seq 12 to block table
+INFO 11-04 12:55:57 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 121.8 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.9%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:55:59,567 llm_engine.py:262] Engine finished request real-a5eb572faebb6bfb9be296943816cd6cf7255a7977c3239e8c41e470aa8a8530
+INFO 11-04 12:56:02 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 113.2 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.1%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:56:03,859 llm_engine.py:262] Engine finished request real-124e5d614507fc69fb88d0300fc6398c195eb02003ea0da1261651e547252b1e
+INFO 2026-11-04 12:56:05,586 worker.py:171] Recv kv cache done, num_blocks: 10, total_kv_cache_size: 4.38 MB, time: 0.10s, speed: 0.04126GB/s.
+INFO 2026-11-04 12:56:05,595 llm_engine.py:533] pop request real-f81a0eaace924f6d108ba29c6f20c30647477849415bb91c250ac5bd308ece30 from pre-allocated cache
+INFO 2026-11-04 12:56:05,596 llm_engine.py:535] add seq 13 to block table
+INFO 11-04 12:56:07 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 103.5 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:12 metrics.py:349] Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 109.6 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 3.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:17 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 121.1 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:22 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 116.0 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:27 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 115.6 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:32 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 57.2 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:37 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 114.3 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.8%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:42 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 118.7 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 6.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:47 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 118.0 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 6.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:56:52 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 124.8 tokens/s, Running: 8 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 7.1%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:56:53,133 llm_engine.py:262] Engine finished request real-930ea864fa4f17d6c31ecaff106acd4f6aba6ba15fa997996ed24a00c4cf9d0e
+INFO 2026-11-04 12:56:57,861 llm_engine.py:262] Engine finished request real-1d82ecee8504812d7585c2bb484102ec1c7205b79ce4fddd41abf831f9c53456
+INFO 11-04 12:56:58 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 101.8 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.0%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:56:58,246 worker.py:171] Recv kv cache done, num_blocks: 16, total_kv_cache_size: 7.00 MB, time: 0.13s, speed: 0.05198GB/s.
+INFO 2026-11-04 12:56:58,427 worker.py:171] Recv kv cache done, num_blocks: 1, total_kv_cache_size: 448.00 KB, time: 0.04s, speed: 0.01096GB/s.
+INFO 2026-11-04 12:56:58,437 llm_engine.py:533] pop request real-04d3ca196a08ab19fcc4c6cd11ff3d4a59ac8c65487eee57b62938c80607da1f from pre-allocated cache
+INFO 2026-11-04 12:56:58,438 llm_engine.py:535] add seq 15 to block table
+INFO 11-04 12:57:03 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 103.9 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.6%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:05,553 llm_engine.py:262] Engine finished request real-423855dcf11c1a7d0e728b92e644afe81b3f07e0db41ff2919203d05584dbcb3
+INFO 11-04 12:57:08 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 96.1 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.8%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:10,926 worker.py:171] Recv kv cache done, num_blocks: 25, total_kv_cache_size: 10.94 MB, time: 0.25s, speed: 0.04300GB/s.
+INFO 2026-11-04 12:57:11,101 worker.py:171] Recv kv cache done, num_blocks: 1, total_kv_cache_size: 448.00 KB, time: 0.04s, speed: 0.01100GB/s.
+INFO 2026-11-04 12:57:11,117 llm_engine.py:533] pop request real-22bc3d9c7e8426cb742afe4a45181f01d6e38da6059a696d47b8a65978ee172c from pre-allocated cache
+INFO 2026-11-04 12:57:11,117 llm_engine.py:535] add seq 16 to block table
+INFO 11-04 12:57:13 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 96.5 tokens/s, Running: 7 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.4%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:17,193 llm_engine.py:262] Engine finished request real-974c8f9c7c6854685a3c633067642ccb5890045fcb3524b0d7926c4f7c1291eb
+INFO 11-04 12:57:18 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 107.0 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.6%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:57:23 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 88.2 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.9%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:27,066 llm_engine.py:262] Engine finished request real-69c77bba7a62b9a65dea7146782c274468e10d49773a5653e03ddc86dd5a77eb
+INFO 11-04 12:57:28 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 86.4 tokens/s, Running: 5 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.0%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:29,671 worker.py:171] Recv kv cache done, num_blocks: 58, total_kv_cache_size: 25.38 MB, time: 0.51s, speed: 0.04875GB/s.
+INFO 2026-11-04 12:57:29,856 worker.py:171] Recv kv cache done, num_blocks: 2, total_kv_cache_size: 896.00 KB, time: 0.04s, speed: 0.02319GB/s.
+INFO 2026-11-04 12:57:29,881 llm_engine.py:533] pop request real-65ba710162ed9bff24567426f1846e993534e3df5573cda57ad9f79cc41c5b52 from pre-allocated cache
+INFO 2026-11-04 12:57:29,881 llm_engine.py:535] add seq 17 to block table
+INFO 11-04 12:57:33 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 87.6 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.0%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:37,059 llm_engine.py:262] Engine finished request real-7213a6921129ba17fcc5416dbabb70fedda22e9407bb43842a75a3b5426ae8a4
+INFO 11-04 12:57:38 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 87.1 tokens/s, Running: 5 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 4.1%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:42,116 worker.py:171] Recv kv cache done, num_blocks: 70, total_kv_cache_size: 30.62 MB, time: 0.49s, speed: 0.06119GB/s.
+INFO 2026-11-04 12:57:42,274 worker.py:171] Recv kv cache done, num_blocks: 2, total_kv_cache_size: 896.00 KB, time: 0.04s, speed: 0.02160GB/s.
+INFO 2026-11-04 12:57:42,306 llm_engine.py:533] pop request real-676819ccbf3ff20b4e70a52900ea7ffc874e1e3e17ec765e910def3e1ab59854 from pre-allocated cache
+INFO 2026-11-04 12:57:42,306 llm_engine.py:535] add seq 18 to block table
+INFO 11-04 12:57:43 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 77.6 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:57:48 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 90.6 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 6.5%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:48,558 worker.py:171] Recv kv cache done, num_blocks: 76, total_kv_cache_size: 33.25 MB, time: 0.60s, speed: 0.05432GB/s.
+INFO 2026-11-04 12:57:48,751 worker.py:171] Recv kv cache done, num_blocks: 1, total_kv_cache_size: 448.00 KB, time: 0.04s, speed: 0.01044GB/s.
+INFO 2026-11-04 12:57:48,781 llm_engine.py:533] pop request real-88e5757a85db757897037b2420df7241bc42207130ea98571a7a652393caadf8 from pre-allocated cache
+INFO 2026-11-04 12:57:48,781 llm_engine.py:535] add seq 19 to block table
+INFO 2026-11-04 12:57:49,101 llm_engine.py:262] Engine finished request real-f81a0eaace924f6d108ba29c6f20c30647477849415bb91c250ac5bd308ece30
+INFO 11-04 12:57:53 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 93.7 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.6%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:57:54,891 worker.py:171] Recv kv cache done, num_blocks: 82, total_kv_cache_size: 35.88 MB, time: 0.61s, speed: 0.05790GB/s.
+INFO 2026-11-04 12:57:55,048 worker.py:171] Recv kv cache done, num_blocks: 1, total_kv_cache_size: 448.00 KB, time: 0.03s, speed: 0.01243GB/s.
+INFO 2026-11-04 12:57:55,076 llm_engine.py:533] pop request real-2ccf9fe7628329a2d8d229ad1a83c7993327fd9d6101f4a262972b37b8b238cd from pre-allocated cache
+INFO 2026-11-04 12:57:55,077 llm_engine.py:535] add seq 20 to block table
+INFO 2026-11-04 12:57:57,880 llm_engine.py:262] Engine finished request real-f8afad65fad749c9facbd289016fae2ae1b082f7e1293bc6e0c0830c11073f95
+INFO 11-04 12:57:58 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 95.1 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 5.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:03 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 94.0 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 6.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:08 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 92.7 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 6.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:13 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 93.0 tokens/s, Running: 6 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 6.7%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:58:16,668 llm_engine.py:262] Engine finished request real-65ba710162ed9bff24567426f1846e993534e3df5573cda57ad9f79cc41c5b52
+INFO 2026-11-04 12:58:16,805 llm_engine.py:262] Engine finished request real-2ccf9fe7628329a2d8d229ad1a83c7993327fd9d6101f4a262972b37b8b238cd
+INFO 2026-11-04 12:58:16,925 llm_engine.py:262] Engine finished request real-676819ccbf3ff20b4e70a52900ea7ffc874e1e3e17ec765e910def3e1ab59854
+INFO 2026-11-04 12:58:17,428 llm_engine.py:262] Engine finished request real-88e5757a85db757897037b2420df7241bc42207130ea98571a7a652393caadf8
+INFO 11-04 12:58:18 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 71.7 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 2.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:23 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 32.7 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 2.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:28 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.7 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 2.4%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 12:58:29,624 llm_engine.py:262] Engine finished request real-04d3ca196a08ab19fcc4c6cd11ff3d4a59ac8c65487eee57b62938c80607da1f
+INFO 2026-11-04 12:58:31,997 llm_engine.py:262] Engine finished request real-22bc3d9c7e8426cb742afe4a45181f01d6e38da6059a696d47b8a65978ee172c
+INFO 11-04 12:58:33 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 14.6 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:38 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:43 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:48 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:53 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:58:58 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:03 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:08 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:13 metrics.py:349] Avg prompt throughput: 25.4 tokens/s, Avg generation throughput: 2.6 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:18 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 16.7 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:23 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 16.9 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:28 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.3 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:33 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.1 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:38 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.2 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:44 metrics.py:349] Avg prompt throughput: 25.5 tokens/s, Avg generation throughput: 18.5 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.6%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:49 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.6 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:54 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 31.7 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.8%, CPU KV cache usage: 0.0%.
+INFO 11-04 12:59:59 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 32.6 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:04 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.5 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:09 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.1 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:14 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 38.3 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:19 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.4 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.5%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:24 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.4 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.6%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:29 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 31.0 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:34 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.4 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.8%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:39 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 32.6 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.9%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 13:00:43,862 llm_engine.py:262] Engine finished request real-c6efdf7a8bde5cfaca21232222d8e15cb93471bf0b9df4a81cde87b1a05d624c
+INFO 11-04 13:00:44 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 32.4 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.8%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:49 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.3 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:54 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 16.6 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:00:59 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 16.9 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:04 metrics.py:349] Avg prompt throughput: 25.5 tokens/s, Avg generation throughput: 17.6 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:09 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 32.0 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:14 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.6 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.4%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 13:01:15,602 llm_engine.py:262] Engine finished request real-eb7ed08ae8252840debff28d4429116a75d286266c64a4d4c1ddf5ddcf18c987
+INFO 11-04 13:01:19 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 21.0 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:24 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 16.8 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:29 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.2 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:34 metrics.py:349] Avg prompt throughput: 25.5 tokens/s, Avg generation throughput: 18.5 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.6%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:39 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.7 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:44 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.0 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.8%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:49 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.0 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:54 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 32.5 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:01:59 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.2 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.2%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:04 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.9 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.3%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:09 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.1 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.4%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:14 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.7 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.6%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:19 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 34.8 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.7%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:24 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.9 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.8%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:29 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.5 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:34 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 33.2 tokens/s, Running: 2 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 2.1%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 13:02:35,274 llm_engine.py:262] Engine finished request real-e1d07e765d4c9f07b927efddb558a40e8bd62755cabdfe6ec83b65932508f82b
+INFO 11-04 13:02:39 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 18.3 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.9%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:45 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.6 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:50 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.2 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:02:55 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.3 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.1%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:00 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 17.9 tokens/s, Running: 1 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 1.2%, CPU KV cache usage: 0.0%.
+INFO 2026-11-04 13:03:04,084 llm_engine.py:262] Engine finished request real-dfa6b773dcf9c0b1f1d07379beadcd7fdc2ba5037741fb2c47850609f9359b48
+INFO 11-04 13:03:05 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 14.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:10 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:15 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:20 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:25 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:30 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:35 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:40 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:45 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:50 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:03:55 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:00 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:05 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:10 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:15 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:20 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:25 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 11-04 13:04:30 metrics.py:349] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.

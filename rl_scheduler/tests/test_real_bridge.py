@@ -12,6 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from rl_scheduler.real_bridge import ControlArbiter, RealBridge, PAIRS, capacity_ok, CumulativeTokenCounter
+from rl_scheduler.real_metrics import NS
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -58,8 +59,8 @@ class Harness:
                     'actual_request_id':receipt['expected_candidate_id'],'copied_blocks':20}
         self.arbiter=ControlArbiter(provider,dispatch,clock=self.clock)
 
-    async def ready(self):
-        self.lease=await self.arbiter.acquire_controller('run','policy','ep',self.mode)
+    async def ready(self, cooldown_sec=None):
+        self.lease=await self.arbiter.acquire_controller('run','policy','ep',self.mode,cooldown_sec=cooldown_sec)
         self.snapshot=await self.arbiter.snapshot();return self
 
     async def submit(self,decision_id='d',**overrides):
@@ -134,6 +135,27 @@ class ArbiterTests(unittest.IsolatedAsyncioTestCase):
         receipt=await h.submit('after_cooldown');self.assertEqual(receipt['receipt_status'],'accepted')
         await h.complete()
 
+    async def test_ppo_lease_removes_server_cooldown_but_preserves_inflight_mask(self):
+        from rl_scheduler.real_observation import RealObservationBuilder
+        from types import SimpleNamespace
+        h=await Harness().ready(cooldown_sec=0.)
+        await h.submit('first')
+        self.assertEqual((await h.submit('busy'))['rejection_reason'], 'global_slot_busy')
+        await h.complete()
+        h.snapshot=await h.arbiter.snapshot()
+        self.assertEqual(h.snapshot['cooldown_sec'], 0.)
+        raw=RealObservationBuilder(h.snapshot['mapping'], cooldown_sec=0.).build(h.snapshot,
+            now_ns=h.clock(), ledger=SimpleNamespace(observe=lambda t: {'requests': []}),
+            episode_start_ns=h.clock(), arrival_end_ns=h.clock()+10_000_000_000,
+            deadline_ns=h.clock()+20_000_000_000)
+        self.assertTrue(raw['action_mask'][1])
+        self.assertEqual(raw['global_features'][raw['global_feature_names'].index('cooldown_remaining_sec')], 0.)
+        self.assertEqual((await h.submit('immediate_next'))['receipt_status'], 'accepted')
+        await h.complete()
+        await h.arbiter.release_controller(h.lease['lease_id'])
+        next_lease=await h.arbiter.acquire_controller('other', 'baseline', 'next')
+        self.assertEqual(next_lease['cooldown_sec'], 5.)
+
     async def test_timeout_retains_slot_reconciles_by_same_decision(self):
         h=await Harness().ready()
         async def uncertain(receipt):h.calls.append(receipt);raise asyncio.TimeoutError()
@@ -160,6 +182,23 @@ class ArbiterTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(h.arbiter.ordinary_blocked)
         h=await Harness().ready();h.arbiter.external_intervention('PRE_STOP_MIGRATION')
         self.assertEqual((await h.submit())['rejection_reason'],'episode_invalid')
+
+    async def test_nonblocking_heartbeat_renews_during_slow_snapshot(self):
+        clock=Clock();measured=states(clock);block=False;entered=asyncio.Event();resume=asyncio.Event()
+        async def provider():
+            if block:
+                entered.set();await resume.wait()
+            return deepcopy(measured)
+        arbiter=ControlArbiter(provider,lambda _:None,clock=clock,lease_sec=30.)
+        lease=await arbiter.acquire_controller('run','policy','episode','stay')
+        clock.advance(20.)
+        block=True
+        snapshot_task=asyncio.create_task(arbiter.snapshot())
+        await entered.wait()
+        renewed=await asyncio.wait_for(arbiter.renew_controller_nonblocking(lease['lease_id']),timeout=.1)
+        self.assertEqual(renewed['expires_ns'],clock()+30*NS)
+        resume.set();snapshot=await snapshot_task
+        self.assertFalse(snapshot['lease_expired'])
 
     async def test_wrong_executed_candidate_is_unknown(self):
         h=await Harness().ready()
@@ -246,16 +285,27 @@ class RuntimeAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(allocation),1)
 
     async def test_pending_delivery_counts_queued_and_inflight_batches(self):
+        # Exercise the real pure coalescer without importing Ray/vLLM. Empty
+        # batches now return before delivery, so use an ordinary nonempty batch.
+        tree=ast.parse((ROOT/'llumnix/backends/output_forwarder.py').read_text())
+        coalescer=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='_coalesce_real_metrics_outputs')
+        namespace={'REAL_METRICS_REQUEST_PREFIX':'real-'}
+        unit=ast.Module(body=[coalescer],type_ignores=[]);ast.fix_missing_locations(unit)
+        exec(compile(unit,'coalescer_fixture','exec'),namespace)
         method=extract_method('llumnix/backends/output_forwarder.py','ThreadOutputForwarder','put_nowait_to_servers',
-                              {'asyncio':asyncio,'_record_output_forwarder_stage':lambda *args:None})
+                              {'asyncio':asyncio,'_record_output_forwarder_stage':lambda *args:None,
+                               '_coalesce_real_metrics_outputs':namespace['_coalesce_real_metrics_outputs']})
         from concurrent.futures import Future
-        future=Future();obj=SimpleNamespace(_real_pending_lock=threading.Lock(),_real_pending=0,_real_delivery_error=False,
+        future=Future();obj=SimpleNamespace(_real_pending_lock=threading.Lock(),_real_pending=0,_real_pending_by_request={},_real_delivery_error=False,
             add_trace_timeline=lambda *args,**kwargs:None,forwarder_loop=None,_put_nowait_to_servers=lambda *args:'placeholder')
-        with patch.object(asyncio,'run_coroutine_threadsafe',return_value=future):method(obj,{}, {})
+        method(obj,{}, {})
+        self.assertEqual(obj._real_pending,0)
+        batch={'server':[SimpleNamespace(request_id='ordinary-request')]}
+        with patch.object(asyncio,'run_coroutine_threadsafe',return_value=future):method(obj,batch, {})
         self.assertEqual(obj._real_pending,1)
         future.set_result(None);self.assertEqual(obj._real_pending,0)
         future=Future()
-        with patch.object(asyncio,'run_coroutine_threadsafe',return_value=future):method(obj,{}, {})
+        with patch.object(asyncio,'run_coroutine_threadsafe',return_value=future):method(obj,batch, {})
         future.set_exception(RuntimeError('delivery failed'))
         self.assertTrue(obj._real_delivery_error)
 

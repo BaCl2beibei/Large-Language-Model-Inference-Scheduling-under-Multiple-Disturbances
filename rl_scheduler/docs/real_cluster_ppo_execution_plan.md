@@ -1,5 +1,8 @@
 # Mig-PPO 真实集群训练执行任务书
 
+> 历史任务书。文中旧 Qwen2-0.5B 的采集与训练入口已删除。当前
+> Qwen2-1.5B Q15-B 工作流见 [`ppo_entrypoints.md`](ppo_entrypoints.md)。
+
 本文可直接交给执行模型。按阶段执行、按证据验收。本文是实施规格，文中的新文件、命令和接口尚未实现，不得宣称已可用。
 
 ## 0. 任务、范围与执行纪律
@@ -29,7 +32,7 @@
 
 源码：
 
-- `rl_scheduler/train_ppo.py`、`policy.py`、`observation.py`、`normalization.py`、`action_mask.py`、`reward.py`、`env.py`。
+- 仿真底层仍复用 `observation.py`、`action_mask.py`、`reward.py`、`env.py`；旧 PPO actor、normalizer、collector 和训练器已删除。当前策略实现见 `cohort_ppo.py`，入口见 `ppo_entrypoints.md`。
 - `rl_scheduler/docs/architecture_audit.md`。
 - `llumnix/manager.py` 的 `_poll_instance_info_loop()`、`_migrate()`。
 - `llumnix/global_scheduler/migration_scheduler.py`、`migration_policy.py`、`migration_filter.py`。
@@ -37,13 +40,9 @@
 - `llumnix/metrics/causal_events.py`。
 - `llumnix/backends/output_forwarder.py`、`llumnix/queue/zmq_server.py`。
 - `benchmark/run_baseline_4gpu.py` 的 `execute_trace()` 和 abort barrier。
-- `benchmark/run_ppo_batch_reuse.py`，尤其是 worker startup gate、服务复用和 trace manifest。
+- 旧批量采集器中的 worker startup gate、服务复用和 trace manifest 仅作历史背景；采集器本身已删除。
 
-报告根目录：`benchmark/results/llumnix_causal_hifi_20261022_r1/`。阅读：
-
-- `root_cause_analysis.md`、`model_selection.md`。
-- `validation_seed1213/system_validation.md`。
-- `queue_stage_seed1319_comparison.md`。
+历史实验报告目录已按用户要求清理。下方“已知事实”保留了当时提炼的设计输入；如果后续执行需要复核原始证据，须先恢复报告或重新采集，不要假定这些报告仍在本机。
 
 已知事实必须保留在设计中：
 

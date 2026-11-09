@@ -1,0 +1,472 @@
+{
+  "phase": "validation",
+  "captured_utc": "2026-11-05T13:03:31.326441+00:00",
+  "gpu_inventory": {
+    "returncode": 0,
+    "stdout": "0, NVIDIA GeForce RTX 3060, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 00000000:01:00.0, 12288 MiB, 1 MiB, 0 %\n1, NVIDIA GeForce RTX 3060, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 00000000:04:00.0, 12288 MiB, 1 MiB, 0 %\n2, NVIDIA GeForce RTX 3060, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 00000000:83:00.0, 12288 MiB, 1 MiB, 0 %\n3, NVIDIA GeForce RTX 3060, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 00000000:84:00.0, 12288 MiB, 1 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "gpu_processes_before": {
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "supervisor_before": {
+    "returncode": 3,
+    "stdout": "caddy                                    RUNNING   pid 684, uptime 3:09:48\ncohort_ppo_trainer_c03344c790            STOPPED   Not started\ncron                                     RUNNING   pid 685, uptime 3:09:48\nfc_balance_ray_screen_20261029T093554Z   STOPPED   Not started\nfc_balance_ray_smoke_20261029T071838Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073026Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029T073751Z    STOPPED   Not started\nfc_balance_ray_smoke_20261029_062729     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063340     STOPPED   Not started\nfc_balance_ray_smoke_20261029_063818     STOPPED   Not started\nfc_balance_ray_smoke_20261029_070700     STOPPED   Not started\nfull_completion_2e1ba5ee55               STOPPED   Not started\ngithub_workspace_autosync                RUNNING   pid 686, uptime 3:09:48\ninstance_portal                          RUNNING   pid 687, uptime 3:09:48\njupyter                                  EXITED    Nov 05 09:53 AM\np0p1_controller_73da30ae85               STOPPED   Not started\np0p1_controller_ebcb8e6f82               STOPPED   Not started\np23_ca592ad0d1_controller                STOPPED   Not started\np23_ca592ad0d1_watchdog                  STOPPED   Not started\npyworker                                 EXITED    Nov 05 09:53 AM\nreal_ppo_252b0d3795                      STOPPED   Not started\nreal_ppo_fcda2e237b                      STOPPED   Not started\nreal_ppo_guard_252b0d3795                STOPPED   Not started\nreal_ppo_guard_fcda2e237b                STOPPED   Not started\nreal_ppo_op_11d493e944                   STOPPED   Not started\nreal_ppo_op_257e087e48                   STOPPED   Not started\nreal_ppo_op_4589eb4d4e                   STOPPED   Not started\nreal_ppo_op_5039845934                   STOPPED   Not started\nreal_ppo_op_570a6fd362                   STOPPED   Not started\nreal_ppo_op_722664927e                   STOPPED   Not started\nreal_ppo_op_ec9f5c8f86                   STOPPED   Not started\nreal_ppo_op_f6182eac97                   STOPPED   Not started\nreal_ppo_op_guard_11d493e944             STOPPED   Not started\nreal_ppo_op_guard_257e087e48             STOPPED   Not started\nreal_ppo_op_guard_4589eb4d4e             STOPPED   Not started\nreal_ppo_op_guard_5039845934             STOPPED   Not started\nreal_ppo_op_guard_570a6fd362             STOPPED   Not started\nreal_ppo_op_guard_722664927e             STOPPED   Not started\nreal_ppo_op_guard_ec9f5c8f86             STOPPED   Not started\nreal_ppo_op_guard_f6182eac97             STOPPED   Not started\nsyncthing                                RUNNING   pid 696, uptime 3:09:48\ntensorboard                              RUNNING   pid 701, uptime 3:09:48\ntunnel_manager                           RUNNING   pid 706, uptime 3:09:48\n",
+    "stderr": ""
+  },
+  "model_identity": {
+    "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+    "files_sha256": {
+      "config.json": "f8c6c681f7c28386e333775bb78de28f9de3ce6a676059dc35792022adcb7e36",
+      "tokenizer.json": "f7c9b2dba4a296b1aa76c16a34b8225c0c118978400d4bb66bff0902d702f5b8",
+      "model.safetensors": "6f3a62caedc5c5278275bf5eed428806eeac8df927a3d333c3c850402c24cdeb"
+    }
+  },
+  "expected_engine": {
+    "model": "Qwen2-1.5B",
+    "replicas": 4,
+    "tensor_parallel_size": 1,
+    "dtype": "half",
+    "enforce_eager": true,
+    "max_model_len": 2112,
+    "max_num_seqs": 128,
+    "max_num_batched_tokens": 2112,
+    "gpu_memory_utilization": 0.65,
+    "ray_num_cpus": 16,
+    "queue": "rayqueue",
+    "migration_backend": "rayrpc",
+    "migration_policy": "SR"
+  },
+  "expected_dispatch": {
+    "policy": "load",
+    "metric": "remaining_steps",
+    "topk_random_dispatch": 1,
+    "state_update_interval_sec": 0.05,
+    "random_seed": 271828,
+    "routine_migration": "control lease only"
+  },
+  "service_started_utc": "2026-11-05T15:08:34.855387+00:00",
+  "service_session": {
+    "schema": "full-completion-service-v1",
+    "causal_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/mig_ppo_v2_multienv_20261105T130307Z/causal_events/service_1793891115834461629",
+    "ray_temp_dir": "/tmp/migppo_v2_5fdc100019",
+    "high_frequency_diagnostic_sample_interval": 256,
+    "process_core_dumps_disabled": true,
+    "started_wall": 1793891115.8350096,
+    "pid": 412445
+  },
+  "frozen_mapping": [
+    [
+      "fbff55f1fd364b86ad174aff16b3410a",
+      "1deabffac60f44e28c1e723ac2559626"
+    ],
+    [
+      "ed27e91d30b74925bfed2eb0debfae86",
+      "7791fd514cde464e9fae13a1567032d9"
+    ],
+    [
+      "4ccef3020720423fbc3fea0b28d2212a",
+      "fce66066827d4dd997ea03806f81b73a"
+    ],
+    [
+      "204c9bf2c09c4715b3060c9fb3ac0385",
+      "a4818af98cd749838d12eae973f2ee00"
+    ]
+  ],
+  "capacity_snapshot": {
+    "version": "2401014dffc149d8abe7c90cc43caccd:12",
+    "measured_ns": 892689249520601,
+    "received_ns": 892689252792128,
+    "instances": [
+      {
+        "instance_id": "204c9bf2c09c4715b3060c9fb3ac0385",
+        "epoch": "a4818af98cd749838d12eae973f2ee00",
+        "measured_ns": 892689247406699,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "reserved_blocks_not_in_used": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 32.38723205868155,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      },
+      {
+        "instance_id": "4ccef3020720423fbc3fea0b28d2212a",
+        "epoch": "fce66066827d4dd997ea03806f81b73a",
+        "measured_ns": 892689247971440,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "reserved_blocks_not_in_used": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 42.75663907174021,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      },
+      {
+        "instance_id": "ed27e91d30b74925bfed2eb0debfae86",
+        "epoch": "7791fd514cde464e9fae13a1567032d9",
+        "measured_ns": 892689247759180,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "reserved_blocks_not_in_used": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 38.60057005658746,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      },
+      {
+        "instance_id": "fbff55f1fd364b86ad174aff16b3410a",
+        "epoch": "1deabffac60f44e28c1e723ac2559626",
+        "measured_ns": 892689248114307,
+        "healthy": true,
+        "type": "neutral",
+        "is_migrating": false,
+        "has_slot": true,
+        "total_blocks": 8565,
+        "free_blocks": 8565,
+        "used_blocks": 0,
+        "reserved_blocks_not_in_used": 0,
+        "waiting_blocks": 0,
+        "scan_counters": {},
+        "running": 0,
+        "waiting": 0,
+        "head_wait_sec": 0,
+        "candidate_id": null,
+        "candidate_blocks": null,
+        "candidate_length": null,
+        "candidate_stage": null,
+        "candidate_policy": "SR",
+        "output_tokens_total": 8,
+        "last_step_ms": 63.42632509768009,
+        "pending_delivery": 0,
+        "preallocated_requests": 0,
+        "paused_requests": 0
+      }
+    ],
+    "mapping": [
+      [
+        "204c9bf2c09c4715b3060c9fb3ac0385",
+        "a4818af98cd749838d12eae973f2ee00"
+      ],
+      [
+        "4ccef3020720423fbc3fea0b28d2212a",
+        "fce66066827d4dd997ea03806f81b73a"
+      ],
+      [
+        "ed27e91d30b74925bfed2eb0debfae86",
+        "7791fd514cde464e9fae13a1567032d9"
+      ],
+      [
+        "fbff55f1fd364b86ad174aff16b3410a",
+        "1deabffac60f44e28c1e723ac2559626"
+      ]
+    ],
+    "busy": false,
+    "last_terminal_ns": null,
+    "cooldown_sec": 5.0,
+    "lease_expired": false,
+    "invalid_reasons": []
+  },
+  "actual_total_blocks_by_instance": [
+    8565,
+    8565,
+    8565,
+    8565
+  ],
+  "balanced_threshold_F_min_over_8": 1070.625,
+  "worker_pid_gpu_uuid_mapping": {
+    "gpu_processes": {
+      "returncode": 0,
+      "stdout": "415473, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 7052 MiB\n415595, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 7052 MiB\n415472, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 7052 MiB\n415534, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 7052 MiB\n",
+      "stderr": ""
+    },
+    "mapping": [
+      {
+        "logical_instance_index": 0,
+        "instance_id": "fbff55f1fd364b86ad174aff16b3410a",
+        "epoch": "1deabffac60f44e28c1e723ac2559626",
+        "worker_pid": 415595,
+        "gpu_uuid": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+        "used_memory": "7052 MiB"
+      },
+      {
+        "logical_instance_index": 1,
+        "instance_id": "ed27e91d30b74925bfed2eb0debfae86",
+        "epoch": "7791fd514cde464e9fae13a1567032d9",
+        "worker_pid": 415534,
+        "gpu_uuid": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee",
+        "used_memory": "7052 MiB"
+      },
+      {
+        "logical_instance_index": 2,
+        "instance_id": "4ccef3020720423fbc3fea0b28d2212a",
+        "epoch": "fce66066827d4dd997ea03806f81b73a",
+        "worker_pid": 415472,
+        "gpu_uuid": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+        "used_memory": "7052 MiB"
+      },
+      {
+        "logical_instance_index": 3,
+        "instance_id": "204c9bf2c09c4715b3060c9fb3ac0385",
+        "epoch": "a4818af98cd749838d12eae973f2ee00",
+        "worker_pid": 415473,
+        "gpu_uuid": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+        "used_memory": "7052 MiB"
+      }
+    ]
+  },
+  "service_mappings_by_stage": {
+    "selection": {
+      "gpu_processes": {
+        "returncode": 0,
+        "stdout": "208396, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 7052 MiB\n208518, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 7052 MiB\n208519, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 7052 MiB\n208397, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 7052 MiB\n",
+        "stderr": ""
+      },
+      "mapping": [
+        {
+          "logical_instance_index": 0,
+          "instance_id": "1fa16c2c0ea446088c2f8fa00e2d2936",
+          "epoch": "0b25351a3ebe42418997768149e1b2d5",
+          "worker_pid": 208518,
+          "gpu_uuid": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+          "used_memory": "7052 MiB"
+        },
+        {
+          "logical_instance_index": 1,
+          "instance_id": "311d291f84fa40889159bc64b92bf6ae",
+          "epoch": "66cc71e3645b48aeaadcd3d0465a1a08",
+          "worker_pid": 208397,
+          "gpu_uuid": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee",
+          "used_memory": "7052 MiB"
+        },
+        {
+          "logical_instance_index": 2,
+          "instance_id": "d5a07f0cb800481b9680932bed8e296b",
+          "epoch": "862c77dbc0254393892c3fb33286fd48",
+          "worker_pid": 208519,
+          "gpu_uuid": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+          "used_memory": "7052 MiB"
+        },
+        {
+          "logical_instance_index": 3,
+          "instance_id": "ee9d927119404a0d8264b745bb1c5940",
+          "epoch": "4b4ff80f4cd3489fb85bc02857043c7e",
+          "worker_pid": 208396,
+          "gpu_uuid": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+          "used_memory": "7052 MiB"
+        }
+      ]
+    },
+    "selection_continuations": [
+      {
+        "gpu_processes": {
+          "returncode": 0,
+          "stdout": "269109, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 7052 MiB\n269110, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 7052 MiB\n269048, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 7052 MiB\n269231, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 7052 MiB\n",
+          "stderr": ""
+        },
+        "mapping": [
+          {
+            "logical_instance_index": 0,
+            "instance_id": "c8d38b48dc854785aa67f14ad9ef3f3b",
+            "epoch": "c472396598c3488ea638449890a6c83a",
+            "worker_pid": 269110,
+            "gpu_uuid": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+            "used_memory": "7052 MiB"
+          },
+          {
+            "logical_instance_index": 1,
+            "instance_id": "89dbda084b6049199570d3854fe3c6d5",
+            "epoch": "119dcf45098b4a5791a68c1951c61221",
+            "worker_pid": 269231,
+            "gpu_uuid": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee",
+            "used_memory": "7052 MiB"
+          },
+          {
+            "logical_instance_index": 2,
+            "instance_id": "2ddd1a9432564c34b6d453c8a1199a52",
+            "epoch": "b60026341af146fbac3cf58563135bec",
+            "worker_pid": 269048,
+            "gpu_uuid": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+            "used_memory": "7052 MiB"
+          },
+          {
+            "logical_instance_index": 3,
+            "instance_id": "c6b2cb919b004186a65192503e67e801",
+            "epoch": "635ff5daa0914c8fa78b46dc5809dd0c",
+            "worker_pid": 269109,
+            "gpu_uuid": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+            "used_memory": "7052 MiB"
+          }
+        ]
+      },
+      {
+        "gpu_processes": {
+          "returncode": 0,
+          "stdout": "284893, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 7052 MiB\n284892, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 7052 MiB\n285090, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 7052 MiB\n285014, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 7052 MiB\n",
+          "stderr": ""
+        },
+        "mapping": [
+          {
+            "logical_instance_index": 0,
+            "instance_id": "ef3e87111deb479c9345a9442fdb1af6",
+            "epoch": "a2c1f22bf4e1469b9b255d025a61c823",
+            "worker_pid": 284892,
+            "gpu_uuid": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+            "used_memory": "7052 MiB"
+          },
+          {
+            "logical_instance_index": 1,
+            "instance_id": "65b30c1445834cd4ba13bd916a496693",
+            "epoch": "1654a8a0c31c40929c296277f9194f22",
+            "worker_pid": 285014,
+            "gpu_uuid": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee",
+            "used_memory": "7052 MiB"
+          },
+          {
+            "logical_instance_index": 2,
+            "instance_id": "85b287a0c9aa4866b51bbc92092951a2",
+            "epoch": "450bbdd5bd054947ae987fdcaf9c2a2a",
+            "worker_pid": 285090,
+            "gpu_uuid": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+            "used_memory": "7052 MiB"
+          },
+          {
+            "logical_instance_index": 3,
+            "instance_id": "ff0b0760928444d2b28a96ab95e2f78e",
+            "epoch": "431ecc6aecbd410cbf191b730ef7bd1e",
+            "worker_pid": 284893,
+            "gpu_uuid": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+            "used_memory": "7052 MiB"
+          }
+        ]
+      }
+    ],
+    "validation": {
+      "gpu_processes": {
+        "returncode": 0,
+        "stdout": "415473, GPU-f3cc4337-82f1-115b-9058-58cde88a4124, 7052 MiB\n415595, GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd, 7052 MiB\n415472, GPU-55fbd150-b302-9b67-3a0d-425855d9f47d, 7052 MiB\n415534, GPU-de41c419-b360-1592-a753-f718bdd5b0ee, 7052 MiB\n",
+        "stderr": ""
+      },
+      "mapping": [
+        {
+          "logical_instance_index": 0,
+          "instance_id": "fbff55f1fd364b86ad174aff16b3410a",
+          "epoch": "1deabffac60f44e28c1e723ac2559626",
+          "worker_pid": 415595,
+          "gpu_uuid": "GPU-8ec028dd-cd3d-55c3-daf2-066e44491ddd",
+          "used_memory": "7052 MiB"
+        },
+        {
+          "logical_instance_index": 1,
+          "instance_id": "ed27e91d30b74925bfed2eb0debfae86",
+          "epoch": "7791fd514cde464e9fae13a1567032d9",
+          "worker_pid": 415534,
+          "gpu_uuid": "GPU-de41c419-b360-1592-a753-f718bdd5b0ee",
+          "used_memory": "7052 MiB"
+        },
+        {
+          "logical_instance_index": 2,
+          "instance_id": "4ccef3020720423fbc3fea0b28d2212a",
+          "epoch": "fce66066827d4dd997ea03806f81b73a",
+          "worker_pid": 415472,
+          "gpu_uuid": "GPU-55fbd150-b302-9b67-3a0d-425855d9f47d",
+          "used_memory": "7052 MiB"
+        },
+        {
+          "logical_instance_index": 3,
+          "instance_id": "204c9bf2c09c4715b3060c9fb3ac0385",
+          "epoch": "a4818af98cd749838d12eae973f2ee00",
+          "worker_pid": 415473,
+          "gpu_uuid": "GPU-f3cc4337-82f1-115b-9058-58cde88a4124",
+          "used_memory": "7052 MiB"
+        }
+      ]
+    }
+  },
+  "effective_engine_args": {
+    "line": "INFO 2026-11-05 15:05:39,221 arg_utils.py:159] engine_args: AsyncEngineArgs(model='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B', served_model_name=None, tokenizer='/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B', skip_tokenizer_init=False, tokenizer_mode='auto', trust_remote_code=False, download_dir=None, load_format='auto', config_format=<ConfigFormat.AUTO: 'auto'>, dtype='half', kv_cache_dtype='auto', quantization_param_path=None, seed=0, max_model_len=2112, worker_use_ray=True, distributed_executor_backend=None, pipeline_parallel_size=1, tensor_parallel_size=1, max_parallel_loading_workers=None, block_size=16, enable_prefix_caching=False, disable_sliding_window=False, use_v2_block_manager=False, swap_space=4, cpu_offload_gb=0, gpu_memory_utilization=0.65, max_num_batched_tokens=2112, max_num_seqs=128, max_logprobs=20, disable_log_stats=False, revision=None, code_revision=None, rope_scaling=None, rope_theta=None, tokenizer_revision=None, quantization=None, enforce_eager=True, max_context_len_to_capture=None, max_seq_len_to_capture=8192, disable_custom_all_reduce=False, tokenizer_pool_size=0, tokenizer_pool_type='ray', tokenizer_pool_extra_config=None, limit_mm_per_prompt=None, enable_lora=False, max_loras=1, max_lora_rank=16, enable_prompt_adapter=False, max_prompt_adapters=1, max_prompt_adapter_token=0, fully_sharded_loras=False, lora_extra_vocab_size=256, long_lora_scaling_factors=None, lora_dtype='auto', max_cpu_loras=None, device='auto', num_scheduler_steps=1, multi_step_stream_outputs=True, ray_workers_use_nsight=False, num_gpu_blocks_override=None, num_lookahead_slots=0, model_loader_extra_config=None, ignore_patterns=[], preemption_mode=None, scheduler_delay_factor=0.0, enable_chunked_prefill=False, guided_decoding_backend='outlines', speculative_model=None, speculative_model_quantization=None, speculative_draft_tensor_parallel_size=None, num_speculative_tokens=None, speculative_disable_mqa_scorer=False, speculative_max_model_len=None, speculative_disable_by_batch_size=None, ngram_prompt_lookup_max=None, ngram_prompt_lookup_min=None, spec_decoding_acceptance_method='rejection_sampler', typical_acceptance_sampler_posterior_threshold=None, typical_acceptance_sampler_posterior_alpha=None, qlora_adapter_name_or_path=None, disable_logprobs_during_spec_decoding=None, otlp_traces_endpoint=None, collect_detailed_traces=None, disable_async_output_proc=False, override_neuron_config=None, mm_processor_kwargs=None, scheduling_policy='fcfs', disable_log_requests=False)",
+    "required_fields": [
+      "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+      "tensor_parallel_size=1",
+      "dtype='half'",
+      "max_model_len=2112",
+      "max_num_seqs=128",
+      "max_num_batched_tokens=2112",
+      "gpu_memory_utilization=0.65",
+      "enforce_eager=True"
+    ],
+    "passed": true
+  },
+  "actual_runtime_versions": {
+    "torch": {
+      "returncode": 0,
+      "stdout": "2.4.0\n",
+      "stderr": ""
+    },
+    "ray": {
+      "returncode": 0,
+      "stdout": "2.47.1\n",
+      "stderr": ""
+    },
+    "vllm": {
+      "returncode": 0,
+      "stdout": "0.6.3.post1\n",
+      "stderr": ""
+    },
+    "tokenizers": {
+      "returncode": 0,
+      "stdout": "0.20.3\n",
+      "stderr": ""
+    }
+  }
+}

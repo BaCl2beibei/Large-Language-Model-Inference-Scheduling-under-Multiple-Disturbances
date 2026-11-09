@@ -1,0 +1,49 @@
+:job_id:01000000
+:task_name:bundle_reservation_check_func
+:task_name:bundle_reservation_check_func
+:task_name:bundle_reservation_check_func
+:task_name:bundle_reservation_check_func
+E1106 08:55:06.586842383  113872 completion_queue.cc:257]              ASSERTION FAILED: queue.num_items() == 0
+*** SIGABRT received at time=1793955306 on cpu 59 ***
+PC: @     0x7f5248bf0c0c  (unknown)  pthread_kill
+    @     0x7f5248b97330  (unknown)  (unknown)
+    @     0x7f5248b9727e         32  raise
+    @     0x7f5248b7a8ff        192  abort
+    @     0x7f5247e0480f         64  grpc_core::Crash()
+    @     0x7f5247e06560        176  gpr_assertion_failed
+    @     0x7f5247d3f274         16  cq_destroy_next()
+    @     0x7f5247d4012f         32  grpc_cq_internal_unref()
+    @     0x7f5247d41ab4        160  grpc_completion_queue_destroy
+    @     0x7f524797962c         48  grpc::ServerCompletionQueue::~ServerCompletionQueue()
+    @     0x7f524746568f         64  std::default_delete<>::operator()()
+    @     0x7f52474e7008       1168  ray::core::CoreWorker::~CoreWorker()
+    @     0x7f52473ba98a         32  std::_Sp_counted_base<>::_M_release()
+    @     0x7f5247516b5c       1152  ray::core::CoreWorkerProcessImpl::RunWorkerTaskExecutionLoop()
+    @     0x7f5247516cdd         32  ray::core::CoreWorkerProcess::RunTaskExecutionLoop()
+    @     0x7f52472fde11         32  __pyx_pw_3ray_7_raylet_10CoreWorker_5run_task_loop()
+    @     0x7f52491870e0  (unknown)  _PyEval_EvalFrameDefault
+[2026-11-06 08:55:06,930 E 113872 113872] logging.cc:496: *** SIGABRT received at time=1793955306 on cpu 59 ***
+[2026-11-06 08:55:06,931 E 113872 113872] logging.cc:496: PC: @     0x7f5248bf0c0c  (unknown)  pthread_kill
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5248b97330  (unknown)  (unknown)
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5248b9727e         32  raise
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5248b7a8ff        192  abort
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5247e0480f         64  grpc_core::Crash()
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5247e06560        176  gpr_assertion_failed
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5247d3f274         16  cq_destroy_next()
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5247d4012f         32  grpc_cq_internal_unref()
+[2026-11-06 08:55:06,932 E 113872 113872] logging.cc:496:     @     0x7f5247d41ab4        160  grpc_completion_queue_destroy
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f524797962c         48  grpc::ServerCompletionQueue::~ServerCompletionQueue()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f524746568f         64  std::default_delete<>::operator()()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f52474e7008       1168  ray::core::CoreWorker::~CoreWorker()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f52473ba98a         32  std::_Sp_counted_base<>::_M_release()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f5247516b5c       1152  ray::core::CoreWorkerProcessImpl::RunWorkerTaskExecutionLoop()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f5247516cdd         32  ray::core::CoreWorkerProcess::RunTaskExecutionLoop()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f52472fde11         32  __pyx_pw_3ray_7_raylet_10CoreWorker_5run_task_loop()
+[2026-11-06 08:55:06,933 E 113872 113872] logging.cc:496:     @     0x7f52491870e0  (unknown)  _PyEval_EvalFrameDefault
+Fatal Python error: Aborted
+
+Stack (most recent call first):
+  File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/ray/_private/worker.py", line 953 in main_loop
+  File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/ray/_private/workers/default_worker.py", line 330 in <module>
+
+Extension modules: msgpack._cmsgpack, google._upb._message, psutil._psutil_linux, psutil._psutil_posix, setproctitle, yaml._yaml, charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, uvloop.loop, ray._raylet, numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, pyarrow.lib, pyarrow._json (total: 29)

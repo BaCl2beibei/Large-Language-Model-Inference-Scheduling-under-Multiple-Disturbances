@@ -1,0 +1,46 @@
+:job_id:01000000
+:actor_name:RayWorkerWrapper
+E1109 10:19:14.660992663  250041 completion_queue.cc:257]              ASSERTION FAILED: queue.num_items() == 0
+*** SIGABRT received at time=1794219554 on cpu 7 ***
+PC: @     0x7fd74de87c0c  (unknown)  pthread_kill
+    @     0x7fd74de2e330  (unknown)  (unknown)
+    @     0x7fd74de2e27e         32  raise
+    @     0x7fd74de118ff        192  abort
+    @     0x7fd74d09b80f         64  grpc_core::Crash()
+    @     0x7fd74d09d560        176  gpr_assertion_failed
+    @     0x7fd74cfd6274         16  cq_destroy_next()
+    @     0x7fd74cfd712f         32  grpc_cq_internal_unref()
+    @     0x7fd74cfd8ab4        160  grpc_completion_queue_destroy
+    @     0x7fd74cc1062c         48  grpc::ServerCompletionQueue::~ServerCompletionQueue()
+    @     0x7fd74c6fc68f         64  std::default_delete<>::operator()()
+    @     0x7fd74c77e008       1168  ray::core::CoreWorker::~CoreWorker()
+    @     0x7fd74c65198a         32  std::_Sp_counted_base<>::_M_release()
+    @     0x7fd74c7adb5c       1152  ray::core::CoreWorkerProcessImpl::RunWorkerTaskExecutionLoop()
+    @     0x7fd74c7adcdd         32  ray::core::CoreWorkerProcess::RunTaskExecutionLoop()
+    @     0x7fd74c594e11         32  __pyx_pw_3ray_7_raylet_10CoreWorker_5run_task_loop()
+    @     0x7fd74e41e0e0  (unknown)  _PyEval_EvalFrameDefault
+[2026-11-09 10:19:14,774 E 250041 250041] logging.cc:496: *** SIGABRT received at time=1794219554 on cpu 7 ***
+[2026-11-09 10:19:14,774 E 250041 250041] logging.cc:496: PC: @     0x7fd74de87c0c  (unknown)  pthread_kill
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74de2e330  (unknown)  (unknown)
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74de2e27e         32  raise
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74de118ff        192  abort
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74d09b80f         64  grpc_core::Crash()
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74d09d560        176  gpr_assertion_failed
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74cfd6274         16  cq_destroy_next()
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74cfd712f         32  grpc_cq_internal_unref()
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74cfd8ab4        160  grpc_completion_queue_destroy
+[2026-11-09 10:19:14,776 E 250041 250041] logging.cc:496:     @     0x7fd74cc1062c         48  grpc::ServerCompletionQueue::~ServerCompletionQueue()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74c6fc68f         64  std::default_delete<>::operator()()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74c77e008       1168  ray::core::CoreWorker::~CoreWorker()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74c65198a         32  std::_Sp_counted_base<>::_M_release()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74c7adb5c       1152  ray::core::CoreWorkerProcessImpl::RunWorkerTaskExecutionLoop()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74c7adcdd         32  ray::core::CoreWorkerProcess::RunTaskExecutionLoop()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74c594e11         32  __pyx_pw_3ray_7_raylet_10CoreWorker_5run_task_loop()
+[2026-11-09 10:19:14,777 E 250041 250041] logging.cc:496:     @     0x7fd74e41e0e0  (unknown)  _PyEval_EvalFrameDefault
+Fatal Python error: Aborted
+
+Stack (most recent call first):
+  File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/ray/_private/worker.py", line 953 in main_loop
+  File "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/.venv/lib/python3.10/site-packages/ray/_private/workers/default_worker.py", line 330 in <module>
+
+Extension modules: msgpack._cmsgpack, google._upb._message, psutil._psutil_linux, psutil._psutil_posix, setproctitle, yaml._yaml, charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, uvloop.loop, ray._raylet, numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, torch._C, torch._C._fft, torch._C._linalg, torch._C._nested, torch._C._nn, torch._C._sparse, torch._C._special, markupsafe._speedups, PIL._imaging, msgspec._core, PIL._imagingft, multidict._multidict, yarl._quoting_c, propcache._helpers_c, aiohttp._http_writer, aiohttp._http_parser, aiohttp._websocket.mask, aiohttp._websocket.reader_c, frozenlist._frozenlist, pyarrow.lib, pyarrow._json (total: 48)

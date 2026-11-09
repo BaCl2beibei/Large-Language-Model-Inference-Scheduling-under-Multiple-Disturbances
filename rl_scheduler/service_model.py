@@ -109,3 +109,28 @@ def sample_qps_quantile_model(model: Mapping[str, object], qps: float, rng: obje
     fraction = (uniform - left_level) / (right_level - left_level)
     return max(0.0, quantiles[index - 1] + (quantiles[index] - quantiles[index - 1]) * fraction)
 
+
+
+def physical_cadence_features(features: Mapping[str, float], method: str) -> list[float]:
+    """Current physical state only: batch, context and concurrent engine load."""
+    n = max(0., float(features['n']))
+    context = max(0., float(features['context'])) / 1024.
+    if method == 'constant':
+        return [1.]
+    if method == 'linear':
+        return [1., n, context]
+    if method != 'hinge_interactions':
+        raise ValueError('unknown physical cadence method: '+method)
+    return [1., n, context, max(0., n-8), max(0., n-24),
+            max(0., float(features.get('active', 1))-1),
+            float(features.get('global_n', n))/4, float(features.get('busy', 0))]
+
+
+def predict_physical_cadence(model: Mapping[str, object], features: Mapping[str, float]) -> float:
+    values = physical_cadence_features(features, str(model['method']))
+    coefficients = model['coefficients']
+    if len(values) != len(coefficients):
+        raise ValueError('physical cadence coefficient count mismatch')
+    prediction = sum(a*float(b) for a,b in zip(values,coefficients))
+    correction = float(model.get('hardware_factors', {}).get(features.get('hardware'), 1.))
+    return max(float(model.get('min_ms', 1.)), prediction)*correction

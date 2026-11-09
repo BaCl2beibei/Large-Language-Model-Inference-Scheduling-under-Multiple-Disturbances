@@ -1,0 +1,45 @@
+{
+  "schema": "mig-ppo-v2-physical-refit-freeze-v2",
+  "physical_model_sha256": "fc186a3ab6681a5c4a8eda54184246c8c83e8b8a4a366048f1ea9cf01349974d",
+  "data_audit_sha256": "0eab817728372808456d938f57861dc42415efc3973597d7a35e05751154ebf5",
+  "validation_sha256": "d73a5782ee102abb7ddfa2a52927e37f8e0ecd912c4edcd2bae13348f120faa7",
+  "code_hashes": {
+    "rl_scheduler/env.py": "8ed4fe572a923fb7d9b1c606000bd29922bdd53501adc1bbad1abec1d41a7932",
+    "rl_scheduler/q15b_sim.py": "b40ca919e9e0d06575e6a379f41596e875cb2c8deb4cdc2b5a0a5ca54db7502c",
+    "rl_scheduler/service_model.py": "797aca04f31456b7126eb752776f882d39f8a6b4eff345339aabc8c626a08f0d",
+    "rl_scheduler/real_observation.py": "8fe5850099c669ec29332e5db0c98b615d6c7f50d0dde6abdf6ab9ecaee619d8",
+    "rl_scheduler/cohort_reward.py": "4b2d38689d019ab02262aeb890f09c14d67f53e358d080fc6703f54275b7afbc",
+    "rl_scheduler/ppo_runtime.py": "37ed7a64e80e351c8305258edd134c17499396179e613a906a8f8cf60780dd46",
+    "benchmark/mig_ppo_v2_refit.py": "541160acb5cd73870c1b84e021daddd3b7bb5cf43799a19dd28327c80c9fd72d",
+    "benchmark/run_ppo_sim.py": "ef39316f7b0588f9fb0cf6d4906693ffb118a5003e669685b5b1c56774e330ab"
+  },
+  "native_role": "test_only; never PPO pretraining",
+  "independent_validation_pending": true,
+  "formal_ppo_ready_environments": [],
+  "development_qualified_pairs": [
+    "HOT1-M_primary_s26110521",
+    "HOT2-M_backup_n32_q0p6_s26110522",
+    "HOT3-L_primary_s26110521",
+    "HOT3-M_primary_s26110521",
+    "HOT4-H_backup_n48_q1p0_s26110523",
+    "HOT4-L_primary_s26110521",
+    "HOT4-M_primary_s26110521",
+    "DEVELOPMENT_HOT2-H",
+    "DEVELOPMENT_HOT2-L",
+    "DEVELOPMENT_HOT2-M",
+    "DEVELOPMENT_HOT3-H",
+    "DEVELOPMENT_HOT3-L",
+    "DEVELOPMENT_HOT3-M",
+    "DEVELOPMENT_HOT4-H",
+    "DEVELOPMENT_HOT4-M"
+  ],
+  "models_frozen": true,
+  "limitations": [
+    "No unseen independent real validation; all validation here is development.",
+    "Fixed prompt 128/output 1536; prefill prompt-length slope not identified.",
+    "Low queue and KV pressure; capacity exhaustion/preemption extrapolation is unvalidated.",
+    "Episode-level speed drift is not a migration effect; no final-cost or gain compensation.",
+    "Scalar directed link NNLS and pooled pause NNLS do not reproduce every transfer tail.",
+    "No observed failures is not a failure probability estimate."
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "schema": "mig-ppo-v2-followup-plan-v1",
+  "run_id": "mig_ppo_v2_hot1h_q1p25_20261106T085546Z",
+  "created_utc": "2026-11-06T08:55:46.581610+00:00",
+  "run_dir": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/mig_ppo_v2_hot1h_q1p25_20261106T085546Z",
+  "prior_run": "benchmark/results/mig_ppo_v2_multienv_20261105T130307Z",
+  "environment_ids": [
+    "HOT1-H"
+  ],
+  "protocol": {
+    "schema": "mig-ppo-v2-hot1-repeat-protocol-v1",
+    "run_id": "mig_ppo_v2_hot1h_q1p25_20261106T085546Z",
+    "single_round_deadline_sec": 200.0,
+    "decision_interval_sec": 1.5,
+    "migration_cooldown_sec": 0.0,
+    "n": 48,
+    "qps": 1.25,
+    "prompt_tokens": 128,
+    "output_tokens": 1536,
+    "routing_mode": "fixed",
+    "hotspot_instance_index": 0,
+    "actual_hotspot_fraction": 0.8958333333333334,
+    "selection_rule": "complete audited same-trace pair; C=mean(E2E)+exact-fractional-tail-CVaR95(E2E); gain_C>0 and >=1 audited successful Balanced KV migration",
+    "independent_real_validation": false,
+    "paired_against_prior_trace": false
+  },
+  "runtime_config_sha256": "5a7c6c6e36da6d5a6f75229f65bd978ffdcebaac08b8d43b500ce236674c2eed",
+  "real_llumnix_sha256": "b8a6b6084527a0f115e2a6a4e73d7072466a68763d5cc883d47ded49f4ac0a5e",
+  "model_identity": {
+    "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+    "files_sha256": {
+      "config.json": "f8c6c681f7c28386e333775bb78de28f9de3ce6a676059dc35792022adcb7e36",
+      "tokenizer.json": "f7c9b2dba4a296b1aa76c16a34b8225c0c118978400d4bb66bff0902d702f5b8",
+      "model.safetensors": "6f3a62caedc5c5278275bf5eed428806eeac8df927a3d333c3c850402c24cdeb"
+    }
+  },
+  "code_hashes": {
+    "benchmark/run_ppo_real.py": "be966f3518452cc6390bd2d2365c54e543d5172bfbe1694a66cb09431cba12d7",
+    "benchmark/run_ppo_sim.py": "3a19b259d432fccbf7400143007c859d22346ed1eaf94714fff89976fbaa038f",
+    "benchmark/mig_ppo_v2_multienv.py": "0f97888383dcfe17ad9815c7fefdf1c56d469eda0840c85a5b239fc38b64ce54",
+    "benchmark/run_full_completion_balance.py": "bb10c3afcf00bf1fe6b1097ff8d8c962071bf44eef2d540056f0323afc006060",
+    "rl_scheduler/full_completion.py": "9a0c3ba90f33bea56783858247c286950025b62cd242b951cbbf1f1836f4fad9",
+    "rl_scheduler/full_completion_service.py": "242cc18042537725af6b78dc5091c845148cfa23ea3a3de90d8ceb458941d185",
+    "rl_scheduler/real_metrics.py": "8f265f589d355afb8398c5ae529505508f29faff4e6695c520858ed8493615fa",
+    "rl_scheduler/real_client.py": "66477c978f957a7aaefab736e2ac928e8df3b38615459839b4c1e54bd6c124e4",
+    "rl_scheduler/real_opportunity_runner.py": "c3e922a1757f81d2c2446083ff6624eb97bcab970247069a27cc66cfc2324af4",
+    "rl_scheduler/real_bridge.py": "8cb017c18cc6d81dd3dd2d7d5f393973da77bc159f8a6be8469d9cd82fcaf458",
+    "rl_scheduler/real_observation.py": "8fe5850099c669ec29332e5db0c98b615d6c7f50d0dde6abdf6ab9ecaee619d8",
+    "rl_scheduler/real_reward.py": "550d00c5a73480207b4305f39b077809d29f53066ed660ed9547155468990d50",
+    "rl_scheduler/cohort_ppo.py": "cc1275ebd8b3c64e92f41e9a4f56409e395024ee726ff4078a5084d71e083d75",
+    "rl_scheduler/cohort_reward.py": "4b2d38689d019ab02262aeb890f09c14d67f53e358d080fc6703f54275b7afbc",
+    "rl_scheduler/q15b_sim.py": "1394e62f66e0c31e454e4f203b15751fcfbd142080f106107626fd837c7d5deb",
+    "rl_scheduler/env.py": "c8a0972be7c835bac30b757a9cd8229fd66e3906cce5710fd9f7cf892e8ecdb6",
+    "llumnix/manager.py": "be73d637d118f92f13325c87054cce6c25f3ed184880a437e682df91cf8192c9",
+    "llumnix/global_scheduler/global_scheduler.py": "0b423ec0bcef359a1cdf704c810b00c607c8fbca8d8f26cff2ae46985baaf0d3",
+    "llumnix/global_scheduler/dispatch_policy.py": "832c6b9c8c1885b7fa289e0f96eb8c5c437b3ad343b7d8d06a9762d294c9a28d",
+    "llumnix/backends/vllm/llm_engine.py": "c83ac80a4b4e4c663992e49cd6022fe5d002881b6c8701d90268f7ef1320fd39",
+    "rl_scheduler/configs/real_pilot.yaml": "a8ba0f5bc75c7f4a7e950621873dda0a15033a94944c5892bd5e37a57bd6ec26",
+    "rl_scheduler/configs/real_llumnix.yaml": "428fd00835cdf7db8a22176edeceb74a8a9dd7e0acff26462d25a31bfa70b0b3",
+    "rl_scheduler/configs/mig_ppo_v2_reward.json": "78656577210b5371058b0443c0078cc9ad010599b698a4612084dacbec991838",
+    "rl_scheduler/docs/mig_ppo_v2_multienv_test_fit_prompt.md": "8b5a10ea4a18d9d7e79e537c14f802e7cf8a8d5701f9c5dd9a2968deaa52bc04",
+    "benchmark/mig_ppo_v2_followup.py": "f104a35c9c5f1d1a462d566ff69e3b9f9aea7d3ac6f5b909ac57faf7b466db92"
+  },
+  "taskbook_sha256": "8b5a10ea4a18d9d7e79e537c14f802e7cf8a8d5701f9c5dd9a2968deaa52bc04",
+  "environment_matrix_preregistered_sha256": "f0bd31be8598c5614cb05d48081a6da135631ad1ddd949595fda8f16e337268c",
+  "frozen_before_gpu_collection": true,
+  "repeat_candidate": {
+    "prior_negative_pair": "HOT1-H_backup_n48_q1p0_s26110523_followup",
+    "new_arrival_seed": 26110691,
+    "new_prompt_seed": 26110692,
+    "same_serving_and_scenario_settings": true,
+    "fresh_trace": true
+  },
+  "freeze_sha256": "c358ee2dbf18649fd1e3ba63cee6764d08178603f22ed0a115aeef6b3c56a04d"
+}

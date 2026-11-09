@@ -1,0 +1,65 @@
+{
+  "status": "planned_missing_scenario_completion",
+  "scope": "QPS=3; 512/512, 512/1024, 1024/1024; Stay and Balanced-L/M/H; seed 91000",
+  "cases": [
+    {
+      "scenario": "i512_o512_q3_s192_b4096",
+      "input_tokens": 512,
+      "output_tokens": 512,
+      "qps": 3
+    },
+    {
+      "scenario": "i512_o1024_q3_s192_b4096",
+      "input_tokens": 512,
+      "output_tokens": 1024,
+      "qps": 3
+    },
+    {
+      "scenario": "i1024_o1024_q3_s192_b4096",
+      "input_tokens": 1024,
+      "output_tokens": 1024,
+      "qps": 3
+    }
+  ],
+  "policies": [
+    "Stay",
+    "Balanced-L",
+    "Balanced-M",
+    "Balanced-H"
+  ],
+  "seed": 91000,
+  "measurement_window_sec": 600,
+  "arrival_sec": 120,
+  "drain_sec": 480,
+  "model": "Qwen2-1.5B",
+  "model_path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+  "max_model_len": 2112,
+  "gpu_memory_utilization": 0.65,
+  "max_num_seqs": 192,
+  "max_num_batched_tokens": 4096,
+  "route_shares": [
+    0.7,
+    0.1,
+    0.1,
+    0.1
+  ],
+  "thresholds_from_frozen_stay_f_quantiles": {
+    "i512_o512_q3_s192_b4096": {
+      "Balanced-L": 597.75,
+      "Balanced-M": 1065.857142857143,
+      "Balanced-H": 2544.3333333333335
+    },
+    "i512_o1024_q3_s192_b4096": {
+      "Balanced-L": 315.59090909090907,
+      "Balanced-M": 523.6153846153846,
+      "Balanced-H": 901.875
+    },
+    "i1024_o1024_q3_s192_b4096": {
+      "Balanced-L": 260.3181818181818,
+      "Balanced-M": 462.2857142857143,
+      "Balanced-H": 886.0
+    }
+  },
+  "comparison_note": "Prior completed 512/512 and 512/1024 pairs are retained. The invalid 1024/1024 Balanced-L attempt had a 360s client collector timeout; the retry disables that collector total timeout while keeping 10s connection limits and does not change model, requests, serving config, or scoring window.",
+  "threshold_selection_path": "threshold_selection.json"
+}

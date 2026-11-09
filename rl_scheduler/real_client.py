@@ -48,7 +48,9 @@ class StreamingRequestCollector:
         self.cancel_requested.add(request_id)
         self.journal.record('cancel_requested', request_id, reason='manual_drain')
 
-    async def issue(self, session: Any, url: str, request_id: str, body: dict) -> None:
+    async def issue(self, session: Any, url: str, request_id: str, body: dict, *,
+                    encoded_payload: bytes | None = None,
+                    prepared_request: Any = None) -> None:
         """Caller registers planned events first and owns a finite HTTP timeout.
 
         Local task cancellation ends the client handler, but cannot confirm backend
@@ -57,12 +59,21 @@ class StreamingRequestCollector:
         if request_id in self.sent:
             raise ValueError('automatic retry is forbidden; request already sent')
         self.sent.add(request_id)
-        self.journal.record('sent', request_id)
         decoder, high, terminal, first, server_id = NulJSONDecoder(), 0, None, False, None
         try:
-            payload = {**body, 'request_id': request_id, 'run_id': self.journal.run_id,
-                       'episode_id': self.journal.episode_id}
-            async with session.post(url, json=payload) as response:
+            if prepared_request is not None:
+                request = prepared_request
+            elif encoded_payload is None:
+                payload = {**body, 'request_id': request_id, 'run_id': self.journal.run_id,
+                           'episode_id': self.journal.episode_id}
+                request = session.post(url, json=payload)
+            else:
+                request = session.post(url, data=encoded_payload,
+                    headers={'Content-Type': 'application/json'})
+            # Timestamp the prepared HTTP call immediately before entering it.
+            # Payload construction and JSON encoding happen before this point.
+            self.journal.record('sent', request_id)
+            async with request as response:
                 status = response.status
                 if status != 200:
                     await response.read()
@@ -97,7 +108,8 @@ class StreamingRequestCollector:
                                     first = True
                                 self.journal.record('client_output', request_id,
                                                     occurred_ns=first_event.occurred_ns if first_event else None,
-                                                    server_request_id=server_id, cumulative_tokens=count)
+                                                    server_request_id=server_id, cumulative_tokens=count,
+                                                    finished=bool(record.get('finished', False)))
                                 high = max(high, count)
                             elif kind == 'terminal':
                                 terminal = {'outcome': record.get('outcome', 'unknown'), 'http_status': 200,
@@ -123,11 +135,12 @@ class StreamingRequestCollector:
         for request_id in request_ids:
             if request_id not in self.cancel_requested:
                 self.request_cancel(request_id)
-        # This is a separate cleanup timeout, never the old 900-second barrier.
+        # Keep the client timeout above the server's bounded batch-confirmation
+        # deadline so a valid cancellation proof is not cut off in transit.
         async with session.post(url, json={'run_id': self.journal.run_id,
                                           'episode_id': self.journal.episode_id,
                                           'request_ids': request_ids},
-                                timeout=aiohttp.ClientTimeout(total=60)) as response:
+                                timeout=aiohttp.ClientTimeout(total=220)) as response:
             result = await response.json()
             for row in result.get('results', []):
                 if row.get('request_id') not in request_ids:

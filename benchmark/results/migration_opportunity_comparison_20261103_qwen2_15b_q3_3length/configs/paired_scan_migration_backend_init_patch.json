@@ -1,0 +1,20 @@
+{
+  "recorded_utc": "2026-11-03T09:19:58.826867+00:00",
+  "source_file": "llumnix/backends/vllm/llm_engine.py",
+  "pre_patch_sha256": "248da8454c55e2daae39cc0af02ef01ed22d60540b00b23e2cda0e4c1e4ee2c8",
+  "patched_sha256": "c83ac80a4b4e4c663992e49cd6022fe5d002881b6c8701d90268f7ef1320fd39",
+  "reason": "LLUMNIX_SCAN_TELEMETRY=1 created the external migration coordinator but LLMEngineLlumnix skipped init_migration when both native manager migration flags were false. Destination recv_cache then raised AttributeError: MigrationWorker has no migration_backend.",
+  "change": "In scan-control mode, initialize worker migration backends while leaving native manager migration flags disabled.",
+  "prior_invalid_policy_run": "raw_runs/paired_1793695929234267258_0/runs/38cc64bd6ca036c41ec0",
+  "retry_scope": {
+    "scenario": "i512_o512_q3_s192_b4096",
+    "seed": 91001,
+    "policies": [
+      "Stay",
+      "Balanced-L",
+      "Balanced-M",
+      "Balanced-H"
+    ],
+    "same_frozen_trace": true
+  }
+}

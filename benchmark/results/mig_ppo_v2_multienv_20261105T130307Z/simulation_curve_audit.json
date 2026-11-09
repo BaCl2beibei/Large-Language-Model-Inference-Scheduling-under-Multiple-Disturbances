@@ -1,0 +1,3520 @@
+{
+  "schema": "mig-ppo-v2-independent-simulation-curve-audit-v1",
+  "run_id": "mig_ppo_v2_multienv_20261105T130307Z",
+  "validation_base_trace_hashes": [
+    "541d2858ca392e25e5db8ba9b41f619b8bafe7f0169ab729931b9ddbe2a91820",
+    "56fc0aa31d7b9027375b0fdb59d918fd62945921c08301f9e1de75f7bb5fa04f",
+    "79d149a95d5d9a8c19a2b63e876deec26b44fce60c694579282577e6a1c2faf3"
+  ],
+  "alignment": "Corrected: each real and simulated episode is aligned to its own earliest client sent_ns; left-held 1.5 s samples are compared over the common observed horizon.",
+  "checks": {
+    "request_count_identity": "request/terminal counts and existing execution audits",
+    "action_mask": "13-action mask length and executed action legal on every decision; not an identical-raw-input feature comparison",
+    "outstanding_waiting_kv": "absolute/relative area and per-instance MAE on common time grid",
+    "reward": "reconstruct V2 reward from real independent decisions and check timing/terminal identities; compare D,Q,H,B_star curves",
+    "migration": "compare successful counts and distinct request coverage; copy duration is not service pause"
+  },
+  "unavailable_checks": [
+    "feature-order/unit numeric tolerance on identical raw snapshots",
+    "token-gap and 5-second throughput distribution equivalence",
+    "queue/KV slope and state age/receipt delay curve equivalence",
+    "true per-request service pause distribution"
+  ],
+  "environments": [
+    {
+      "environment_id": "HOT1-L",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 74,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 100,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 113.303585546,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 3028.5,
+              "absolute_error_area": 1159.5,
+              "relative_error": 0.382862803368004,
+              "mae": 10.306666666666667
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.013333333333333334,
+                "real_mean_waiting": 0.013333333333333334,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.039456703638840226,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.020870986573263278,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0183755594473633,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.02105156645261724,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 44.58268748452158,
+                "absolute_error_area": 37.37477319015182,
+                "relative_error": 0.8383248139342826,
+                "mae": 0.33222020613468284,
+                "real_mean": 0.3962905554179696,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": 1.0,
+                "mae": 0.00013020833333333333,
+                "real_mean": 0.00013020833333333333,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 10.719319775596075,
+                "absolute_error_area": 4.442671809256663,
+                "relative_error": 0.414454639124675,
+                "mae": 0.03949041608228145,
+                "real_mean": 0.09528284244974289,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.8779776231089951,
+                "absolute_error_area": 0.6525048626880272,
+                "relative_error": 0.743190766499778,
+                "mae": 0.005800043223893575,
+                "real_mean": 0.007804245538746623,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 113.303585546
+          },
+          "reward_reconstruction": {
+            "real_windows": 74,
+            "sim_windows": 100,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 3.552713678800501e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 102,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 101,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 149.208874291,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4914.0,
+              "absolute_error_area": 166.5,
+              "relative_error": 0.03388278388278388,
+              "mae": 1.121212121212121
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.007452222163255438,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.003514420327029781,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.006775283482814126,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.005338852624316724,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 73.8816986583139,
+                "absolute_error_area": 65.1966789850082,
+                "relative_error": 0.8824469411095712,
+                "mae": 0.4390348753199206,
+                "real_mean": 0.497519856284942,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 10.271388499298741,
+                "absolute_error_area": 1.065918653576438,
+                "relative_error": 0.1037755171707517,
+                "mae": 0.007177903391087125,
+                "real_mean": 0.06916759932187704,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.2474361515801637,
+                "absolute_error_area": 0.08083323757354524,
+                "relative_error": 0.32668321527526306,
+                "mae": 0.0005443315661518199,
+                "real_mean": 0.0016662367109775333,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 149.208874291
+          },
+          "reward_reconstruction": {
+            "real_windows": 102,
+            "sim_windows": 101,
+            "real_return_sum_error": 3.552713678800501e-15,
+            "sim_return_sum_error": 8.881784197001252e-16,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 11,
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "copy_duration_ms_median": 232.124443,
+          "copy_duration_ms_p95": 841.4076805,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": -1,
+          "distinct_request_coverage_error": -1
+        },
+        "simulated": {
+          "successful": 10,
+          "distinct_successful_requests": 10,
+          "cost_ms_median": 200.25203076570142,
+          "cost_ms_p95": 814.0655180604786,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT1-M",
+      "status": "not_run_incomplete_or_missing_pair"
+    },
+    {
+      "environment_id": "HOT1-H",
+      "status": "not_run_incomplete_or_missing_pair"
+    },
+    {
+      "environment_id": "HOT2-L",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 124,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 176.912304368,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5038.5,
+              "absolute_error_area": 202.5,
+              "relative_error": 0.04019053289669545,
+              "mae": 1.1538461538461537
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.008547008547008548,
+                "real_mean_waiting": 0.008547008547008548,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.008547008547008548,
+                "real_mean_waiting": 0.008547008547008548,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0016395487498814983,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.011230360092006326,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0029288348027402297,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002540651927692207,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 76.00456393323782,
+                "absolute_error_area": 67.65064973202027,
+                "relative_error": 0.8900866767875203,
+                "mae": 0.38547378764683915,
+                "real_mean": 0.4330744383660275,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.029296875,
+                "absolute_error_area": 0.029296875,
+                "relative_error": 1.0,
+                "mae": 0.0001669337606837607,
+                "real_mean": 0.0001669337606837607,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 17.050841514726507,
+                "absolute_error_area": 1.9719495091164094,
+                "relative_error": 0.11565115466079912,
+                "mae": 0.011236179539124841,
+                "real_mean": 0.09715579210670373,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 1.3864326023007738,
+                "absolute_error_area": 0.35794772191806346,
+                "relative_error": 0.2581789560661312,
+                "mae": 0.0020395881590772845,
+                "real_mean": 0.007899900867810677,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 176.912304368
+          },
+          "reward_reconstruction": {
+            "real_windows": 124,
+            "sim_windows": 120,
+            "real_return_sum_error": 2.1316282072803006e-14,
+            "sim_return_sum_error": 2.6645352591003757e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 118,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 177.565458044,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4929.0,
+              "absolute_error_area": 102.0,
+              "relative_error": 0.020693852708460133,
+              "mae": 0.576271186440678
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 4.5,
+                "relative_error": 3.0,
+                "mae": 0.025423728813559324,
+                "real_mean_waiting": 0.00847457627118644,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0035125213966972404,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0045049323715950825,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0028644364629404253,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0028248587570621456,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 74.37977922074526,
+                "absolute_error_area": 65.9757971216876,
+                "relative_error": 0.8870125430983573,
+                "mae": 0.3727446165067097,
+                "real_mean": 0.42022474136014276,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0439453125,
+                "relative_error": 3.0,
+                "mae": 0.00024827860169491524,
+                "real_mean": 8.275953389830508e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 10.216514726507715,
+                "absolute_error_area": 0.5997545582047686,
+                "relative_error": 0.058704418704418705,
+                "mae": 0.0033884438316653595,
+                "real_mean": 0.05772042218365941,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.20846647221031736,
+                "absolute_error_area": 0.05012669948101378,
+                "relative_error": 0.2404544910725118,
+                "mae": 0.0002832016919831287,
+                "real_mean": 0.0011777766791543354,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 177.565458044
+          },
+          "reward_reconstruction": {
+            "real_windows": 118,
+            "sim_windows": 121,
+            "real_return_sum_error": 0.0,
+            "sim_return_sum_error": 0.0,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 11,
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "copy_duration_ms_median": 229.052578,
+          "copy_duration_ms_p95": 638.035925,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "cost_ms_median": 224.60646329113922,
+          "cost_ms_p95": 706.8004612361548,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT2-M",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 32,
+            "sim_request_count": 32,
+            "real_unique_request_ids": 32,
+            "sim_unique_request_ids": 32,
+            "real_terminal_count": 32,
+            "sim_terminal_count": 32,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 107,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 99,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 145.592593621,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 3274.5,
+              "absolute_error_area": 142.5,
+              "relative_error": 0.04351809436555199,
+              "mae": 0.979381443298969
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0006379354962957614,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.012885093373294573,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0011663386715294202,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0019980621204735154,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 49.12143110974033,
+                "absolute_error_area": 43.914133680497635,
+                "relative_error": 0.8939913330780354,
+                "mae": 0.3018153517559975,
+                "real_mean": 0.3376043375239885,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 14.44477559607294,
+                "absolute_error_area": 1.8767531556802246,
+                "relative_error": 0.12992608595390379,
+                "mae": 0.012898647118077144,
+                "real_mean": 0.09927680822043257,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 1.5633245997374794,
+                "absolute_error_area": 0.4130868836951034,
+                "relative_error": 0.2642361565630521,
+                "mae": 0.0028390851113065524,
+                "real_mean": 0.0107444989672679,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 145.592593621
+          },
+          "reward_reconstruction": {
+            "real_windows": 106,
+            "sim_windows": 99,
+            "real_return_sum_error": 1.0658141036401503e-14,
+            "sim_return_sum_error": 0.0,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 32,
+            "sim_request_count": 32,
+            "real_unique_request_ids": 32,
+            "sim_unique_request_ids": 32,
+            "real_terminal_count": 32,
+            "sim_terminal_count": 32,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 99,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 99,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 146.588278632,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 3222.0,
+              "absolute_error_area": 76.5,
+              "relative_error": 0.023743016759776536,
+              "mae": 0.5257731958762887
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.003706044137914432,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0035989191206119353,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.004077972568773659,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0018897334512912177,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 48.3773300019983,
+                "absolute_error_area": 43.10556149557307,
+                "relative_error": 0.8910281219280296,
+                "mae": 0.2962581546087496,
+                "real_mean": 0.33249024056356224,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 6.9498597475455846,
+                "absolute_error_area": 0.44442496493688655,
+                "relative_error": 0.06394732859088845,
+                "mae": 0.0030544671129682922,
+                "real_mean": 0.04776535908966038,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.15572054374612043,
+                "absolute_error_area": 0.038042212260510896,
+                "relative_error": 0.24429796702054393,
+                "mae": 0.00026145850350866597,
+                "real_mean": 0.001070244286914917,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 146.588278632
+          },
+          "reward_reconstruction": {
+            "real_windows": 99,
+            "sim_windows": 99,
+            "real_return_sum_error": 3.552713678800501e-15,
+            "sim_return_sum_error": 4.440892098500626e-16,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 16,
+          "successful": 16,
+          "distinct_successful_requests": 14,
+          "copy_duration_ms_median": 221.3301845,
+          "copy_duration_ms_p95": 662.5884169999999,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 16,
+          "distinct_successful_requests": 14,
+          "cost_ms_median": 233.81507460872513,
+          "cost_ms_p95": 604.9971214587908,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT2-H",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 115,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 100,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 147.121937536,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5550.0,
+              "absolute_error_area": 675.0,
+              "relative_error": 0.12162162162162163,
+              "mae": 4.591836734693878
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 3.0,
+                "absolute_error_area": 3.0,
+                "relative_error": 1.0,
+                "mae": 0.02040816326530612,
+                "real_mean_waiting": 0.02040816326530612,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0016440902105150285,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.061338861288823786,
+                "gate_passed": false
+              },
+              {
+                "mae": 0.0019395499005206284,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.001296210252927791,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 84.1648130090381,
+                "absolute_error_area": 75.74392527117531,
+                "relative_error": 0.8999476451405114,
+                "mae": 0.5152647977630974,
+                "real_mean": 0.5725497483608034,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.029296875,
+                "absolute_error_area": 0.029296875,
+                "relative_error": 1.0,
+                "mae": 0.0001992984693877551,
+                "real_mean": 0.0001992984693877551,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 31.243338008415144,
+                "absolute_error_area": 9.026297335203367,
+                "relative_error": 0.2889031041680695,
+                "mae": 0.06140338323267596,
+                "real_mean": 0.21253971434296018,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": false
+              },
+              "B_star": {
+                "real_area": 7.8795806479519666,
+                "absolute_error_area": 4.159389727231939,
+                "relative_error": 0.5278694277103482,
+                "mae": 0.02829516821246217,
+                "real_mean": 0.05360258944185011,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 147.121937536
+          },
+          "reward_reconstruction": {
+            "real_windows": 115,
+            "sim_windows": 100,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 3.552713678800501e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 103,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 100,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 147.788592607,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5110.5,
+              "absolute_error_area": 216.0,
+              "relative_error": 0.04226592309950103,
+              "mae": 1.469387755102041
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.01020408163265306,
+                "real_mean_waiting": 0.01020408163265306,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.004599878480288787,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.01815051765014237,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0031321109880029082,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0029438745725961146,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 77.0052457921619,
+                "absolute_error_area": 68.41799533902842,
+                "relative_error": 0.8884848640531507,
+                "mae": 0.4654285397212818,
+                "real_mean": 0.5238452094704891,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": 1.0,
+                "mae": 9.964923469387755e-05,
+                "real_mean": 9.964923469387755e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 13.903225806451614,
+                "absolute_error_area": 2.2750701262272086,
+                "relative_error": 0.16363613436901037,
+                "mae": 0.015476667525355162,
+                "real_mean": 0.09457976739082731,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.9371741132013143,
+                "absolute_error_area": 0.3903798497997316,
+                "relative_error": 0.41654997113207093,
+                "mae": 0.002655645236732868,
+                "real_mean": 0.006375334103410301,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 147.788592607
+          },
+          "reward_reconstruction": {
+            "real_windows": 103,
+            "sim_windows": 100,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 1.7763568394002505e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 29,
+          "successful": 29,
+          "distinct_successful_requests": 29,
+          "copy_duration_ms_median": 243.822411,
+          "copy_duration_ms_p95": 772.145523,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 29,
+          "distinct_successful_requests": 29,
+          "cost_ms_median": 266.72933557724696,
+          "cost_ms_p95": 717.2496754713935,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT3-L",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 123,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 177.351844496,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5017.5,
+              "absolute_error_area": 157.5,
+              "relative_error": 0.03139013452914798,
+              "mae": 0.8898305084745762
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.00847457627118644,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0013980824601501974,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0032374563408432023,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.009996339062206257,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.003285939030544092,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 75.74865957992411,
+                "absolute_error_area": 67.32556138990728,
+                "relative_error": 0.8888020166069153,
+                "mae": 0.3803704033328095,
+                "real_mean": 0.4279585287001362,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": null,
+                "mae": 8.275953389830508e-05,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 17.0483870967742,
+                "absolute_error_area": 1.770161290322581,
+                "relative_error": 0.10383159886471142,
+                "mae": 0.010000911244760345,
+                "real_mean": 0.09631857116821581,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 1.3714598219552572,
+                "absolute_error_area": 0.31123613622797497,
+                "relative_error": 0.22693784480266663,
+                "mae": 0.0017583962498755649,
+                "real_mean": 0.0077483605760184015,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 177.351844496
+          },
+          "reward_reconstruction": {
+            "real_windows": 123,
+            "sim_windows": 120,
+            "real_return_sum_error": 1.4210854715202004e-14,
+            "sim_return_sum_error": 2.6645352591003757e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 177.840971871,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4950.0,
+              "absolute_error_area": 88.5,
+              "relative_error": 0.01787878787878788,
+              "mae": 0.5
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 3.0,
+                "relative_error": 2.0,
+                "mae": 0.01694915254237288,
+                "real_mean_waiting": 0.00847457627118644,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.00847457627118644,
+                "real_mean_waiting": 0.00847457627118644,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.00298712735116309,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0021827104791870737,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002549793701208111,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0033660838849476063,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 74.46976609514854,
+                "absolute_error_area": 66.00413319700749,
+                "relative_error": 0.886321210042144,
+                "mae": 0.37290470732772596,
+                "real_mean": 0.42073314178050025,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.029296875,
+                "absolute_error_area": 0.0439453125,
+                "relative_error": 1.5,
+                "mae": 0.00024827860169491524,
+                "real_mean": 0.00016551906779661016,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 10.061886395511923,
+                "absolute_error_area": 0.38867461430575045,
+                "relative_error": 0.03862840416078616,
+                "mae": 0.002195901775738703,
+                "real_mean": 0.056846815793852666,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.19599662164840825,
+                "absolute_error_area": 0.033820262501482984,
+                "relative_error": 0.17255533394933723,
+                "mae": 0.0001910749293869095,
+                "real_mean": 0.001107325546036205,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 177.840971871
+          },
+          "reward_reconstruction": {
+            "real_windows": 120,
+            "sim_windows": 121,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 0.0,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 11,
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "copy_duration_ms_median": 227.304313,
+          "copy_duration_ms_p95": 641.442785,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "cost_ms_median": 237.80206364771166,
+          "cost_ms_p95": 487.0917489392749,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT3-M",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 127,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 176.271412274,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5242.5,
+              "absolute_error_area": 414.0,
+              "relative_error": 0.07896995708154507,
+              "mae": 2.358974358974359
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 3.0,
+                "relative_error": 2.0,
+                "mae": 0.017094017094017096,
+                "real_mean_waiting": 0.008547008547008548,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.008547008547008548,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0007364497732273558,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0029497906905962953,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.02334386117223245,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.003138393681300863,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 79.0952974527852,
+                "absolute_error_area": 70.84531977391254,
+                "relative_error": 0.895695724719951,
+                "mae": 0.4036770357487894,
+                "real_mean": 0.45068545557142564,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0439453125,
+                "relative_error": 3.0,
+                "mae": 0.000250400641025641,
+                "real_mean": 8.346688034188034e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 24.840813464235623,
+                "absolute_error_area": 4.101157082748949,
+                "relative_error": 0.16509753549953424,
+                "mae": 0.023368416425919938,
+                "real_mean": 0.14154309666231124,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 3.7530047233045263,
+                "absolute_error_area": 1.1994659592702033,
+                "relative_error": 0.31960150538101956,
+                "mae": 0.0068345638704854885,
+                "real_mean": 0.02138464229803149,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 176.271412274
+          },
+          "reward_reconstruction": {
+            "real_windows": 127,
+            "sim_windows": 120,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 0.0,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 118,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 176.672642779,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5032.5,
+              "absolute_error_area": 201.0,
+              "relative_error": 0.03994038748137109,
+              "mae": 1.1452991452991452
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 3.0,
+                "absolute_error_area": 4.5,
+                "relative_error": 1.5,
+                "mae": 0.02564102564102564,
+                "real_mean_waiting": 0.017094017094017096,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.008547008547008548,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0054874489200233524,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0018431202319118256,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.007153940954291217,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.001774265171813333,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 75.94735324597733,
+                "absolute_error_area": 67.60984623732327,
+                "relative_error": 0.8902199135017826,
+                "mae": 0.385241289101557,
+                "real_mean": 0.43274845154403035,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.029296875,
+                "absolute_error_area": 0.05859375,
+                "relative_error": 2.0,
+                "mae": 0.0003338675213675214,
+                "real_mean": 0.0001669337606837607,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 11.130434782608699,
+                "absolute_error_area": 0.9705469845722302,
+                "relative_error": 0.08719758064516128,
+                "mae": 0.005530182248274816,
+                "real_mean": 0.06342128081258518,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.3378912031955277,
+                "absolute_error_area": 0.09486048754388199,
+                "relative_error": 0.28074269660399837,
+                "mae": 0.000540515598540638,
+                "real_mean": 0.0019253060011141176,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 176.672642779
+          },
+          "reward_reconstruction": {
+            "real_windows": 118,
+            "sim_windows": 120,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 8.881784197001252e-16,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 22,
+          "successful": 22,
+          "distinct_successful_requests": 21,
+          "copy_duration_ms_median": 259.0032355,
+          "copy_duration_ms_p95": 731.6521258,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": -2,
+          "distinct_request_coverage_error": -1
+        },
+        "simulated": {
+          "successful": 20,
+          "distinct_successful_requests": 20,
+          "cost_ms_median": 227.61588774196144,
+          "cost_ms_p95": 501.5821591545054,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT3-H",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 115,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 99,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 146.350102528,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5509.5,
+              "absolute_error_area": 673.5,
+              "relative_error": 0.12224339776749252,
+              "mae": 4.628865979381444
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.010309278350515464,
+                "real_mean_waiting": 0.010309278350515464,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0019017699700892509,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0019246393558055136,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.061746137782030676,
+                "gate_passed": false
+              },
+              {
+                "mae": 0.0014997502422349407,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 83.58818008327363,
+                "absolute_error_area": 75.2940613384183,
+                "relative_error": 0.9007740240714367,
+                "mae": 0.5174849576523595,
+                "real_mean": 0.5744892101943204,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": 1.0,
+                "mae": 0.00010067654639175257,
+                "real_mean": 0.00010067654639175257,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 30.78558906030856,
+                "absolute_error_area": 8.993513323983167,
+                "relative_error": 0.29213387167499033,
+                "mae": 0.06181108813734136,
+                "real_mean": 0.21158480453820314,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": false
+              },
+              "B_star": {
+                "real_area": 7.758396905102257,
+                "absolute_error_area": 4.188405148400701,
+                "relative_error": 0.5398544570008045,
+                "mae": 0.028786289679729907,
+                "real_mean": 0.053322315498984585,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 146.350102528
+          },
+          "reward_reconstruction": {
+            "real_windows": 115,
+            "sim_windows": 99,
+            "real_return_sum_error": 0.0,
+            "sim_return_sum_error": 0.0,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 104,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 100,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 147.712427076,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5148.0,
+              "absolute_error_area": 285.0,
+              "relative_error": 0.05536130536130536,
+              "mae": 1.9387755102040816
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.004602261219724317,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0035228802554296682,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.01904642767790129,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.003807617617975386,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 77.51460897942536,
+                "absolute_error_area": 69.04438040598028,
+                "relative_error": 0.8907273263070535,
+                "mae": 0.46968966262571615,
+                "real_mean": 0.527310265166159,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 13.805925666199162,
+                "absolute_error_area": 2.42163394109397,
+                "relative_error": 0.17540540197335838,
+                "mae": 0.016473700279550814,
+                "real_mean": 0.09391786167482423,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.9165835883811473,
+                "absolute_error_area": 0.3873468739693155,
+                "relative_error": 0.42259852661494873,
+                "mae": 0.0026350127480905816,
+                "real_mean": 0.006235262505994199,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 147.712427076
+          },
+          "reward_reconstruction": {
+            "real_windows": 103,
+            "sim_windows": 100,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 2.6645352591003757e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 31,
+          "successful": 31,
+          "distinct_successful_requests": 29,
+          "copy_duration_ms_median": 261.864626,
+          "copy_duration_ms_p95": 800.1340230000001,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": -1,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 30,
+          "distinct_successful_requests": 29,
+          "cost_ms_median": 253.0835647226134,
+          "cost_ms_p95": 721.2074670456238,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT4-L",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 122,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 178.1354421,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4989.0,
+              "absolute_error_area": 126.0,
+              "relative_error": 0.025255562236921228,
+              "mae": 0.711864406779661
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.00847457627118644,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.00847457627118644,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0012100883572283728,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0030890399437996582,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0036925999584434058,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.007788892516845261,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 75.1418767764199,
+                "absolute_error_area": 66.5869817968465,
+                "relative_error": 0.8861501023586624,
+                "mae": 0.37619763727031924,
+                "real_mean": 0.4245303772679091,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.029296875,
+                "relative_error": null,
+                "mae": 0.00016551906779661016,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 16.812412342215985,
+                "absolute_error_area": 1.377805049088359,
+                "relative_error": 0.08195165696886277,
+                "mae": 0.007784209316883385,
+                "real_mean": 0.09498538046449709,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 1.3325414648681866,
+                "absolute_error_area": 0.25378271642340844,
+                "relative_error": 0.1904501459161065,
+                "mae": 0.0014338006577593698,
+                "real_mean": 0.007528482852362636,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 178.1354421
+          },
+          "reward_reconstruction": {
+            "real_windows": 122,
+            "sim_windows": 121,
+            "real_return_sum_error": 1.4210854715202004e-14,
+            "sim_return_sum_error": 1.7763568394002505e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 119,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 178.628293848,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4989.0,
+              "absolute_error_area": 90.0,
+              "relative_error": 0.01803968731208659,
+              "mae": 0.5042016806722689
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.008403361344537815,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 1.5,
+                "relative_error": null,
+                "mae": 0.008403361344537815,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.003987304203642928,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.00119501390748944,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0030866286970129535,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002389046686976016,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 75.19948131353308,
+                "absolute_error_area": 66.59849546912574,
+                "relative_error": 0.885624399341974,
+                "mae": 0.37310081495308534,
+                "real_mean": 0.4212856095996251,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.029296875,
+                "relative_error": null,
+                "mae": 0.00016412815126050421,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 10.153050490883588,
+                "absolute_error_area": 0.37237026647966354,
+                "relative_error": 0.03667570320998741,
+                "mae": 0.0020861079354602997,
+                "real_mean": 0.05687983468282122,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.19334057159448695,
+                "absolute_error_area": 0.031489686528840204,
+                "relative_error": 0.16287159114687402,
+                "mae": 0.0001764128096853793,
+                "real_mean": 0.0010831404571119718,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 178.628293848
+          },
+          "reward_reconstruction": {
+            "real_windows": 119,
+            "sim_windows": 121,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 2.6645352591003757e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 11,
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "copy_duration_ms_median": 233.729063,
+          "copy_duration_ms_p95": 730.4300945,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 11,
+          "distinct_successful_requests": 11,
+          "cost_ms_median": 236.52526952950046,
+          "cost_ms_p95": 493.8507756357439,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT4-M",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 128,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 177.277909511,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5226.0,
+              "absolute_error_area": 343.5,
+              "relative_error": 0.06572904707233065,
+              "mae": 1.9406779661016949
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 4.5,
+                "relative_error": 3.0,
+                "mae": 0.025423728813559324,
+                "real_mean_waiting": 0.00847457627118644,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.002250982021827103,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0030237367291004965,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002624001899729884,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.02098904686989819,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 78.98769016910742,
+                "absolute_error_area": 70.5737485080092,
+                "relative_error": 0.893477810997074,
+                "mae": 0.3987217429831028,
+                "real_mean": 0.4462581365486295,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0439453125,
+                "relative_error": 3.0,
+                "mae": 0.00024827860169491524,
+                "real_mean": 8.275953389830508e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 24.946002805049083,
+                "absolute_error_area": 3.7189691444600275,
+                "relative_error": 0.1490807635004076,
+                "mae": 0.02101112510994366,
+                "real_mean": 0.14093786895507956,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 3.7114652720596943,
+                "absolute_error_area": 1.0620927817726304,
+                "relative_error": 0.28616535624573347,
+                "mae": 0.006000524190805822,
+                "real_mean": 0.02096873035061974,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 177.277909511
+          },
+          "reward_reconstruction": {
+            "real_windows": 128,
+            "sim_windows": 120,
+            "real_return_sum_error": 0.0,
+            "sim_return_sum_error": 5.329070518200751e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 120,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 177.774149636,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4945.5,
+              "absolute_error_area": 72.0,
+              "relative_error": 0.014558689717925387,
+              "mae": 0.4067796610169492
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.00847457627118644,
+                "real_mean_waiting": 0.00847457627118644,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 4.5,
+                "relative_error": 3.0,
+                "mae": 0.025423728813559324,
+                "real_mean_waiting": 0.00847457627118644,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0024132506159280473,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002212393758595783,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.003978548883413972,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.00476020857450998,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 74.45513199887793,
+                "absolute_error_area": 65.94764938399904,
+                "relative_error": 0.8857367868878789,
+                "mae": 0.3725855897401075,
+                "real_mean": 0.4206504632704968,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.029296875,
+                "absolute_error_area": 0.05859375,
+                "relative_error": 2.0,
+                "mae": 0.0003310381355932203,
+                "real_mean": 0.00016551906779661016,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 11.220371669004207,
+                "absolute_error_area": 0.7247545582047685,
+                "relative_error": 0.06459274073842595,
+                "mae": 0.004094658520930896,
+                "real_mean": 0.0633919303333571,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.34933695042442114,
+                "absolute_error_area": 0.07045072550705571,
+                "relative_error": 0.2016698360178125,
+                "mae": 0.0003980266977799758,
+                "real_mean": 0.001973655087143622,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 177.774149636
+          },
+          "reward_reconstruction": {
+            "real_windows": 119,
+            "sim_windows": 121,
+            "real_return_sum_error": 1.4210854715202004e-14,
+            "sim_return_sum_error": 1.7763568394002505e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 20,
+          "successful": 20,
+          "distinct_successful_requests": 20,
+          "copy_duration_ms_median": 219.01734199999999,
+          "copy_duration_ms_p95": 747.1703160999999,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 20,
+          "distinct_successful_requests": 20,
+          "cost_ms_median": 228.47862088279595,
+          "cost_ms_p95": 599.4761024630159,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "HOT4-H",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 115,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 99,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 146.675102769,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5461.5,
+              "absolute_error_area": 645.0,
+              "relative_error": 0.1180994232353749,
+              "mae": 4.43298969072165
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.0036229921582080033,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002045004543785846,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0013204061121442456,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.05788602620350141,
+                "gate_passed": false
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 82.66710173382168,
+                "absolute_error_area": 74.31424061126137,
+                "relative_error": 0.8989578569059365,
+                "mae": 0.510750794579116,
+                "real_mean": 0.5681587748028982,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean": 0.0,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 30.81995091164096,
+                "absolute_error_area": 8.431276297335202,
+                "relative_error": 0.27356553297269,
+                "mae": 0.057946916132887986,
+                "real_mean": 0.21182096846488632,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": false
+              },
+              "B_star": {
+                "real_area": 7.752357158706705,
+                "absolute_error_area": 3.934777358502423,
+                "relative_error": 0.5075588337778346,
+                "mae": 0.02704314335740497,
+                "real_mean": 0.05328080521447907,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 146.675102769
+          },
+          "reward_reconstruction": {
+            "real_windows": 114,
+            "sim_windows": 99,
+            "real_return_sum_error": 2.842170943040401e-14,
+            "sim_return_sum_error": 1.7763568394002505e-15,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 102,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 100,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 148.010342827,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 5061.0,
+              "absolute_error_area": 189.0,
+              "relative_error": 0.03734439834024896,
+              "mae": 1.2857142857142858
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.01020408163265306,
+                "real_mean_waiting": 0.01020408163265306,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.004408067955728702,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.005486257550305585,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.004565328758473618,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.016677984678985427,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 76.2478827659896,
+                "absolute_error_area": 67.73339209328182,
+                "relative_error": 0.8883314478535833,
+                "mae": 0.46077137478423014,
+                "real_mean": 0.5186930800407455,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": 1.0,
+                "mae": 9.964923469387755e-05,
+                "real_mean": 9.964923469387755e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 13.853962131837307,
+                "absolute_error_area": 2.0818723702664794,
+                "relative_error": 0.1502727054148792,
+                "mae": 0.014162397076642717,
+                "real_mean": 0.09424464035263475,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.9357108089660897,
+                "absolute_error_area": 0.3606608398700176,
+                "relative_error": 0.3854404976560317,
+                "mae": 0.0024534751011565823,
+                "real_mean": 0.006365379652830542,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 148.010342827
+          },
+          "reward_reconstruction": {
+            "real_windows": 102,
+            "sim_windows": 100,
+            "real_return_sum_error": 1.4210854715202004e-14,
+            "sim_return_sum_error": 8.881784197001252e-16,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 29,
+          "successful": 29,
+          "distinct_successful_requests": 29,
+          "copy_duration_ms_median": 236.794575,
+          "copy_duration_ms_p95": 802.5808961999999,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 1,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 30,
+          "distinct_successful_requests": 29,
+          "cost_ms_median": 250.05377832389502,
+          "cost_ms_p95": 623.1151696677923,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    },
+    {
+      "environment_id": "NATIVE",
+      "status": "analyzed",
+      "policies": {
+        "Stay": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 118,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 175.865347581,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4941.0,
+              "absolute_error_area": 90.0,
+              "relative_error": 0.018214936247723135,
+              "mae": 0.5128205128205128
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.008547008547008548,
+                "real_mean_waiting": 0.008547008547008548,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.004346849881000493,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002611502786634134,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.002783141487169506,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0033709042465609874,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 74.65885237158834,
+                "absolute_error_area": 66.19559135681155,
+                "relative_error": 0.8866408905851664,
+                "mae": 0.3771828567339689,
+                "real_mean": 0.42540656621987655,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": 1.0,
+                "mae": 8.346688034188034e-05,
+                "real_mean": 8.346688034188034e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 8.577489481065918,
+                "absolute_error_area": 0.4014726507713885,
+                "relative_error": 0.04680537955279402,
+                "mae": 0.0022875934516888236,
+                "real_mean": 0.04887458393769753,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.06063537935174844,
+                "absolute_error_area": 0.030715919424563448,
+                "relative_error": 0.5065676137091364,
+                "mae": 0.00017501948390064644,
+                "real_mean": 0.00034550073704699965,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 175.865347581
+          },
+          "reward_reconstruction": {
+            "real_windows": 117,
+            "sim_windows": 121,
+            "real_return_sum_error": 1.7763568394002505e-14,
+            "sim_return_sum_error": 8.881784197001252e-16,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        },
+        "Balanced": {
+          "request_and_audit": {
+            "real_request_count": 48,
+            "sim_request_count": 48,
+            "real_unique_request_ids": 48,
+            "sim_unique_request_ids": 48,
+            "real_terminal_count": 48,
+            "sim_terminal_count": 48,
+            "real_audit_status": "passed",
+            "sim_audit_status": "passed",
+            "real_route_audit_passed": true,
+            "sim_route_audit_passed": true
+          },
+          "action_mask": {
+            "real": {
+              "decision_count": 117,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            },
+            "simulated": {
+              "decision_count": 121,
+              "action_count": 13,
+              "invalid_mask_or_action_rows": 0,
+              "sample_bad_rows": []
+            }
+          },
+          "curves": {
+            "sample_step_sec": 1.5,
+            "overlap_horizon_sec": 175.624485622,
+            "alignment": "each trace relative to its own earliest sent_ns",
+            "outstanding": {
+              "real_area": 4962.0,
+              "absolute_error_area": 90.0,
+              "relative_error": 0.018137847642079808,
+              "mae": 0.5128205128205128
+            },
+            "per_instance_waiting": [
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 1.5,
+                "absolute_error_area": 1.5,
+                "relative_error": 1.0,
+                "mae": 0.008547008547008548,
+                "real_mean_waiting": 0.008547008547008548,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              },
+              {
+                "real_area": 0.0,
+                "absolute_error_area": 0.0,
+                "relative_error": null,
+                "mae": 0.0,
+                "real_mean_waiting": 0.0,
+                "acceptance_metric": "MAE<=1 request",
+                "gate_passed": true
+              }
+            ],
+            "per_instance_kv_fraction": [
+              {
+                "mae": 0.00426701792726311,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.00370819425110143,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.003365914749452401,
+                "gate_passed": true
+              },
+              {
+                "mae": 0.0032292025286771338,
+                "gate_passed": true
+              }
+            ],
+            "reward_pressure_curves": {
+              "D": {
+                "real_area": 74.96128892638804,
+                "absolute_error_area": 66.49802791161117,
+                "relative_error": 0.8870982458280863,
+                "mae": 0.37890614194650246,
+                "real_mean": 0.42712985143241045,
+                "acceptance_metric": "normalized_area_error<=20%",
+                "gate_passed": false
+              },
+              "Q": {
+                "real_area": 0.0146484375,
+                "absolute_error_area": 0.0146484375,
+                "relative_error": 1.0,
+                "mae": 8.346688034188034e-05,
+                "real_mean": 8.346688034188034e-05,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "H": {
+                "real_area": 8.568723702664794,
+                "absolute_error_area": 0.4603786816269286,
+                "relative_error": 0.05372780096570917,
+                "mae": 0.00262324035115059,
+                "real_mean": 0.04882463648242048,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              },
+              "B_star": {
+                "real_area": 0.05891789613346343,
+                "absolute_error_area": 0.02374132718068913,
+                "relative_error": 0.4029561260454586,
+                "mae": 0.0001352782175537842,
+                "real_mean": 0.00033571450788298256,
+                "acceptance_metric": "MAE<=0.05",
+                "gate_passed": true
+              }
+            },
+            "reward_curve_horizon_sec": 175.624485622
+          },
+          "reward_reconstruction": {
+            "real_windows": 117,
+            "sim_windows": 121,
+            "real_return_sum_error": 7.105427357601002e-15,
+            "sim_return_sum_error": 8.881784197001252e-16,
+            "real_terminal_windows": 1,
+            "sim_terminal_windows": 1,
+            "real_max_gamma_identity_error": 0.0,
+            "sim_max_gamma_identity_error": 0.0,
+            "real_max_lambda_identity_error": 0.0,
+            "sim_max_lambda_identity_error": 0.0
+          }
+        }
+      },
+      "migration_comparison": {
+        "real": {
+          "attempt_receipts": 0,
+          "successful": 0,
+          "distinct_successful_requests": 0,
+          "copy_duration_ms_median": null,
+          "copy_duration_ms_p95": null,
+          "service_pause_status": "unavailable; copy duration is not a measured service pause",
+          "successful_count_error": 0,
+          "distinct_request_coverage_error": 0
+        },
+        "simulated": {
+          "successful": 0,
+          "distinct_successful_requests": 0,
+          "cost_ms_median": null,
+          "cost_ms_p95": null,
+          "service_pause_status": "simulated cost stage, not validated as measured service pause"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "qwen2-paired-run-protocol-v1",
+  "run_dir": "benchmark/results/migration_opportunity_comparison_20261103_qwen2_15b_q3_3length_routeauditfix",
+  "cases": [
+    "i512_o512_q3_s192_b4096",
+    "i512_o1024_q3_s192_b4096",
+    "i1024_o1024_q3_s192_b4096"
+  ],
+  "policies": [
+    "Stay",
+    "Balanced-L",
+    "Balanced-M",
+    "Balanced-H"
+  ],
+  "seeds": [
+    91001,
+    91002,
+    91003
+  ],
+  "paired_episode_count": 36,
+  "threshold_evidence": "three audited Stay scans in this run dir, one per scenario, seed 91000",
+  "horizons": {
+    "arrival_sec": 120,
+    "drain_sec": 480,
+    "score_sec": 600,
+    "cleanup_sec": 60,
+    "warmup_arrival_sec": 2,
+    "warmup_drain_sec": 8
+  },
+  "wrapper": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/migration_opportunity_comparison_20261103_qwen2_15b_q3_3length_routeauditfix/run_extended_window.py",
+  "wrapper_sha256": "1b6ab2f8bf8391263647ff2ca2d4b4812a63d53281430974cec0c6e6c9936137",
+  "source_manifest_created_after_route_audit_fix": true,
+  "route_audit_fix_sidecar": "../migration_opportunity_comparison_20261103_qwen2_15b_q3_3length/configs/full_run_route_audit_fix.json",
+  "prior_failed_attempt_preserved": "../migration_opportunity_comparison_20261103_qwen2_15b_q3_3length/raw_runs/scan_1793699673340015538_0/runs/5b8d574db246180364e1"
+}

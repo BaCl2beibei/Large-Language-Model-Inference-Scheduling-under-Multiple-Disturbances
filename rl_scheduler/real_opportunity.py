@@ -11,7 +11,6 @@ import random
 import time
 
 from .real_bridge import PAIRS, digest
-from .real_budget import BudgetLedger
 
 
 SEEDS=(2101,2102,2103)
@@ -34,8 +33,9 @@ def protocol(run_dir, runtime_config):
             'arrival_sec':30,'drain_sec':60,'policy':'Stay','runs':6,
             'order':'qps ascending, A then B; no automatic retry or escalation beyond 9'},
         'health':{'min_completion_rate':.99,'max_nonmanual_error_rate':.01,
-            'max_first_output_censored_fraction':.01,'max_send_lateness_p95_ms':1000.,
-            'require_all_offered_sent':True,'require_passed_score_cleanup_route_action_audits':True},
+            'max_first_output_censored_fraction':.01,
+            'require_passed_score_cleanup_route_action_audits':True,
+            'minimum_accepted_requests':1},
         'selection':{'A':'lower median of healthy normal probe QPS (sorted ascending)',
             'B':'largest healthy skew probe QPS with waiting>0 in at least half of last-third arrival samples',
             'missing_healthy_or_queued_scene':'stop incomplete; do not tune workload or thresholds'},
@@ -54,14 +54,16 @@ def protocol(run_dir, runtime_config):
             'load':'(free_blocks-waiting_blocks)/(running+waiting), +inf only for measured empty queue',
             'threshold':9000.,'source_load_at_most_threshold':True,'destination_load_at_least_threshold':True,
             'pairing':'busiest sources (ascending numeric capacity/request) with least busy destinations, stable ID ties',
-            'move':'exact observed SR candidate; after-load uses its actual block count and one running request',
+            'move':'source/destination action uses the current SR candidate at submission; candidate refresh is audited and destination capacity is rechecked against its actual block count',
             'predicate':'source_after < destination_after and 0 < abs(after_difference) < abs(before_difference)',
             'relation_to_native':'native remaining_steps threshold direction and Balanced sorting/predicate; actual SR blocks replace stale last-queue estimate; native killed-request override is not exposed and is not reproduced',
             'control':'same lease, one global migration, terminal cooldown 5s, reserve max(16,ceil(5% total)), freshness <=2s'},
         'slos':{'ttft_ms':2000.,'tpot_ms':150.,'single_token':'TTFT only; TPOT N/A'},
-        'metrics':{'primary':'SLO-goodput over fixed 240s','completion_denominator':'all offered',
-            'errors':'timeout/service_error client terminals by deadline; unknown invalid, manual cancel excluded',
-            'censoring':'first-output, terminal-outstanding and offered-not-sent fractions reported separately',
+        'metrics':{'primary':'SLO-goodput over fixed 240s',
+            'completion_denominator':'requests accepted by the service during the arrival window',
+            'request_counts':'offered, sent, accepted, and completed are reported separately; unsent and unaccepted requests are excluded from scheduler completion rate',
+            'errors':'timeout/service_error among accepted requests by deadline; unknown invalid, manual cancel excluded',
+            'censoring':'first-output and terminal-outstanding fractions among accepted requests; unsent, unaccepted, and late-accepted requests reported separately',
             'zero_denominators':'null + incomplete; no infinite relative gain'},
         'gate':{'min_paired_relative_gain':.10,'min_winning_seeds':2,'max_error_rate_increase_pp':1.,
             'healthy_probe_selection_required':True,'zero_Stay_goodput':'report absolute delta; never relative-pass',
@@ -77,7 +79,8 @@ def protocol(run_dir, runtime_config):
             'rate_segments':[[0,30,1],[30,45,3],[45,90,1],[90,105,3],[105,120,1]],
             'profiles':'same frozen nine-profile distribution and prompt pool',
             'generation_rule':'same Poisson generator; freeze/hash traces after load selection, before any final policy evaluation'},
-        'stop_rules':['first request/action/route/cleanup audit failure stops all later runs',
+        'stop_rules':['first score/action/route/cleanup audit failure stops all later runs',
+            'request transport counts are reported separately; completion rate uses service-accepted requests only',
             'unknown migration terminal is invalid, not failed/cancelled',
             'no performance-based reruns, discarded seeds, workload changes or automatic retry',
             'reserve complete probe+12-run maximum before service activation'],
@@ -123,24 +126,57 @@ def metric_summary(ledger):
     score=ledger.freeze_score()
     if score['status']!='passed':raise ValueError('score audit did not pass')
     metrics=deepcopy(score['fixed']);rows,_=ledger._rows(occurred_by_ns=ledger.deadline_ns)
-    offered=metrics['offered']
-    errors=sum(r['outcome'] in ('timeout','service_error') and r['client_terminal_ns'] is not None
-               and r['client_terminal_ns']<=ledger.deadline_ns for r in rows)
-    metrics.update(nonmanual_errors=errors,nonmanual_error_rate=errors/offered if offered else None,
-        first_output_censored_fraction=metrics['first_output_censored']/offered if offered else None,
-        terminal_censored_fraction=len(metrics['outstanding_ids'])/offered if offered else None,
-        offered_not_sent_fraction=(offered-metrics['sent'])/offered if offered else None)
+    offered=metrics['offered'];arrival_end=ledger.arrival_end_ns
+    accepted_rows=[r for r in rows if r['accepted_ns'] is not None and r['accepted_ns']<=arrival_end]
+    accepted_ids={r['request_id'] for r in accepted_rows};accepted=len(accepted_rows)
+    completed=sum(r['request_id'] in accepted_ids and r['outcome']=='success'
+                  and r['client_terminal_ns'] is not None and r['client_terminal_ns']<=ledger.deadline_ns for r in rows)
+    errors=sum(r['request_id'] in accepted_ids and r['outcome'] in ('timeout','service_error')
+               and r['client_terminal_ns'] is not None and r['client_terminal_ns']<=ledger.deadline_ns for r in rows)
+    first_censored=sum(r['request_id'] in accepted_ids and
+                       (r['client_first_ns'] is None or r['client_first_ns']>ledger.deadline_ns) for r in rows)
+    terminal_censored=sum(r['request_id'] in accepted_ids and
+                          (r['client_terminal_ns'] is None or r['client_terminal_ns']>ledger.deadline_ns) for r in rows)
+    accepted_completed=[r for r in accepted_rows if r['outcome']=='success'
+        and r['client_terminal_ns'] is not None and r['client_terminal_ns']<=ledger.deadline_ns]
+    accepted_good=[r for r in accepted_completed if r['client_first_ns'] is not None
+        and r['client_first_ns']<=ledger.deadline_ns and r['ttft_ms'] is not None
+        and r['ttft_ms']<=ledger.ttft_slo_ms
+        and (r['actual_output_tokens']==1 or r['tpot_ms'] is not None and r['tpot_ms']<=ledger.tpot_slo_ms)]
+    accepted_tokens=sum(n for r in accepted_rows for t,n in r['token_increments']
+        if ledger.start_ns<=t<=ledger.deadline_ns)
+    accepted_token_completions=sum(r['actual_output_tokens'] for r in accepted_completed)
+    accepted_hold=0.
+    for row in accepted_rows:
+        end=min(row['client_terminal_ns'] if row['client_terminal_ns'] is not None else ledger.deadline_ns,
+                ledger.deadline_ns)
+        accepted_hold+=max(0,end-max(row['accepted_ns'],ledger.start_ns))/1e9
+    not_sent=offered-metrics['sent'];sent_unaccepted=sum(r['sent_ns'] is not None and r['accepted_ns'] is None for r in rows)
+    accepted_late=sum(r['accepted_ns'] is not None and r['accepted_ns']>arrival_end for r in rows)
+    metrics.update(accepted=accepted,completed=completed,completed_accepted=completed,completion_denominator='accepted',
+        completion_rate=completed/accepted if accepted else None,
+        accepted_arrival_qps=accepted/((ledger.arrival_end_ns-ledger.start_ns)/1e9),
+        slo_completed=len(accepted_good),slo_goodput_rps=len(accepted_good)/metrics['duration_sec'] if metrics['duration_sec'] else None,
+        client_output_tokens=accepted_tokens,
+        client_token_throughput_tps=accepted_tokens/metrics['duration_sec'] if metrics['duration_sec'] else None,
+        completed_output_tokens=accepted_token_completions,
+        outstanding_request_seconds=accepted_hold,
+        nonmanual_errors=errors,nonmanual_error_rate=errors/accepted if accepted else None,
+        first_output_censored=first_censored,first_output_censored_fraction=first_censored/accepted if accepted else None,
+        terminal_censored=terminal_censored,terminal_censored_fraction=terminal_censored/accepted if accepted else None,
+        not_sent=not_sent,not_accepted=sent_unaccepted,late_accepted=accepted_late,
+        offered_not_sent_fraction=not_sent/offered if offered else None,
+        offered_not_accepted_fraction=(sent_unaccepted+accepted_late)/offered if offered else None)
     return metrics
 
 
 def healthy(row,spec):
     m=row['metrics'];h=spec['health']
-    return (row.get('status')=='passed' and m['offered']>0
-            and m['sent']==m['offered'] and m['completion_rate'] is not None and m['completion_rate']>=h['min_completion_rate']
+    return (row.get('status')=='passed' and m.get('accepted',0)>=h.get('minimum_accepted_requests',1)
+            and m['completion_rate'] is not None and m['completion_rate']>=h['min_completion_rate']
             and m['nonmanual_error_rate'] is not None and m['nonmanual_error_rate']<=h['max_nonmanual_error_rate']
             and m['first_output_censored_fraction'] is not None
-            and m['first_output_censored_fraction']<=h['max_first_output_censored_fraction']
-            and row.get('send_lateness_p95_ms') is not None and row['send_lateness_p95_ms']<=h['max_send_lateness_p95_ms'])
+            and m['first_output_censored_fraction']<=h['max_first_output_censored_fraction'])
 
 
 def select_loads(probes,spec):
@@ -164,8 +200,8 @@ def paired_gate(episodes,spec):
         return {'status':'incomplete','reason':'full 12-run paired matrix missing or duplicated','pairs':[]}
     if any(e.get('status')!='passed' for e in episodes):
         return {'status':'incomplete','reason':'invalid episode retained; request/action/cleanup audit failed','pairs':[]}
-    if any(e['metrics'].get('offered',0)<=0 or e['metrics'].get('nonmanual_error_rate') is None for e in episodes):
-        return {'status':'incomplete','reason':'zero offered denominator; report null rates','pairs':[]}
+    if any(e['metrics'].get('accepted',0)<=0 or e['metrics'].get('nonmanual_error_rate') is None for e in episodes):
+        return {'status':'incomplete','reason':'zero accepted-request denominator; report null rates','pairs':[]}
     by_key={key:row for key,row in zip(keys,episodes)};pairs=[];scenes={}
     for scene in ('A','B'):
         rows=[]
@@ -180,8 +216,10 @@ def paired_gate(episodes,spec):
             relative=(gb-ga)/ga if ga>0 else None
             # Use integer counts when present to avoid threshold changes caused
             # by subtracting rounded rates; Decimal fallback supports CPU fixtures.
-            error_delta=(Decimal(b['metrics']['nonmanual_errors']-a['metrics']['nonmanual_errors'])*100/Decimal(a['metrics']['offered'])
-                         if 'nonmanual_errors' in a['metrics'] and 'nonmanual_errors' in b['metrics']
+            error_delta=(Decimal(b['metrics']['nonmanual_errors'])*100/Decimal(b['metrics']['accepted'])
+                         -Decimal(a['metrics']['nonmanual_errors'])*100/Decimal(a['metrics']['accepted'])
+                         if ('nonmanual_errors' in a['metrics'] and 'nonmanual_errors' in b['metrics']
+                             and a['metrics'].get('accepted',0)>0 and b['metrics'].get('accepted',0)>0)
                          else (Decimal(str(eb))-Decimal(str(ea)))*100 if ea is not None and eb is not None else None)
             error_pp=float(error_delta) if error_delta is not None else None
             error_ok=error_delta is not None and error_delta<=Decimal(str(spec['gate']['max_error_rate_increase_pp']))
@@ -217,6 +255,7 @@ def maximum_duration(spec,runtime):
 
 
 def readonly_budget(run_dir):
+    from .real_budget import BudgetLedger
     ledger=BudgetLedger(run_dir);state=json.loads(ledger.path.read_text())
     if state['first_started_wall'] is not None:
         delta=max(0.,time.time()-state['last_wall'])

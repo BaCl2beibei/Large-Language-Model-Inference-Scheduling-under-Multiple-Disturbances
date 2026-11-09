@@ -1,0 +1,11 @@
+:job_id:01000000
+:actor_name:Llumlet
+Using blocking ray.get inside async actor. This blocks the event loop. Please use `await` on object ref with asyncio.gather if you want to yield execution to the event loop instead.
+NCCL seems unavailable. Please install Cupy following the guide at: https://docs.cupy.dev/en/stable/install.html.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [01:22<00:00, 82.12s/it]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [01:22<00:00, 82.13s/it]
+
+:actor_name:Llumlet(iid=e62a9, instance_type=neutral)
+/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/llumnix/backends/vllm/migration_backend.py:197: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at ../torch/csrc/utils/tensor_numpy.cpp:206.)
+  recv_cache.copy_(torch.from_numpy(src_worker_handle))

@@ -12,6 +12,8 @@
 # limitations under the License.
 
 import time
+import os
+from collections import Counter
 import bisect
 from typing import Dict, List, Optional, Tuple, Deque
 from collections import deque
@@ -67,6 +69,8 @@ class SchedulerLlumnix(Scheduler):
             num_cpu_blocks=self.cache_config.num_cpu_blocks,
             sliding_window=self.cache_config.sliding_window,
             enable_caching=self.cache_config.enable_prefix_caching)
+        self._scan_enabled = os.environ.get("LLUMNIX_SCAN_TELEMETRY") == "1"
+        self.scan_counters = Counter()
         self.pre_alloc_cache_dict: Dict[str, BlockTable] = {}
         self.migrating_out_request_last_stage: Dict[str, SequenceGroupLlumnix] = {}
 
@@ -81,7 +85,11 @@ class SchedulerLlumnix(Scheduler):
         preemption_mode: Optional[PreemptionMode] = None,
     ) -> PreemptionMode:
         seq_group.last_preemption_time = time.time()
-        return super()._preempt(seq_group, blocks_to_swap_out, preemption_mode)
+        actual_mode = super()._preempt(seq_group, blocks_to_swap_out, preemption_mode)
+        if getattr(self, "_scan_enabled", False):
+            self.scan_counters["preemptions"] += 1
+            self.scan_counters["preemption_" + str(actual_mode)] += 1
+        return actual_mode
 
     def _get_num_killed_requests(self) -> int:
         cnt = len(self.swapped)
@@ -313,6 +321,10 @@ class SchedulerLlumnix(Scheduler):
         seq_group_metadata_list, scheduler_outputs, allow_async_output_proc = super().schedule()
         instance_info = self._get_instance_info([scheduled_seq_group.seq_group
                                                  for scheduled_seq_group in scheduler_outputs.scheduled_seq_groups])
+        if getattr(self, "_scan_enabled", False):
+            for group in scheduler_outputs.scheduled_seq_groups:
+                kind = "prefill_tokens" if group.seq_group.is_prefill() else "decode_tokens"
+                self.scan_counters[kind] += int(group.token_chunk_size)
         self.update_instance_info_callback(instance_info)
         for seq_group in self.waiting:
             seq_group.try_schedule_times += 1
@@ -453,6 +465,41 @@ class SchedulerLlumnix(Scheduler):
                 )
                 self._causal_last_idle_sample_ns = schedule_start_ns
         return seq_group_metadata_list, scheduler_outputs, allow_async_output_proc
+
+    def _can_append_slots(self, seq_group, enable_chunking):
+        result = super()._can_append_slots(seq_group, enable_chunking)
+        if getattr(self, "_scan_enabled", False) and not result:
+            reason = "artificial_or_append_slot_unavailable" if self.enable_artificial_preemption else "decode_append_slot_unavailable"
+            self.scan_counters[reason] += 1
+        return result
+
+    def _schedule_prefills(self, budget, curr_loras, enable_chunking=False):
+        if not getattr(self, "_scan_enabled", False):
+            return super()._schedule_prefills(budget, curr_loras, enable_chunking)
+        allocate = self.block_manager.can_allocate
+        can_schedule = budget.can_schedule
+        def observed_allocate(*args, **kwargs):
+            result = allocate(*args, **kwargs)
+            if result == AllocStatus.LATER:
+                self.scan_counters["kv_allocation_later"] += 1
+            elif result == AllocStatus.NEVER:
+                self.scan_counters["kv_allocation_never"] += 1
+            return result
+        def observed_budget(*, num_new_tokens, num_new_seqs):
+            result = can_schedule(num_new_tokens=num_new_tokens, num_new_seqs=num_new_seqs)
+            if not result:
+                if budget.num_batched_tokens + num_new_tokens > budget.token_budget:
+                    self.scan_counters["token_budget_blocked"] += 1
+                if budget.num_curr_seqs + num_new_seqs > budget.max_num_seqs:
+                    self.scan_counters["sequence_limit_blocked"] += 1
+            return result
+        self.block_manager.can_allocate = observed_allocate
+        budget.can_schedule = observed_budget
+        try:
+            return super()._schedule_prefills(budget, curr_loras, enable_chunking)
+        finally:
+            self.block_manager.can_allocate = allocate
+            budget.can_schedule = can_schedule
 
     def _schedule(self):
         # A running request removed for its final migration stage still owns a

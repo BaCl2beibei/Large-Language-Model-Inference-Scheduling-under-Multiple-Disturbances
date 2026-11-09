@@ -1,0 +1,18 @@
+{
+  "schema": "paired-experiment-window-override-v1",
+  "arrival_sec": 120.0,
+  "drain_sec": 480.0,
+  "scoring_window_sec": 600.0,
+  "warmup_horizon_sec": {
+    "arrival": 2,
+    "drain": 8
+  },
+  "applies_to": "all measured Stay and Balanced scan/paired episodes in the full 36-episode run",
+  "request_trace_generation_arrival_sec": 120.0,
+  "reason": "The prior 512/1024 QPS3 Stay attempt completed 203/348 requests by 240 seconds and ended with 145 outstanding; 8 manual cancellation outcomes were unknown, so the strict episode audit failed. Extend a common drain for every policy and scene; do not weaken or bypass audit checks.",
+  "prior_failed_evidence": "benchmark/results/migration_opportunity_scan_20261103_qwen2_15b_3x2/i512_o1024_q3_s192_b4096/raw_runs/scan_1793692260147489841_0/runs/5b8d574db246180364e1/episode.json",
+  "prior_episode_sha256": "229e6f8a248481c4537b762fb0ed610c8147ca53adcea5d61fbacb4a96e0ed24",
+  "wrapper": "run_extended_window.py",
+  "wrapper_sha256": "1b6ab2f8bf8391263647ff2ca2d4b4812a63d53281430974cec0c6e6c9936137",
+  "source_change": "No source code changes; wrapper passes RealEnvConfig(arrival_sec=120, drain_sec=480) to the existing audited episode runner."
+}

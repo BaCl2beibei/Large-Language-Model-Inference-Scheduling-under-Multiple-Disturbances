@@ -94,22 +94,17 @@ on the target four-GPU setup. The fit does not establish that the simulator
 predicts real workload outcomes; compare held-out runs before using it for
 claims.
 
-The calibration workload uses QPS `{9, 12, 15, 18, 21}` and a balanced cycle
-through all nine combinations of prompt/response lengths `{256, 512, 1048}`.
-It matches the target run's four RTX 3060 GPUs, four Qwen2-0.5B Llumnix
-instances, 64 sequences per instance, 16-token KV blocks, eager-mode vLLM, and
-2112-token model limit. `collect_ppo_calibration.py` holds seed 404 out and
-fits only from seeds 101, 202, and 303. PPO training uses the CUDA-enabled
-checkout environment.
+The retired calibration workload used QPS `{9, 12, 15, 18, 21}` and a balanced
+cycle through all nine prompt/response length combinations `{256, 512, 1048}`
+on Qwen2-0.5B. Its collector, trainer, evaluator, and policy implementation
+have been removed. The current Qwen2-1.5B Q15-B workflow and supported commands
+are documented in `ppo_entrypoints.md`.
 
 ## Training and evaluation outputs
 
-`train_ppo.py` uses GAE and the clipped PPO objective, logs actor/critic loss,
-entropy, KL, Stay rate, valid migrations, migration completion, queue pressure,
-observed TTFT/TPOT, KV usage, and imbalance, and saves the best fixed-validation
-checkpoint. `evaluate.py` runs fixed low/medium/high seeds using deterministic
-actions and writes full per-request and migration episode traces, with a Stay
-baseline by default. Reward weights are overrideable through YAML for ablation.
+The retired `train_ppo.py` path and its evaluator have been removed. The current
+PPO implementation in `cohort_ppo.py` saves protocol-bound checkpoints; the
+supported Q15-B commands are documented in `ppo_entrypoints.md`.
 
 ## Limitations to retain in reports
 

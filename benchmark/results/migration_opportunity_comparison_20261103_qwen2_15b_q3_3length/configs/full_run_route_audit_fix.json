@@ -1,0 +1,29 @@
+{
+  "schema": "route-audit-late-acceptance-fix-v1",
+  "observed_failure": {
+    "attempt": "raw_runs/scan_1793699673340015538_0/runs/5b8d574db246180364e1",
+    "episode_status": "passed",
+    "causal_event_audit_status": "passed",
+    "reason": "route_audit treated a request accepted just after arrival_end as unexpected, although its fixed route matched the frozen trace",
+    "late_request_id": "r000347",
+    "scheduled_arrival_sec": 119.876,
+    "client_send_lateness_ms": 2.045,
+    "service_acceptance_after_arrival_end_ms": 1420.011,
+    "observed_route_matches_frozen_route": true,
+    "accepted_admitted_declared_route_counts": [348, 348, 348],
+    "all_routes_match_when_late_acceptance_is_included": true
+  },
+  "change": {
+    "file": "rl_scheduler/real_opportunity_runner.py",
+    "pre_change_sha256": "7f1bfbe3d36251caaca3fe85d7f200f5a013a27da758706417bbd0fc7732373a",
+    "post_change_sha256": "6d92bc7c66b9fe6ef0f63d9aa3aa1d61487c9d85914e5541942dcf8655baacc4",
+    "route_integrity_cohort": "all requests accepted by the service, including late acceptances",
+    "scoring_cohort": "unchanged; acceptance must still occur by arrival_end",
+    "submission_audit": "unchanged; late acceptances remain separately reported"
+  },
+  "verification": {
+    "method": "reconciled the saved route trace against all 348 admission and declared-route events",
+    "tests_added_or_run": false,
+    "rerun_required": true
+  }
+}

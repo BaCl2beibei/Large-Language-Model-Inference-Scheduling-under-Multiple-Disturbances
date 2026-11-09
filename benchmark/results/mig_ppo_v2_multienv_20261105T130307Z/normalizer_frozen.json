@@ -1,0 +1,82 @@
+{
+  "schema": "mig-ppo-v2",
+  "definition": {
+    "schema": "mig-ppo-v2",
+    "instance_features": [
+      "running",
+      "waiting",
+      "head_wait_sec",
+      "used_fraction",
+      "candidate_blocks",
+      "last_step_ms",
+      "tokens_per_sec_5s",
+      "waiting_slope_5s",
+      "used_fraction_slope_5s"
+    ],
+    "pair_features": [
+      "waiting_difference",
+      "remaining_kv_blocks_difference"
+    ],
+    "global_features": [
+      "remaining_arrival_sec",
+      "remaining_total_sec",
+      "outstanding",
+      "overdue_first",
+      "output_stalled",
+      "client_tokens_per_sec_5s",
+      "busy",
+      "cooldown_remaining_sec"
+    ],
+    "instance_scales": [
+      64.0,
+      64.0,
+      2.0,
+      1.0,
+      128.0,
+      100.0,
+      128.0,
+      16.0,
+      1.0
+    ],
+    "pair_scales": [
+      64.0,
+      8192.0
+    ],
+    "global_scales": [
+      120.0,
+      3600.0,
+      64.0,
+      64.0,
+      64.0,
+      512.0,
+      1.0,
+      5.0
+    ],
+    "missing_bits_appended": true,
+    "fitted_during_training": false,
+    "excluded": [
+      "arrival_phase",
+      "drain_phase",
+      "scenario_id",
+      "winner_label",
+      "future_arrivals",
+      "output_token_budget",
+      "future_request_length",
+      "future_hotspot",
+      "tail_identity"
+    ]
+  },
+  "instance_feature_count": 9,
+  "pair_feature_count": 2,
+  "global_feature_count": 8,
+  "action_count": 13,
+  "instance_count": 4,
+  "normalizer_sha256": "09e344323939189b7d5ec0428ffb5445712c0d672aece6a20d6e9131476bad1f",
+  "reward_scale_reference": {
+    "n_ref": 64.0,
+    "q_ref": 64.0,
+    "q_max_ref": 64.0,
+    "failure_ref": 64.0
+  },
+  "request_count_scaling": "none"
+}

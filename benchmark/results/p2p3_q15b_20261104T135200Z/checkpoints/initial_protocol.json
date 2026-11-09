@@ -1,0 +1,219 @@
+{
+  "schema": "q15b-p2p3-v1",
+  "created_utc": "2026-11-04T13:51:21.310615+00:00",
+  "cpu_started_wall": 1793800280.0542517,
+  "accepted_decision": "rl_scheduler/docs/research_implementation_plan_v2.md opening Q15-B decision",
+  "model": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/model/Qwen/Qwen2-1.5B",
+  "sources": [
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z/runs/05_Q15-B_141103_Stay",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z",
+      "episode_id": "05_Q15-B_141103_Stay",
+      "split": "fit",
+      "candidate": "Q15-B",
+      "seed": 141103,
+      "policy": "Stay"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z/runs/06_Q15-B_141103_Balanced",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z",
+      "episode_id": "06_Q15-B_141103_Balanced",
+      "split": "fit",
+      "candidate": "Q15-B",
+      "seed": 141103,
+      "policy": "Balanced"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z/runs/07_Q15-B_141104_Balanced",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z",
+      "episode_id": "07_Q15-B_141104_Balanced",
+      "split": "development_validation_unpaired",
+      "candidate": "Q15-B",
+      "seed": 141104,
+      "policy": "Balanced"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_replay_20261104T124801Z/runs/01_Q15-B_141104_Balanced",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_replay_20261104T124801Z",
+      "episode_id": "01_Q15-B_141104_Balanced",
+      "split": "development_validation",
+      "candidate": "Q15-B",
+      "seed": 141104,
+      "policy": "Balanced"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_replay_20261104T124801Z/runs/02_Q15-B_141104_Stay",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_replay_20261104T124801Z",
+      "episode_id": "02_Q15-B_141104_Stay",
+      "split": "development_validation",
+      "candidate": "Q15-B",
+      "seed": 141104,
+      "policy": "Stay"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z/runs/01_Q15-A_141103_Stay-A",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z",
+      "episode_id": "01_Q15-A_141103_Stay-A",
+      "split": "negative_diagnostic",
+      "candidate": "Q15-A",
+      "seed": 141103,
+      "policy": "Stay"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z/runs/03_Q15-A_141103_Stay-B",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z",
+      "episode_id": "03_Q15-A_141103_Stay-B",
+      "split": "negative_diagnostic",
+      "candidate": "Q15-A",
+      "seed": 141103,
+      "policy": "Stay"
+    },
+    {
+      "path": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z/runs/04_Q15-A_141103_Balanced",
+      "run": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_20261104T104200Z",
+      "episode_id": "04_Q15-A_141103_Balanced",
+      "split": "negative_diagnostic",
+      "candidate": "Q15-A",
+      "seed": 141103,
+      "policy": "Balanced"
+    }
+  ],
+  "T_ref_sec": 150.42516094588282,
+  "T_ref_source": "/workspace/Large-Language-Model-Inference-Scheduling-under-Multiple-Disturbances-upstream/benchmark/results/p0p1_fast_replay_20261104T124801Z/runs/02_Q15-B_141104_Stay/requests.jsonl",
+  "units": {
+    "latency": "seconds in reward, milliseconds in metrics",
+    "blocks": "native KV blocks",
+    "clock": "CLOCK_MONOTONIC nanoseconds"
+  },
+  "trace_seeds": [
+    151101,
+    151102
+  ],
+  "policy_seed": 151001,
+  "policy_version": "q15b-p2-init-v1",
+  "normalizer": {
+    "schema": "causal-full-cohort-v1",
+    "instance_features": [
+      "running",
+      "waiting",
+      "head_wait_sec",
+      "used_fraction",
+      "free_fraction",
+      "candidate_length",
+      "candidate_blocks",
+      "last_step_ms",
+      "state_age_sec",
+      "tokens_per_sec_5s",
+      "waiting_slope_5s",
+      "used_fraction_slope_5s"
+    ],
+    "pair_features": [
+      "running_difference",
+      "used_fraction_difference",
+      "destination_available_blocks"
+    ],
+    "global_features": [
+      "outstanding",
+      "client_tokens_per_sec_5s",
+      "busy",
+      "cooldown_remaining_sec",
+      "healthy_instances",
+      "elapsed_sec"
+    ],
+    "instance_scales": [
+      64.0,
+      64.0,
+      2.0,
+      1.0,
+      1.0,
+      2048.0,
+      128.0,
+      100.0,
+      2.0,
+      128.0,
+      16.0,
+      1.0
+    ],
+    "pair_scales": [
+      64.0,
+      1.0,
+      128.0
+    ],
+    "global_scales": [
+      64.0,
+      512.0,
+      1.0,
+      5.0,
+      4.0,
+      150.42516094588282
+    ],
+    "missing_bits_appended": true,
+    "fitted_during_training": false,
+    "excluded": [
+      "arrival_phase",
+      "drain_phase",
+      "remaining_arrival_sec",
+      "remaining_total_sec",
+      "scenario_id",
+      "winner_label",
+      "future_arrivals",
+      "output_token_budget",
+      "future_request_length",
+      "future_hotspot",
+      "tail_identity"
+    ]
+  },
+  "settings": {
+    "actor_sample_mode": "choice_only",
+    "update_epochs": 2,
+    "minibatch_size": 64,
+    "clip_epsilon": 0.2,
+    "value_coefficient": 0.5,
+    "entropy_coefficient": 0.01,
+    "max_grad_norm": 0.5,
+    "target_kl": 0.03,
+    "learning_rate": 0.0003
+  },
+  "budget": {
+    "cpu_soft_sec": 5400,
+    "max_model_revisions": 2,
+    "max_real_attempts": 2,
+    "max_real_updates": 1,
+    "gpu_target_sec": 1800,
+    "gpu_hard_sec": 2100,
+    "startup_sec": 480,
+    "cleanup_reserve_sec": 480
+  },
+  "source_hashes": {
+    "benchmark/results/p0p1_fast_replay_20261104T124801Z/plan.json": "d28effa98c0ad75f3af02d44e0910b7d3f1fb167d4909720d099bac3af846c0b",
+    "benchmark/results/p0p1_fast_replay_20261104T124801Z/runtime_config.yaml": "f7c6711f9460c944172b9fdb19d2726001b19e5e36e6334b0e4b24883ac3cee4",
+    "benchmark/results/p0p1_fast_replay_20261104T124801Z/comparison.json": "e2d422d213a5ea2c59054ad07d807e13449651f85da31aa8c90603a06614ee4d",
+    "rl_scheduler/docs/p2p3_q15b_execution_prompt.md": "d1d7f6b0909698071628818785fd721edba5ad5c5375a2a02295d8ffe754a1f1"
+  },
+  "git_commit": "3a61ee34f0a26d7918dd1a84ca4ed42ee3ba30bd",
+  "initial_diff_summary": " rl_scheduler/cohort_ppo.py | 9 ++++++++-\n 1 file changed, 8 insertions(+), 1 deletion(-)\n",
+  "initial_bias_rule": "retain log(12) unless mean conditional migration probability <.01; only then explicit bias bisection target .45 within preregistered .3-.6; no real-time forced actions",
+  "p3_thresholds": {
+    "latency_error": 0.2,
+    "outstanding_curve_error": 0.2,
+    "migration_count_error_fraction": 0.2,
+    "migration_count_error_minimum": 5,
+    "migration_median_error": 0.2,
+    "migration_p95_error": 0.3,
+    "gain_percentage_point_error": 0.1
+  },
+  "no_extra_baselines": true,
+  "initial_exploration": {
+    "original_stay_bias": 2.4849066734313965,
+    "frozen_stay_bias": 2.4849066734313965,
+    "original_conditional_move_probability": 0.29792353858374876,
+    "frozen_conditional_move_probability": 0.29792356491088867,
+    "eligible_observations": 283,
+    "changed": false,
+    "scope": "offline distribution diagnostic only; historical records never PPO samples"
+  },
+  "trace_hashes": {
+    "151101": "9d6ce9ba7b2bb072196237b9ba64ee2fee15cb8270253320a2f8698993cf51eb",
+    "151102": "b7b59340728d0b32ae36fbe3fd5a3fc4724882b8af365bb4d8555a57c14cf534"
+  }
+}

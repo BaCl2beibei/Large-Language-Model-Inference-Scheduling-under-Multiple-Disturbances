@@ -100,7 +100,7 @@ class LiveEpisodeIO:
         snapshot=await self.bridge.snapshot()
         assert_idle(snapshot)
         self.mapping=snapshot['mapping']
-        raw=await self.bridge.call('flush')
+        raw=await self.bridge.flush()
         atomic_json(self.directory/'initial_flush.json',raw)
         self.roles=role_inventory(raw)
         self.acks=list(flatten_acks(raw))
@@ -181,7 +181,7 @@ class LiveEpisodeIO:
                 await asyncio.sleep(min(.1,max(0.,(deadline_ns-time.monotonic_ns())/1e9)))
 
     async def flush(self,ledger):
-        raw=await self.bridge.call('flush')
+        raw=await self.bridge.flush()
         self.checkpoint_history.append(raw)
         atomic_json(self.directory/'flush_history.json',self.checkpoint_history)
         if role_inventory(raw)!=self.roles:

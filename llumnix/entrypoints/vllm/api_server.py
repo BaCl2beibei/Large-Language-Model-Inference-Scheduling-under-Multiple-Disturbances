@@ -74,18 +74,34 @@ async def _real_metrics_abort_confirmed(request_id: str) -> bool:
         return False
     import asyncio
     import time
-    deadline = time.monotonic()+50.
+    deadline = time.monotonic()+190.
+    last_result = None
     while time.monotonic()<deadline:
         result = await asyncio_wait_for_ray_remote_call_with_timeout(
             manager.real_cancel_request, request_id, timeout=max(.001,deadline-time.monotonic()))
         if result.get('status')=='absent':break
+        last_result = result
         await asyncio.sleep(min(.1,max(0.,deadline-time.monotonic())))
     else:
+        logger.warning("Real request cancellation was not confirmed for %s; last status=%s reason=%s instances=%s",
+                       request_id, (last_result or {}).get('status'), (last_result or {}).get('reason'),
+                       (last_result or {}).get('instances'))
         return False
     # The control-plane barrier includes output-forwarder delivery completion.
-    # Drain the API queue before finishing the local stream; the route also waits
-    # for its HTTP handler's done event before reporting cancelled_confirmed.
-    while llumnix_client.request_output_queue.qsize():
+    # RayQueueServer wraps ray.util.queue.Queue, so read the actor's queue size
+    # through its remote API instead of calling qsize() on the wrapper. Drain
+    # the API queue before finishing the local stream; the route also waits for
+    # its HTTP handler's done event before reporting cancelled_confirmed.
+    queue=llumnix_client.request_output_queue
+    underlying_queue=getattr(queue,'queue',queue)
+    ray_actor=getattr(underlying_queue,'actor',None)
+    while True:
+        if ray_actor is not None:
+            queue_pending=await ray_actor.qsize.remote()
+        else:
+            queue_pending=queue.qsize()
+        if not queue_pending:
+            break
         if time.monotonic()>=deadline:return False
         await asyncio.sleep(.01)
     llumnix_client._clear_client_request_states(request_id)
